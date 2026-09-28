@@ -25,7 +25,7 @@ def build_opf(
             '<item id="cover-page" href="cover.xhtml" media-type="application/xhtml+xml"/>'
         )
         manifest.append(
-            f'<item id="cover-image" href="{cover_href}" media-type="image/jpeg" '
+            f'<item id="cover-image" href="{cover_href}" media-type="{mime_for(cover_href)}" '
             'properties="cover-image"/>'
         )
     if include_title_page:

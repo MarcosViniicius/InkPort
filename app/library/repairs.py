@@ -7,6 +7,9 @@ cheap, so they run on boot, on the periodic maintenance tick and from the panel.
 from __future__ import annotations
 
 import logging
+import posixpath
+import re
+import zipfile
 from pathlib import Path
 
 from sqlalchemy import select
@@ -179,11 +182,14 @@ def cleanup_orphan_covers(session: Session) -> int:
 
 
 def repair_epub_image_paths(session: Session) -> int:
-    """Fix image links written before the ``../images`` correction.
+    """Fix broken local references inside EPUB files, in place.
 
-    A chapter in ``OEBPS/text/`` used to point at ``images/x.jpg``, which
-    resolves to ``OEBPS/text/images/x.jpg``: a broken image in every reader.
-    The file is rewritten in place (nothing is re-downloaded).
+    Readers resolve ``src``/``href`` relative to the *file* that contains them,
+    but generators (ours in older versions, and third parties) sometimes write
+    paths relative to the OPF or another folder -- e.g. ``cover.xhtml`` at the
+    OEBPS root pointing at ``../images/cover.jpg``, which lands outside the
+    container. When the literal target is missing we try the OPF-relative
+    reading and rewrite the reference. Nothing is re-downloaded; idempotent.
     """
     from app.storage.paths import resolve_library_path
 
@@ -202,21 +208,29 @@ def repair_epub_image_paths(session: Session) -> int:
     return fixed
 
 
-def _fix_epub_image_paths(path: Path) -> bool:
-    """Rewrite one EPUB's chapter references (returns True when it changed)."""
-    import re
-    import zipfile
+_REF_RE = re.compile(r'(?P<attr>\b(?:src|href)=")(?P<value>[^"]+)(?P<quote>")')
+_HTML_SUFFIX_RE = re.compile(r"\.x?html?$", re.IGNORECASE)
+_EXTERNAL_PREFIXES = ("http://", "https://", "data:", "mailto:", "#", "javascript:")
 
+
+def _fix_epub_image_paths(path: Path) -> bool:
+    """Rewrite broken local references in one EPUB (returns True when changed)."""
     payloads: dict[str, bytes] = {}
     with zipfile.ZipFile(path) as source:
-        names = source.namelist()
+        names = set(source.namelist())
         if "META-INF/container.xml" not in names:
             return False
+        opf_dir = _opf_dir(source, names)
+        if opf_dir is None:
+            return False
         for name in names:
-            if not re.search(r"(^|/)text/[^/]+\.x?html$", name):
+            if not _HTML_SUFFIX_RE.search(name):
                 continue
-            text = source.read(name).decode("utf-8", "replace")
-            fixed = text.replace('src="images/', 'src="../images/')
+            try:
+                text = source.read(name).decode("utf-8")
+            except (KeyError, UnicodeDecodeError):
+                continue
+            fixed = _rewrite_refs(text, name, names, opf_dir)
             if fixed != text:
                 payloads[name] = fixed.encode("utf-8")
         if not payloads:
@@ -224,7 +238,7 @@ def _fix_epub_image_paths(path: Path) -> bool:
 
         temp = path.with_name(path.name + ".tmp")
         with zipfile.ZipFile(temp, "w", zipfile.ZIP_DEFLATED) as target:
-            for name in names:
+            for name in source.namelist():
                 info = source.getinfo(name)
                 if name in payloads:
                     target.writestr(name, payloads[name], compress_type=zipfile.ZIP_DEFLATED)
@@ -235,6 +249,46 @@ def _fix_epub_image_paths(path: Path) -> bool:
     path.unlink(missing_ok=True)
     temp.replace(path)
     return True
+
+
+def _opf_dir(source: zipfile.ZipFile, names: set[str]) -> str | None:
+    """Folder that holds the OPF package (the base many generators assume)."""
+    match = re.search(rb'full-path="([^"]+)"', source.read("META-INF/container.xml"))
+    if not match:
+        return None
+    opf = match.group(1).decode("utf-8", "replace").lstrip("/")
+    if opf not in names:
+        return None
+    return posixpath.dirname(opf)
+
+
+def _rewrite_refs(text: str, entry: str, names: set[str], opf_dir: str) -> str:
+    entry_dir = posixpath.dirname(entry)
+
+    def repl(match: re.Match[str]) -> str:
+        value = match.group("value")
+        if not value or value.startswith(_EXTERNAL_PREFIXES):
+            return match.group(0)
+        path, _, fragment = value.partition("#")
+        if not path:
+            return match.group(0)
+        target = path.lstrip("/")
+        if posixpath.normpath(posixpath.join(entry_dir, target)) in names:
+            return match.group(0)
+        # "squash" leading "../" away: the reference was written as if the file
+        # lived one folder deeper (a common generator slip).
+        squashed = target
+        while squashed.startswith("../"):
+            squashed = squashed[3:]
+        candidate = posixpath.normpath(posixpath.join(opf_dir, squashed))
+        if candidate in names:
+            new_value = posixpath.relpath(candidate, entry_dir)
+            if fragment:
+                new_value = f"{new_value}#{fragment}"
+            return f"{match.group('attr')}{new_value}{match.group('quote')}"
+        return match.group(0)
+
+    return _REF_RE.sub(repl, text)
 
 
 def run_repairs(session: Session) -> dict[str, int]:

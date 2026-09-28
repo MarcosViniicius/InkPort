@@ -22,6 +22,32 @@ tarefas comuns. O login usa as credenciais do `.env` (`ADMIN_USERNAME` /
 
 ---
 
+## Galeria
+
+Capturas reais (tema escuro, acervo de exemplo).
+
+| Painel | Biblioteca |
+| --- | --- |
+| ![Painel](images/dashboard.png) | ![Biblioteca](images/library.png) |
+
+| Importar | Conversões |
+| --- | --- |
+| ![Importar](images/import.png) | ![Conversões](images/conversions.png) |
+
+| Feeds RSS/Atom | Configurações |
+| --- | --- |
+| ![Feeds](images/feeds.png) | ![Configurações](images/settings.png) |
+
+| Dispositivos | Ficha do livro |
+| --- | --- |
+| ![Dispositivos](images/devices.png) | ![Ficha do livro](images/book-detail.png) |
+
+| Leitor: artigo (EPUB) | Leitor: mangá (EPUB de imagens) |
+| --- | --- |
+| ![Leitor de artigo](images/reader-epub.png) | ![Leitor de mangá](images/reader-manga.png) |
+
+---
+
 ## Painel (`/`)
 
 Mostra o total de livros, categorias e jobs, o **uso de disco**, a lista de

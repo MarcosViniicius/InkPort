@@ -28,7 +28,9 @@ def write_epub(
     cover_href: str | None = None
     cover_bytes: bytes | None = None
     if meta.cover_image and meta.cover_image.exists():
-        cover_href = "images/cover.jpg"
+        # Keep the real format: a PNG stored as "cover.jpg" confuses strict readers.
+        suffix = meta.cover_image.suffix.lower().lstrip(".") or "jpg"
+        cover_href = f"images/cover.{suffix}"
         cover_bytes = meta.cover_image.read_bytes()
 
     with zipfile.ZipFile(out_path, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -40,7 +42,9 @@ def write_epub(
 
         if cover_href and cover_bytes is not None:
             zf.writestr(f"OEBPS/{cover_href}", cover_bytes)
-            zf.writestr("OEBPS/cover.xhtml", cover_xhtml(f"../{cover_href}", meta))
+            # cover.xhtml sits at the OEBPS root: "images/cover.jpg" is correct
+            # (an extra "../" would point outside the container).
+            zf.writestr("OEBPS/cover.xhtml", cover_xhtml(cover_href, meta))
         if include_title_page:
             zf.writestr("OEBPS/title.xhtml", title_xhtml(meta))
 

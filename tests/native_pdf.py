@@ -9,7 +9,6 @@ fixtures generated with PyMuPDF.
 
 from __future__ import annotations
 
-import glob
 import re
 import shutil
 import subprocess
@@ -75,11 +74,12 @@ def _coverage(pdf_text: str, output_text: str) -> float:
 
 
 def _library_pdfs() -> list[Path]:
-    return [Path(p) for p in glob.glob(str(ROOT / "data" / "library" / "*.pdf"))]
+    # The library is organised in category folders, so look recursively.
+    return sorted((ROOT / "data" / "library").rglob("*.pdf"))
 
 
 def _library_epub_with_images() -> Path | None:
-    for path in sorted(glob.glob(str(ROOT / "data" / "library" / "*.epub"))):
+    for path in sorted((ROOT / "data" / "library").rglob("*.epub")):
         try:
             with zipfile.ZipFile(path) as zf:
                 has_image = any(
@@ -87,7 +87,7 @@ def _library_epub_with_images() -> Path | None:
                     for n in zf.namelist()
                 )
             if has_image:
-                return Path(path)
+                return path
         except zipfile.BadZipFile:
             continue
     return None

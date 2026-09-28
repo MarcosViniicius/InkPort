@@ -31,7 +31,7 @@ def build_chapter(title: str, body_xhtml: str) -> str:
         '<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="pt">\n'
         f"<head><title>{html.escape(title)}</title>\n"
         '<meta charset="utf-8"/>\n'
-        '<link rel="stylesheet" type="text/css" href="styles.css"/>\n'
+        '<link rel="stylesheet" type="text/css" href="../styles.css"/>\n'
         "</head>\n"
         f'<body><h1>{html.escape(title)}</h1>\n{body_xhtml}\n</body></html>\n'
     )

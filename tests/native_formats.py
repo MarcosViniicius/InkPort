@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import io
 import os
+import posixpath
 import re
 import shutil
 import sys
@@ -49,6 +50,33 @@ def _rewrite_entry(epub: Path, entry: str, transform) -> None:
     with zipfile.ZipFile(epub, "w", zipfile.ZIP_DEFLATED) as target:
         for nome in nomes:
             target.writestr(nome, dados[nome])
+
+
+def _broken_refs(epub: Path) -> list[str]:
+    """Local ``src``/``href`` values that do not resolve to an entry inside the EPUB.
+
+    Readers resolve these relative to the file, so anything that lands outside
+    the container shows up as a broken image/link.
+    """
+    problemas: list[str] = []
+    with zipfile.ZipFile(epub) as zf:
+        nomes = set(zf.namelist())
+        for nome in nomes:
+            if not nome.lower().endswith((".xhtml", ".html", ".htm")):
+                continue
+            texto = zf.read(nome).decode("utf-8", "replace")
+            for valor in re.findall(r'(?:src|href)="([^"]+)"', texto):
+                if not valor or valor.startswith(("http", "data:", "#", "mailto:")):
+                    continue
+                caminho = valor.split("#", 1)[0]
+                if not caminho:
+                    continue
+                alvo = posixpath.normpath(
+                    posixpath.join(posixpath.dirname(nome), caminho.lstrip("/"))
+                )
+                if alvo not in nomes:
+                    problemas.append(f"{nome} -> {valor}")
+    return problemas
 
 
 def build_source_epub(path: Path) -> Path:
@@ -326,6 +354,56 @@ def main() -> int:
         "capa é a primeira página da espinha",
         opf.find('idref="coverpage"') < opf.find('idref="c0"'),
     )
+
+    print("\n[EPUB de imagens: capa e referências internas válidas]")
+    from app.converters.epub.builder import write_epub
+    from app.library.repairs import _fix_epub_image_paths
+
+    pagina_a = WORKDIR / "pagina-a.png"
+    pagina_b = WORKDIR / "pagina-b.png"
+    Image.new("RGB", (480, 800), (245, 245, 245)).save(pagina_a, "PNG")
+    Image.new("RGB", (480, 800), (210, 220, 235)).save(pagina_b, "PNG")
+
+    imagens_epub = WORKDIR / "imagens.epub"
+    write_epub(
+        imagens_epub,
+        images=[pagina_a, pagina_b],
+        meta=EpubMeta(
+            title="Mangá de teste", language="pt", identifier="imagens", cover_image=cover_file
+        ),
+        include_title_page=True,
+    )
+    quebradas = _broken_refs(imagens_epub)
+    check("EPUB de imagens sem referências quebradas", not quebradas, str(quebradas[:3]))
+    with zipfile.ZipFile(imagens_epub) as zf:
+        capa_gerada = zf.read("OEBPS/cover.xhtml").decode("utf-8", "replace")
+        opf_gerado = zf.read("OEBPS/content.opf").decode("utf-8", "replace")
+    check(
+        "a capa aponta para a imagem dentro do container",
+        'src="images/cover.png"' in capa_gerada and "../images/cover" not in capa_gerada,
+        capa_gerada[:170],
+    )
+    check(
+        "o OPF declara o tipo real da capa",
+        'href="images/cover.png" media-type="image/png"' in opf_gerado,
+    )
+
+    # O mesmo reparo conserta arquivos antigos do acervo e EPUBs de terceiros.
+    antigo = WORKDIR / "antigo.epub"
+    shutil.copy2(imagens_epub, antigo)
+    _rewrite_entry(
+        antigo,
+        "OEBPS/cover.xhtml",
+        lambda texto: texto.replace('src="images/cover.png"', 'src="../images/cover.png"'),
+    )
+    check("fixture antiga tem a referência errada", bool(_broken_refs(antigo)))
+    check("o reparo reescreve a referência", _fix_epub_image_paths(antigo))
+    check(
+        "depois do reparo não sobra referência quebrada",
+        not _broken_refs(antigo),
+        str(_broken_refs(antigo)[:3]),
+    )
+    check("o reparo é idempotente", not _fix_epub_image_paths(antigo))
 
     sem_capa = WORKDIR / "sem-capa.epub"
     write_text_epub(

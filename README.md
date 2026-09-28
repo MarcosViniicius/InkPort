@@ -23,6 +23,7 @@ externo** (nada de Calibre, Ghostscript, poppler, ImageMagick ou FFmpeg).
 
 - [O que é](#o-que-é)
 - [Destaques](#destaques)
+- [Capturas de tela](#capturas-de-tela)
 - [Dispositivos com preset](#dispositivos-com-preset)
 - [Requisitos](#requisitos)
 - [Instalação](#instalação)
@@ -96,6 +97,28 @@ Componentes, em uma frase cada:
 - **Leitor web** embutido (EPUB, PDF, CBZ, TXT, FB2…) para conferir antes de
   mandar para o aparelho.
 - **Sem CDNs**: todo CSS/JS é servido localmente; funciona offline na rede local.
+
+## Capturas de tela
+
+Imagens reais do painel (tema escuro, acervo de exemplo).
+
+| Painel | Biblioteca |
+| --- | --- |
+| ![Painel: resumo do acervo, uso de disco e acesso OPDS](docs/images/dashboard.png) | ![Biblioteca: busca, filtros, grade e ações em lote](docs/images/library.png) |
+
+| Importar | Conversões |
+| --- | --- |
+| ![Importar: envio de vários arquivos, categoria obrigatória e conversão na importação](docs/images/import.png) | ![Conversões: fila, progresso e histórico](docs/images/conversions.png) |
+
+| Feeds RSS/Atom | Configurações |
+| --- | --- |
+| ![Feeds: cadastro, frequência e teste do feed](docs/images/feeds.png) | ![Configurações: catálogo OPDS, armazenamento e manutenção](docs/images/settings.png) |
+
+| Leitor web: artigo refluído | Leitor web: mangá (EPUB de imagens) |
+| --- | --- |
+| ![Leitor web de um artigo em EPUB, com sumário](docs/images/reader-epub.png) | ![Leitor web de um mangá, página renderizada](docs/images/reader-manga.png) |
+
+Mais telas (dispositivos e ficha do livro) em [`docs/panel.md`](docs/panel.md).
 
 ## Dispositivos com preset
 

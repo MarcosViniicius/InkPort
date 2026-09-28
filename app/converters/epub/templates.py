@@ -13,9 +13,13 @@ _HEAD = (
     "<head><title>{title}</title>\n"
     '<meta charset="utf-8"/>\n'
     "{viewport}"
-    '<link rel="stylesheet" type="text/css" href="../styles.css"/>\n'
+    '<link rel="stylesheet" type="text/css" href="{css}"/>\n'
     "</head>\n"
 )
+
+# Files under "text/" need one level up; files at the OEBPS root do not.
+_CSS_FROM_TEXT = "../styles.css"
+_CSS_FROM_ROOT = "styles.css"
 
 _VIEWPORT_FIXED = (
     '<meta name="viewport" content="width=device-width, height=device-height, '
@@ -24,7 +28,9 @@ _VIEWPORT_FIXED = (
 
 
 def page_xhtml(image_href: str, *, index: int, total: int, lang: str = "pt") -> str:
-    head = _HEAD.format(title="Página", lang=lang, viewport=_VIEWPORT_FIXED)
+    head = _HEAD.format(
+        title="Página", lang=lang, viewport=_VIEWPORT_FIXED, css=_CSS_FROM_TEXT
+    )
     return (
         f"{head}"
         '<body class="page"><div class="page">'
@@ -35,7 +41,10 @@ def page_xhtml(image_href: str, *, index: int, total: int, lang: str = "pt") -> 
 
 def title_xhtml(meta: EpubMeta) -> str:
     head = _HEAD.format(
-        title=html.escape(meta.title), lang=html.escape(meta.language), viewport=""
+        title=html.escape(meta.title),
+        lang=html.escape(meta.language),
+        viewport="",
+        css=_CSS_FROM_ROOT,
     )
     author = (
         f'<p class="book-author">{html.escape(meta.author)}</p>' if meta.author else ""
@@ -48,7 +57,10 @@ def title_xhtml(meta: EpubMeta) -> str:
 
 
 def cover_xhtml(cover_href: str, meta: EpubMeta) -> str:
-    head = _HEAD.format(title="Capa", lang=html.escape(meta.language), viewport="")
+    # This page lives at the OEBPS root, so its links must not climb a level.
+    head = _HEAD.format(
+        title="Capa", lang=html.escape(meta.language), viewport="", css=_CSS_FROM_ROOT
+    )
     return (
         f'{head}<body class="cover"><img src="{html.escape(cover_href)}" '
         f'alt="{html.escape(meta.title)}"/></body></html>\n'
