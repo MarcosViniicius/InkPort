@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
+{% block title %}Biblioteca · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Biblioteca</h1>
+    <p class="lead">
+      {{ page_data.total }} livro(s)
+      {% if page_data.pages > 1 %} · página {{ page_data.page }} de {{ page_data.pages }}{% endif %}
+    </p>
+  </div>
+  <div class="button-row">
+    <div class="tabs" data-view-toggle role="group" aria-label="Modo de visualização">
+      <button type="button" data-set-view="grid" class="on" aria-pressed="true">Grade</button>
+      <button type="button" data-set-view="list" aria-pressed="false">Lista</button>
+    </div>
+    <a class="button" href="/import">{{ icon('import', 16) }} Importar</a>
+  </div>
+</div>
+
+<form class="card" method="get" action="/library">
+  <div class="field">
+    <label for="q">Busca</label>
+    <div class="row">
+      <input id="q" name="q" class="grow" value="{{ filters.q }}" placeholder="título, autor, série, descrição">
+      <button class="button" type="submit">{{ icon('search', 15) }} Buscar</button>
+    </div>
+  </div>
+
+  <details data-collapse-sm open>
+    <summary>Filtros</summary>
+    <div class="field-row">
+      <div class="field">
+        <label for="category_id">Categoria</label>
+        <select id="category_id" name="category_id">
+          <option value="">Todas</option>
+          {% for row in categories %}
+            <option value="{{ row.category.id }}" {{ 'selected' if filters.category_id == row.category.id }}>{{ row.category.name }} ({{ row.count }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="author">Autor</label>
+        <select id="author" name="author">
+          <option value="">Todos</option>
+          {% for name, count in authors %}
+            <option value="{{ name }}" {{ 'selected' if filters.author == name }}>{{ name }} ({{ count }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="fmt">Formato</label>
+        <select id="fmt" name="fmt">
+          <option value="">Todos</option>
+          {% for fmt, count in formats %}
+            <option value="{{ fmt }}" {{ 'selected' if filters.fmt == fmt }}>{{ format_label(fmt) }} ({{ count }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="sort">Ordenar</label>
+        <select id="sort" name="sort">
+          <option value="added_desc" {{ 'selected' if filters.sort == 'added_desc' }}>Mais recentes</option>
+          <option value="title_asc" {{ 'selected' if filters.sort == 'title_asc' }}>Título A-Z</option>
+          <option value="author_asc" {{ 'selected' if filters.sort == 'author_asc' }}>Autor</option>
+          <option value="size_desc" {{ 'selected' if filters.sort == 'size_desc' }}>Maior tamanho</option>
+        </select>
+      </div>
+    </div>
+    <div class="button-row">
+      <button class="button" type="submit">Aplicar filtros</button>
+      <a class="button ghost" href="/library">Limpar</a>
+    </div>
+  </details>
+</form>
+
+{% if page_data.items %}
+<form method="post" action="/library/bulk">
+  <div class="card mt4 toolbar" data-selection-bar>
+    <label class="check">
+      <input type="checkbox" data-check-all aria-label="Selecionar todos os livros desta página">
+      <span>Selecionar todos</span>
+    </label>
+    <span class="badge" id="selection-count" aria-live="polite">nenhum selecionado</span>
+    <div class="button-row push-right">
+      <label class="check" for="bulk-format">
+        <span class="muted small">Converter para</span>
+        <select id="bulk-format" name="target_format">
+          <option value="auto">Automático</option>
+          {% for fmt in ['epub','kepub','azw3','mobi','pdf','cbz','docx','fb2','txt'] %}<option value="{{ fmt }}">{{ format_label(fmt) }}</option>{% endfor %}
+        </select>
+      </label>
+      {% if profiles %}
+      <select name="device_profile" aria-label="Dispositivo de destino">
+        {% for profile in profiles %}<option value="{{ profile.slug }}" {{ 'selected' if profile.recommended }}>{{ profile.name }}</option>{% endfor %}
+      </select>
+      {% endif %}
+      <button class="button small" type="submit" name="action" value="convert">Converter selecionados</button>
+      <button class="button small ghost" type="submit" name="action" value="refresh">Atualizar metadados</button>
+      <button class="button small ghost" type="submit" name="action" value="rename">Renomear arquivos</button>
+      <button class="button small ghost danger" type="submit" name="action" value="delete"
+              data-confirm="Excluir os livros selecionados?"
+              data-confirm-count=".row-check:checked"
+              data-confirm-detail="Os registros somem e, se «apagar os arquivos» estiver marcado, os arquivos também. Isto não pode ser desfeito."
+              data-confirm-ok="Excluir"
+              data-confirm-danger
+              onclick="return confirm('Excluir os livros selecionados?')">Excluir</button>
+      <label class="check"><input type="checkbox" name="delete_files" checked> apagar os arquivos</label>
+    </div>
+  </div>
+
+  <div data-view="grid" class="grid cards mt4">
+    {% for book in page_data.items %}{% include "partials/book_card.html" %}{% endfor %}
+  </div>
+
+  <div data-view="list" class="table-wrap mt4" hidden>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-check"><input type="checkbox" data-check-all aria-label="Selecionar todos"></th>
+          <th>Título</th><th>Autor</th><th>Série</th><th>Formato</th><th>Tamanho</th><th>Adicionado</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for book in page_data.items %}
+        <tr>
+          <td data-label=""><input class="row-check" type="checkbox" name="book_ids" value="{{ book.id }}" aria-label="Selecionar {{ book.title }}"></td>
+          <td data-label="Título"><a href="/library/{{ book.id }}">{{ book.title }}</a>
+              {% if not book.is_original %}<span class="badge info">conversão</span>{% endif %}</td>
+          <td data-label="Autor">{{ book.author or '—' }}</td>
+          <td data-label="Série">{{ book.series or '—' }}{% if book.series_index %} <span class="muted num">#{{ book.series_index|volume }}</span>{% endif %}</td>
+          <td data-label="Formato"><span class="badge">{{ format_label(book.format) }}</span></td>
+          <td data-label="Tamanho" class="num">{{ book.size_mb|decimal }} MB</td>
+          <td data-label="Adicionado" class="muted small">{{ book.added_at|relative }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</form>
+
+{% if page_data.pages > 1 %}
+<nav class="pager" aria-label="Paginação">
+  {% if page_data.has_prev %}<a href="{{ request.url.include_query_params(page=page_data.page-1) }}">‹ Anterior</a>{% endif %}
+  <span class="current">{{ page_data.page }} / {{ page_data.pages }}</span>
+  {% if page_data.has_next %}<a href="{{ request.url.include_query_params(page=page_data.page+1) }}">Próxima ›</a>{% endif %}
+</nav>
+{% endif %}
+{% else %}
+<div class="empty mt4">
+  <div class="glyph">{{ icon('search', 36) }}</div>
+  <h3>Nenhum livro com esses filtros</h3>
+  <p>Tente limpar a busca ou importar novos arquivos.</p>
+  <div class="button-row center-x">
+    <a class="button ghost" href="/library">Limpar filtros</a>
+    <a class="button" href="/import">Importar</a>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

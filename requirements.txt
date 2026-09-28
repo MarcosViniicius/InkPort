@@ -1,0 +1,36 @@
+# Core runtime -- keep this list small and installable on a cheap VPS.
+fastapi>=0.110,<1.0
+uvicorn[standard]>=0.29
+sqlalchemy>=2.0,<3.0
+pydantic>=2.6
+pydantic-settings>=2.2
+python-multipart>=0.0.9
+jinja2>=3.1
+itsdangerous>=2.2
+httpx>=0.27
+feedparser>=6.0
+Pillow>=10.2
+python-dotenv>=1.0
+
+# PDF: reflow do texto, renderizacao de paginas, escrita de PDF e capas.
+# Substitui Ghostscript e poppler (pdftoppm) -- nada de binarios externos.
+PyMuPDF>=1.24
+
+# PDF metadata (pure Python, no system dependency).
+pypdf>=4.2
+
+# HTML parsing/DOM manipulation for the webpage -> EPUB pipeline.
+lxml>=5.2
+
+# Arquivos compactados em Python puro: 7z/CB7 (py7zr) e RAR/CBR (rarfile,
+# usando a unrar.dll que acompanha o projeto em app/vendor/unrar).
+py7zr>=0.21
+rarfile>=4.1
+
+# Formatos de escritorio: ler/escrever DOCX e ler RTF (substituem o Calibre).
+python-docx>=1.1
+striprtf>=0.0.28
+
+# Ler MOBI/AZW/AZW3/PDB/PRC (port do KindleUnpack). Tambem usado nos testes
+# para verificar o escritor Kindle nativo.
+mobi>=0.4.1

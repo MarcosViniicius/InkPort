@@ -1,0 +1,68 @@
+# ===========================================================================
+# OPDS Server - arquivos que NAO devem ir para o repositorio.
+# Regra de ouro: dados do usuario, segredos e artefatos gerados ficam de fora.
+# ===========================================================================
+
+# --- Python ----------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+ENV/
+pip-wheel-metadata/
+
+# --- Ferramentas de desenvolvimento ----------------------------------------
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.hypothesis/
+
+# --- Configuracao local e segredos (NUNCA commitar) ------------------------
+# O .env guarda SECRET_KEY e a senha do painel. O .env.example é versionado.
+.env
+.env.local
+.env.*.local
+
+# --- Dados de runtime (biblioteca, banco, capas, inbox, temp, logs) ---------
+# Tudo que fica sob DATA_DIR pertence ao usuario, nao ao codigo.
+data/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# Backups manuais do banco (ex.: data/opds.bak-categorias)
+*.bak
+*.bak-*
+
+# --- Temporarios e logs -----------------------------------------------------
+*.log
+logs/
+tmp/
+temp/
+*.tmp
+*.swp
+*.swo
+*~
+
+# --- Sistema operacional / editores ----------------------------------------
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.code-workspace
+*.sublime-*

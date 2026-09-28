@@ -1,0 +1,26 @@
+# Normaliza finais de linha: LF no repo (funciona em Windows/Linux/macOS).
+* text=auto eol=lf
+
+# Binários: nunca normalizar nem tentar diff de texto.
+*.dll binary
+*.so binary
+*.dylib binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.bmp binary
+*.ico binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+*.pdf binary
+*.epub binary
+*.mobi binary
+*.azw3 binary
+*.cbz binary
+*.zip binary
+*.7z binary
+*.rar binary

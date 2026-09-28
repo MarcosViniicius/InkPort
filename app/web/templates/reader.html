@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
+{% block title %}{{ book.title }} · Web Reader{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ static_url('reader.css') }}">{% endblock %}
+{% block content %}
+<div class="reader" data-reader
+     data-book-id="{{ book.id }}"
+     data-manifest="/reader/{{ book.id }}/manifest"
+     data-download="/library/{{ book.id }}/file"
+     data-back="/library/{{ book.id }}">
+
+  <div class="reader-top">
+    <div class="reader-top__id">
+      <a class="reader-back" href="/library/{{ book.id }}">{{ icon('book', 16) }} Voltar ao livro</a>
+      <h1 class="reader-title">{{ book.title }}</h1>
+      <p class="reader-sub">
+        {{ book.display_author }}{% if book.series %} · {{ book.series }}{% if book.series_index %} #{{ book.series_index|volume }}{% endif %}{% endif %}
+        · <span class="badge">{{ format_label(book.format) }}</span>
+        {% if not file_exists %}<span class="badge err">arquivo ausente</span>{% endif %}
+      </p>
+    </div>
+    <div class="button-row reader-top__actions">
+      <a class="button ghost small" data-raw-link href="/reader/{{ book.id }}/raw" target="_blank" rel="noopener">{{ icon('external', 15) }} Nova aba</a>
+      <a class="button ghost small" href="/library/{{ book.id }}/file">{{ icon('download', 15) }} Baixar</a>
+    </div>
+  </div>
+
+  <div class="reader-toolbar" role="toolbar" aria-label="Controles de leitura">
+    <div class="reader-field">
+      <label for="reader-device">Dispositivo</label>
+      <select id="reader-device" data-device></select>
+    </div>
+    <div class="reader-field reader-field--size">
+      <label for="reader-width">Tamanho (px)</label>
+      <div class="reader-size">
+        <input id="reader-width" data-width type="number" min="120" max="4000" step="1" inputmode="numeric" aria-label="Largura">
+        <span aria-hidden="true">×</span>
+        <input data-height type="number" min="120" max="4000" step="1" inputmode="numeric" aria-label="Altura">
+      </div>
+    </div>
+    <div class="reader-tools">
+      <button class="reader-tool" type="button" data-rotate title="Girar retrato/paisagem">Girar</button>
+      <button class="reader-tool" type="button" data-eink aria-pressed="false" title="Simular painel e-ink (cinza + níveis)">e-ink</button>
+      <button class="reader-tool" type="button" data-side-open title="Mostrar índice" aria-controls="reader-side">Índice</button>
+      <label class="reader-zoom">
+        <span>Zoom</span>
+        <input data-zoom type="range" min="50" max="200" step="5" value="100">
+        <output data-zoom-out>100%</output>
+      </label>
+    </div>
+    <div class="reader-field">
+      <label for="reader-theme">Tema</label>
+      <select id="reader-theme" data-pref="theme">
+        <option value="auto">Painel</option>
+        <option value="light">Claro</option>
+        <option value="sepia">Sépia</option>
+        <option value="dark">Escuro</option>
+      </select>
+    </div>
+    <div class="reader-field">
+      <label for="reader-font">Fonte</label>
+      <select id="reader-font" data-pref="font">
+        <option value="serif">Serifada</option>
+        <option value="sans">Sem serifa</option>
+      </select>
+    </div>
+    <div class="reader-field reader-field--size">
+      <label for="reader-size">Texto</label>
+      <input id="reader-size" data-pref="size" type="range" min="80" max="200" step="5" value="100">
+    </div>
+    <div class="reader-field reader-field--size">
+      <label for="reader-line">Entrelinha</label>
+      <input id="reader-line" data-pref="line" type="range" min="110" max="220" step="5" value="160">
+    </div>
+    <div class="reader-field reader-field--size">
+      <label for="reader-margin">Margens</label>
+      <input id="reader-margin" data-pref="margin" type="range" min="0" max="24" step="1" value="6">
+    </div>
+    <label class="reader-check"><input data-pref="justify" type="checkbox"> Justificado</label>
+    <label class="reader-check"><input data-pref="prefs" type="checkbox"> Preferências de leitura</label>
+    <label class="reader-check reader-only-comic" hidden><input data-layout type="checkbox"> Página dupla</label>
+    <label class="reader-check reader-only-comic" hidden><input data-cover type="checkbox"> Capa sozinha</label>
+    <label class="reader-check reader-only-pdf" hidden><input data-pdf-image type="checkbox"> Modo imagem</label>
+  </div>
+
+  <div class="reader-body">
+    <aside class="reader-side" id="reader-side" data-side aria-label="Índice e páginas">
+      <div class="reader-side__head">
+        <strong data-side-title>Índice</strong>
+        <button class="reader-iconbtn" type="button" data-side-close aria-label="Fechar índice">✕</button>
+      </div>
+      <nav class="reader-toc" data-toc aria-label="Capítulos"></nav>
+    </aside>
+
+    <div class="reader-stage" data-stage>
+      <div class="reader-viewport" data-viewport>
+        <div class="reader-frame" data-frame>
+          <div class="reader-content" data-content></div>
+        </div>
+      </div>
+      <div class="reader-state" data-state hidden></div>
+      <div class="reader-loader" data-loading role="status" aria-live="polite">
+        <span class="reader-spinner" aria-hidden="true"></span>
+        <span data-loading-text>Carregando o leitor…</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="reader-footbar" data-footbar>
+    <button class="reader-tool" type="button" data-prev aria-label="Anterior">‹ Anterior</button>
+    <span class="reader-counter" data-counter aria-live="polite">—</span>
+    <input class="reader-slider" data-slider type="range" min="0" max="0" step="1" value="0" aria-label="Ir para a página ou capítulo">
+    <button class="reader-tool" type="button" data-next aria-label="Próximo">Próximo ›</button>
+  </div>
+
+  <svg class="reader-svgdefs" width="0" height="0" aria-hidden="true" focusable="false">
+    <filter id="reader-quantize" color-interpolation-filters="sRGB">
+      <feComponentTransfer data-quantize>
+        <feFuncR type="discrete" data-func="R"></feFuncR>
+        <feFuncG type="discrete" data-func="G"></feFuncG>
+        <feFuncB type="discrete" data-func="B"></feFuncB>
+      </feComponentTransfer>
+    </filter>
+  </svg>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ static_url('reader.js') }}" defer></script>{% endblock %}

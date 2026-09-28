@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="robots" content="noindex">
+  <title>{{ status }} · {{ app_name }}</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%231f6f5c'/><path d='M18 46V20h6.6l7.4 12 7.4-12H46v26h-6V31l-6.4 10h-2.6L24 31v15z' fill='%23fff'/></svg>">
+  <link rel="stylesheet" href="{{ static_url('style.css') }}">
+</head>
+<body>
+  <main class="auth">
+    <div class="panel card">
+      <p class="mono muted mb2">erro {{ status }}</p>
+      <h1>{{ title }}</h1>
+      <p class="muted">{{ message }}</p>
+      <div class="button-row mt4">
+        <a class="button" href="/">Ir para o painel</a>
+        <a class="button ghost" href="/library">Ver a biblioteca</a>
+      </div>
+      <hr>
+      <p class="hint mb0">
+        Se o problema continuar, abra <a href="/settings">Configurações → Manutenção</a>,
+        rode a manutenção e confira os logs.
+      </p>
+    </div>
+  </main>
+</body>
+</html>

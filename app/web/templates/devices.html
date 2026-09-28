@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
+{% block title %}Dispositivos · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Dispositivos</h1>
+    <p class="lead">
+      Cada perfil descreve a tela e o que o aparelho abre nativamente. A conversão
+      escolhe o formato e a imagem conforme o perfil — o Xteink é só um deles.
+    </p>
+  </div>
+  <a class="button" href="#novo-perfil">{{ icon('plus', 16) }} Novo perfil</a>
+</div>
+
+{% set ns = namespace(brand=None) %}
+{% for slug, profile in profiles.items() %}
+  {% if profile.brand != ns.brand %}
+    {% if ns.brand %}</div>{% endif %}
+    {% set ns.brand = profile.brand %}
+    <h2 class="mt4">{{ ns.brand }}</h2>
+    <div class="grid thirds mt4">
+  {% endif %}
+
+  <div class="card col">
+    <div class="spread">
+      <h3 class="mt0">{{ profile.name }}</h3>
+      {% if profile.recommended %}<span class="badge ok">recomendado</span>
+      {% elif slug in builtin_slugs %}<span class="badge">embutido</span>{% endif %}
+    </div>
+    <p class="muted small mb0">{{ profile.description or '—' }}</p>
+    <div class="pill-list">
+      <span class="badge plain">{{ profile.screen_label }}</span>
+      <span class="badge plain">{{ 'cor' if profile.color else 'tons de cinza' }}{% if profile.gray_levels <= 16 %} · {{ profile.gray_levels }} níveis{% endif %}</span>
+      <span class="badge info">{{ profile.preferred_format|upper }}</span>
+      <span class="badge plain">quadrinhos: {{ {'epub_images':'EPUB de imagens','cbz':'CBZ','pdf':'PDF'}.get(profile.comic_output, profile.comic_output) }}</span>
+      {% if profile.spreads and profile.spreads != 'none' %}<span class="badge plain">spreads: {{ profile.spreads }}</span>{% endif %}
+      {% if profile.preserve_resolution %}<span class="badge plain">resolução original</span>{% endif %}
+      {% if profile.max_file_size_mb %}<span class="badge plain">até {{ profile.max_file_size_mb }} MB</span>{% endif %}
+    </div>
+    {% if profile.notes %}<p class="muted small mb0">{{ profile.notes }}</p>{% endif %}
+    <code class="mono small">{{ slug }}</code>
+    {% if slug not in builtin_slugs %}
+    <form method="post" action="/devices/{{ slug }}/delete"
+          data-confirm="Excluir o perfil «{{ profile.name }}»?"
+          data-confirm-msg="Conversões já feitas com ele não são afetadas."
+          data-confirm-ok="Excluir"
+          data-confirm-danger
+          onsubmit="return confirm('Excluir este perfil?')">
+      <button class="button ghost small danger" type="submit">Excluir perfil</button>
+    </form>
+    {% endif %}
+  </div>
+{% endfor %}
+{% if ns.brand %}</div>{% endif %}
+
+<div class="card mt4" id="novo-perfil">
+  <div class="card-head">
+    <h2>{{ icon('devices', 17) }} Criar perfil personalizado</h2>
+    <span class="muted small">use um perfil embutido como referência</span>
+  </div>
+  <form method="post" action="/devices/save">
+    <div class="field-row">
+      <div class="field"><label for="slug">Identificador (slug)</label><input id="slug" name="slug" placeholder="meu_leitor" required></div>
+      <div class="field"><label for="name">Nome</label><input id="name" name="name" placeholder="Meu Leitor" required></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label for="screen_width">Largura (px) — 0 = universal</label><input id="screen_width" name="screen_width" type="number" value="0" min="0"></div>
+      <div class="field"><label for="screen_height">Altura (px)</label><input id="screen_height" name="screen_height" type="number" value="0" min="0"></div>
+      <div class="field"><label for="ppi">PPI</label><input id="ppi" name="ppi" type="number" value="300" min="0"></div>
+      <div class="field"><label for="max_file_size_mb">Tamanho máx. (MB)</label><input id="max_file_size_mb" name="max_file_size_mb" type="number" value="300" min="0"></div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="preferred_format">Formato preferido</label>
+        <select id="preferred_format" name="preferred_format">
+          {% for fmt in ['epub','kepub','azw3','mobi','pdf','cbz'] %}<option value="{{ fmt }}">{{ fmt|upper }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="comic_output">Saída para quadrinhos</label>
+        <select id="comic_output" name="comic_output">
+          <option value="epub_images">EPUB de imagens</option>
+          <option value="cbz">CBZ</option>
+          <option value="pdf">PDF</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="image_format">Formato da imagem</label>
+        <select id="image_format" name="image_format">
+          <option value="jpg">JPG (universal)</option>
+          <option value="png">PNG (sem perda)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="posterize_levels">Níveis de cinza</label>
+        <select id="posterize_levels" name="posterize_levels">
+          <option value="0">256 (sem quantizar)</option>
+          <option value="16">16 (painéis e-ink — recomendado)</option>
+          <option value="8">8</option>
+          <option value="4">4</option>
+          <option value="2">2 (traço puro)</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="spreads">Páginas duplas (spreads)</label>
+        <select id="spreads" name="spreads">
+          <option value="none">Não mexer</option>
+          <option value="auto">Automático (divide ou gira, como o KCC)</option>
+          <option value="split">Sempre dividir</option>
+          <option value="rotate">Sempre girar</option>
+          <option value="both">Dividir e girar</option>
+        </select>
+      </div>
+      <div class="field"><label for="image_quality">Qualidade JPEG</label><input id="image_quality" name="image_quality" type="number" value="85" min="30" max="100"></div>
+      <div class="field"><label for="sharpen">Realce (0 a 2)</label><input id="sharpen" name="sharpen" type="number" step="0.1" value="0.6" min="0" max="2"></div>
+      <div class="field"><label for="render_dpi">DPI do PDF (0 = automático)</label><input id="render_dpi" name="render_dpi" type="number" value="0" min="0" max="400"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label for="max_long_side">Teto do lado maior (universal)</label><input id="max_long_side" name="max_long_side" type="number" value="2000" min="0"></div>
+      <div class="field field--wide">
+        <label for="native_formats">Formatos nativos (separados por vírgula)</label>
+        <input id="native_formats" name="native_formats" value="epub">
+      </div>
+    </div>
+    <div class="field"><label for="notes">Observações</label><input id="notes" name="notes" placeholder="ex.: tela 6&quot; 300 ppi, abre EPUB e CBZ"></div>
+
+    <div class="check-stack">
+      <label class="check"><input type="checkbox" name="preserve_resolution" checked> universal (não fixar a tela)</label>
+      <label class="check"><input type="checkbox" name="grayscale"> tons de cinza</label>
+      <label class="check"><input type="checkbox" name="color" checked> colorido</label>
+      <label class="check"><input type="checkbox" name="autocontrast"> autocontraste (scans escuros)</label>
+      <label class="check"><input type="checkbox" name="crop_margins" checked> recortar margens</label>
+      <label class="check"><input type="checkbox" name="rotate_portrait"> girar páginas retrato</label>
+      <label class="check"><input type="checkbox" name="manga_rtl"> leitura RTL (mangá)</label>
+    </div>
+    <p class="hint">Perfis <strong>universais</strong> (largura/altura 0) mantêm a resolução e deixam o leitor ajustar. Com largura e altura, o arquivo já sai dimensionado para aquele aparelho (mais nítido, porém preso à tela).</p>
+    <button class="button" type="submit">Salvar perfil</button>
+  </form>
+</div>
+{% endblock %}

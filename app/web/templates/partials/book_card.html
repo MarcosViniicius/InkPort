@@ -1,0 +1,22 @@
+{% from "partials/icons.html" import icon %}
+<div class="tile">
+  <div class="cover-wrap">
+    <label class="check" title="Selecionar">
+      <input class="row-check" type="checkbox" name="book_ids" value="{{ book.id }}" aria-label="Selecionar {{ book.title }}">
+    </label>
+    <a class="cover" href="/library/{{ book.id }}">
+      {% if book.cover_path %}
+        <img src="/library/{{ book.id }}/cover" alt="Capa de {{ book.title }}" loading="lazy">
+      {% else %}
+        <span class="ph" aria-hidden="true">{{ icon('book', 34) }}</span>
+      {% endif %}
+    </a>
+  </div>
+  <p class="title"><a href="/library/{{ book.id }}">{{ book.title }}</a></p>
+  <p class="by" title="{{ book.display_author }}">{{ book.display_author }}</p>
+  <span class="tags">
+    <span class="badge">{{ format_label(book.format) }}</span>
+    <span class="badge plain">{{ book.size_mb|decimal }} MB</span>
+    {% if not book.is_original %}<span class="badge info">conversão</span>{% endif %}
+  </span>
+</div>

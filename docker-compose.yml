@@ -1,0 +1,22 @@
+services:
+  opds:
+    build: .
+    image: opds-server:latest
+    container_name: opds-server
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      # Troque estes valores!
+      SECRET_KEY: "change-me-please-use-a-long-random-string"
+      ADMIN_USERNAME: "admin"
+      ADMIN_PASSWORD: "admin"
+      HOST: "0.0.0.0"
+      PORT: "8080"
+      # Em Docker a auto-detecção pega o IP interno do container. Para acessar
+      # de outros aparelhos, informe o IP:porta do host, ex.: http://192.168.1.50:8080
+      BASE_URL: ""
+      CONVERSION_CONCURRENCY: "2"
+      LOG_JSON: "true"
+    volumes:
+      - ./data:/data

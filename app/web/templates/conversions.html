@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
+{% from "partials/device_select.html" import device_select %}
+{% block title %}Conversões · {{ app_name }}{% endblock %}
+{% block content %}
+{% set active_jobs = counts.pending + counts.running %}
+<div class="page-head">
+  <div>
+    <h1>Conversões</h1>
+    <p class="lead">
+      {% if active_jobs %}
+        {{ active_jobs }} em andamento{% if counts.pending %} · {{ counts.pending }} na fila{% endif %} · a lista se atualiza sozinha.
+      {% else %}
+        Nada em andamento. As conversões são criadas na Biblioteca ou na Importação.
+      {% endif %}
+    </p>
+  </div>
+  <div class="button-row">
+    <a class="button ghost" href="/library">Escolher livros</a>
+    <a class="button" href="/import">{{ icon('import', 15) }} Importar</a>
+  </div>
+</div>
+
+<p class="sr-only" aria-live="polite" id="queue-summary">
+  {{ counts.pending }} na fila, {{ counts.running }} executando, {{ counts.done }} concluídas, {{ counts.failed }} com falha.
+</p>
+
+<div class="grid stats">
+  <div class="stat {{ 'accent' if counts.pending }}"><div class="value num" id="count-pending">{{ counts.pending }}</div><div class="label">Pendentes</div></div>
+  <div class="stat {{ 'accent' if counts.running }}"><div class="value num" id="count-running">{{ counts.running }}</div><div class="label">Executando</div></div>
+  <div class="stat"><div class="value num" id="count-done">{{ counts.done }}</div><div class="label">Concluídas</div></div>
+  <div class="stat"><div class="value num" id="count-failed">{{ counts.failed }}</div><div class="label">Falhas</div></div>
+</div>
+
+<details class="card mt4" data-collapse-sm open>
+  <summary>{{ icon('plus', 16) }} Converter por ID (avançado)</summary>
+  <p class="hint">Para uso normal, selecione os livros na <a href="/library">Biblioteca</a> e use “Converter”.</p>
+  <form method="post" action="/conversions/create">
+    <div class="field">
+      <label for="book_ids">IDs dos livros</label>
+      <input id="book_ids" name="book_ids" placeholder="separe por espaço ou vírgula" required>
+    </div>
+    <div class="field-row">
+      <div class="field mb0">
+        <label for="target_format">Formato</label>
+        <select id="target_format" name="target_format">
+          <option value="auto">Automático (melhor por arquivo)</option>
+          {% for fmt in ['epub','cbz','pdf','mobi','azw3','kepub'] %}<option value="{{ fmt }}">{{ format_label(fmt) }}</option>{% endfor %}
+        </select>
+      </div>
+      {{ device_select(profiles, label='Dispositivo') }}
+    </div>
+    <label class="check mt4 mb3"><input type="checkbox" name="keep_original" checked> manter o original</label>
+    <button class="button" type="submit">Enfileirar</button>
+  </form>
+</details>
+
+<div class="card-head mt4 tight-head">
+  <div class="row">
+    <h2 class="mt0">Fila</h2>
+    {% if counts.done or counts.failed or counts.cancelled %}
+    <form method="post" action="/conversions/clear"
+          data-confirm="Limpar o histórico de conversões?"
+          data-confirm-msg="Só os registros são apagados. Os livros e arquivos continuam na biblioteca."
+          data-confirm-ok="Limpar registros">
+      <button class="button ghost small" type="submit">Limpar concluídas</button>
+    </form>
+    {% endif %}
+  </div>
+  <div class="tabs" id="job-tabs" role="tablist" aria-label="Filtrar a fila">
+    <button type="button" role="tab" data-filter="active" aria-pressed="{{ 'true' if default_tab == 'active' else 'false' }}" class="{{ 'on' if default_tab == 'active' }}">Em andamento</button>
+    <button type="button" role="tab" data-filter="" aria-pressed="{{ 'true' if default_tab == 'all' else 'false' }}" class="{{ 'on' if default_tab == 'all' }}">Todas</button>
+    <button type="button" role="tab" data-filter="done" aria-pressed="false">Concluídas</button>
+    <button type="button" role="tab" data-filter="failed" aria-pressed="false">Falhas</button>
+  </div>
+</div>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>Livro</th><th>Destino</th><th class="hide-sm">Dispositivo</th><th class="hide-sm">Conversor</th><th>Status</th><th>Progresso</th><th></th></tr>
+    </thead>
+    <tbody id="jobs-body">
+    {% for job in jobs %}
+      <tr data-job="{{ job.id }}" data-status="{{ job.status }}">
+        <td data-label="Livro">{{ job.book.title if job.book else 'livro removido' }}
+            <span class="sub">{{ job.created_at|relative }}</span></td>
+        <td data-label="Destino"><span class="badge info">{{ format_label(job.target_format) }}</span></td>
+        <td data-label="Dispositivo" class="muted small hide-sm">{{ profile_label(job.device_profile) }}</td>
+        <td data-label="Conversor" class="muted small hide-sm">{{ converter_label(job.converter) }}</td>
+        <td data-label="Status"><span class="badge {{ {'done':'ok','failed':'err','running':'info','pending':'warn'}.get(job.status,'') }}">{{ status_label(job.status) }}</span></td>
+        <td data-label="Progresso">
+          <span class="progress {{ 'done' if job.status == 'done' else 'failed' if job.status == 'failed' else 'indeterminate' if job.status == 'running' else '' }}"
+                role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ job.progress }}"
+                aria-label="Progresso da conversão de {{ job.book.title if job.book else 'livro' }}">
+            <span style="width: {{ job.progress }}%"></span>
+          </span>
+          <span class="muted small">{{ job.message or '' }}{% if job.error %} · {{ job.error[:80] }}{% endif %}</span>
+        </td>
+        <td data-label="">
+          {% if job.output_book_id %}
+            <a class="button ghost small" href="/library/{{ job.output_book_id }}">Abrir</a>
+          {% elif job.status in ['pending','running'] %}
+            <form method="post" action="/conversions/{{ job.id }}/cancel"
+                  {% if job.status == 'running' %}
+                  data-confirm="Descartar esta conversão em andamento?"
+                  data-confirm-msg="A conversão em curso é interrompida (o conversor para) e o resultado é jogado fora. Isto não pode ser desfeito."
+                  data-confirm-ok="Interromper e descartar"
+                  data-confirm-danger
+                  {% endif %}>
+              <button class="button ghost small" type="submit">{{ 'Descartar' if job.status == 'running' else 'Cancelar' }}</button>
+            </form>
+          {% elif job.status in ['failed','cancelled'] %}
+            <form method="post" action="/conversions/{{ job.id }}/retry"><button class="button ghost small" type="submit">Repetir</button></form>
+          {% endif %}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="7" data-label="">
+        <div class="empty bare">
+          <div class="glyph">{{ icon('conversions', 34) }}</div>
+          <h3>Nenhuma conversão na fila</h3>
+          <p>Importe um arquivo ou selecione livros na Biblioteca para converter.</p>
+          <div class="button-row center-x">
+            <a class="button" href="/import">Importar arquivos</a>
+            <a class="button ghost" href="/library">Ir para a Biblioteca</a>
+          </div>
+        </div>
+      </td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="muted small mt4 mb0" id="queue-offline" hidden>
+  Sem conexão com o servidor — a lista volta a atualizar quando a conexão retornar.
+</p>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  "use strict";
+  var filter = {{ ('"active"' if default_tab == 'active' else '""') }};
+  var tabs = document.getElementById("job-tabs");
+  var labels = { done: ["ok", "concluída"], failed: ["err", "falhou"], running: ["info", "executando"], pending: ["warn", "na fila"], cancelled: ["", "descartada"] };
+  var lastPayload = "";
+  var failures = 0;
+
+  function escapeHtml(value) {
+    return String(value == null ? "" : value).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  function matches(status) {
+    if (filter === "active") return status === "pending" || status === "running";
+    return !filter || status === filter;
+  }
+
+  function jobRow(job) {
+    var l = labels[job.status] || ["", job.status];
+    var pcls = job.status === "done" ? "done" : job.status === "failed" ? "failed" : job.status === "running" ? "indeterminate" : "";
+    var msg = (job.message || "") + (job.error ? " · " + job.error.slice(0, 80) : "");
+    var action = "";
+    if (job.output_book_id) {
+      action = '<a class="button ghost small" href="/library/' + job.output_book_id + '">Abrir</a>';
+    } else if (job.status === "pending" || job.status === "running") {
+      var label = job.status === "running" ? "Descartar" : "Cancelar";
+      action = '<form method="post" action="/conversions/' + job.id + '/cancel"><button class="button ghost small">' + label + "</button></form>";
+    } else if (job.status === "failed" || job.status === "cancelled") {
+      action = '<form method="post" action="/conversions/' + job.id + '/retry"><button class="button ghost small">Repetir</button></form>';
+    }
+    return '<tr data-job="' + job.id + '" data-status="' + job.status + '"' + (matches(job.status) ? "" : " hidden") + ">"
+      + '<td data-label="Livro">' + escapeHtml(job.book_title || "livro removido") + "</td>"
+      + '<td data-label="Destino"><span class="badge info">' + escapeHtml(job.target_format_label) + "</span></td>"
+      + '<td data-label="Dispositivo" class="muted small hide-sm">' + escapeHtml(job.device_profile_name) + "</td>"
+      + '<td data-label="Conversor" class="muted small hide-sm">' + escapeHtml(job.converter_name) + "</td>"
+      + '<td data-label="Status"><span class="badge ' + l[0] + '">' + l[1] + "</span></td>"
+      + '<td data-label="Progresso"><span class="progress ' + pcls + '" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + job.progress + '">'
+      + '<span style="width:' + job.progress + '%"></span></span>'
+      + '<span class="muted small">' + escapeHtml(msg) + "</span></td>"
+      + '<td data-label="">' + action + "</td></tr>";
+  }
+
+  if (tabs) {
+    tabs.addEventListener("click", function (event) {
+      var button = event.target.closest("[data-filter]");
+      if (!button) return;
+      filter = button.getAttribute("data-filter");
+      tabs.querySelectorAll("button").forEach(function (b) {
+        var on = b === button;
+        b.classList.toggle("on", on);
+        b.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+      document.querySelectorAll("#jobs-body tr[data-status]").forEach(function (row) {
+        row.hidden = !matches(row.getAttribute("data-status"));
+      });
+    });
+  }
+
+  async function refresh() {
+    if (document.hidden) return;
+    try {
+      var response = await fetch("/conversions/status", { headers: { Accept: "application/json" } });
+      if (!response.ok) throw new Error("http " + response.status);
+      failures = 0;
+      document.getElementById("queue-offline").hidden = true;
+
+      var data = await response.json();
+      var payload = JSON.stringify(data.jobs.map(function (j) { return [j.id, j.status, j.progress, j.message, j.error, j.converter_name, j.output_book_id]; }));
+      if (payload === lastPayload) return; // nothing changed: keep the DOM (and focus) intact
+      lastPayload = payload;
+
+      Object.keys(data.counts).forEach(function (key) {
+        var el = document.getElementById("count-" + key);
+        if (el) el.textContent = data.counts[key];
+      });
+      var summary = document.getElementById("queue-summary");
+      if (summary) {
+        summary.textContent = data.counts.pending + " na fila, " + data.counts.running + " executando, " +
+          data.counts.done + " concluídas, " + data.counts.failed + " com falha.";
+      }
+      var body = document.getElementById("jobs-body");
+      if (body && data.jobs.length) body.innerHTML = data.jobs.map(jobRow).join("");
+    } catch (e) {
+      failures += 1;
+      if (failures >= 2) document.getElementById("queue-offline").hidden = false;
+    }
+  }
+
+  setInterval(refresh, 3000);
+  document.addEventListener("visibilitychange", refresh);
+  refresh();
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
+{% from "partials/device_select.html" import device_select %}
+{% block title %}Importar · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Importar</h1>
+    <p class="lead">Envie arquivos ou aponte uma pasta. A conversão pode acontecer na mesma etapa.</p>
+  </div>
+</div>
+
+<div class="grid two">
+  <div class="card">
+    <div class="card-head"><h2>{{ icon('import', 17) }} Enviar arquivos</h2></div>
+    <form method="post" action="/import/upload" enctype="multipart/form-data">
+      <div class="drop" data-drop>
+        <div class="big">Arraste os arquivos aqui</div>
+        <p class="hint" data-drop-name>PDF, EPUB, CBZ/CBR, imagens, MOBI/AZW… até {{ max_upload_mb }} MB cada</p>
+        <input type="file" name="files" multiple required aria-label="Escolher arquivos">
+      </div>
+
+      <div class="field mt4">
+        <label for="category">Categoria / pasta de destino <span class="text-danger">*</span></label>
+        <input id="category" name="category" list="category-list" required
+               placeholder="escolha uma existente ou digite uma nova">
+        <datalist id="category-list">{% for row in categories %}<option value="{{ row.category.name }}">{% endfor %}</datalist>
+        <p class="hint">
+          Obrigatório: é o que organiza a biblioteca e o catálogo OPDS.
+          Escolha uma categoria existente na lista ou digite um nome novo para criá-la.
+          Use <code>rss/nome</code> para pastas aninhadas.
+        </p>
+      </div>
+
+      <fieldset>
+        <legend>Conversão</legend>
+        <label class="check mb3">
+          <input type="checkbox" name="convert" checked> converter automaticamente
+        </label>
+        <div class="field-row">
+          <div class="field mb0">
+            <label for="target_format">Converter para</label>
+            <select id="target_format" name="target_format">
+              {% for fmt in output_formats %}
+                <option value="{{ fmt }}" {{ 'selected' if fmt == 'auto' }}>{{ 'Automático (melhor por arquivo)' if fmt == 'auto' else format_label(fmt) }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          {{ device_select(profiles, selected=device_profile, label='Dispositivo') }}
+        </div>
+        <label class="check mt4"><input type="checkbox" name="keep_original" checked> manter o arquivo original</label>
+      </fieldset>
+
+      <button class="button lg" type="submit">Importar e converter</button>
+    </form>
+  </div>
+
+  <details class="card" data-collapse-sm open>
+    <summary>{{ icon('library', 17) }} Importar pasta do servidor <span class="muted small">(avançado)</span></summary>
+    <p class="hint">Para quando os arquivos já estão no computador que roda o servidor.</p>
+    <form method="post" action="/import/scan">
+      <div class="field">
+        <label for="path">Caminho no servidor</label>
+        <input id="path" name="path" placeholder="C:\livros  ou  /home/user/livros" required>
+      </div>
+      <div class="field">
+        <label for="scan-category">Categoria / pasta de destino <span class="text-danger">*</span></label>
+        <input id="scan-category" name="category" list="category-list" required
+               placeholder="escolha uma existente ou digite uma nova">
+      </div>
+      <label class="check"><input type="checkbox" name="recursive" checked> incluir subpastas</label>
+      <label class="check my3"><input type="checkbox" name="move"> mover em vez de copiar</label>
+      <label class="check mb3"><input type="checkbox" name="convert" checked> converter automaticamente</label>
+      <div class="field-row">
+        <div class="field mb0">
+          <label for="scan-format">Converter para</label>
+          <select id="scan-format" name="target_format">
+            {% for fmt in output_formats %}
+              <option value="{{ fmt }}">{{ 'Automático (melhor por arquivo)' if fmt == 'auto' else format_label(fmt) }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {{ device_select(profiles, id='scan-profile', selected=device_profile, label='Dispositivo') }}
+      </div>
+      <label class="check mt4 mb3"><input type="checkbox" name="keep_original" checked> manter o original</label>
+      <button class="button" type="submit">Escanear e converter</button>
+    </form>
+    <p class="hint mt4">
+      Pastas grandes podem levar alguns minutos: esta página só responde quando a
+      varredura termina. Não feche a aba enquanto isso.
+    </p>
+    <p class="hint mb0">Pasta de recebimento: <code>{{ inbox_dir }}</code></p>
+  </details>
+</div>
+
+{% if results %}
+<h2 class="mt4">Resultado do envio</h2>
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>Arquivo</th><th>Status</th><th>Tipo</th><th>Conversão</th><th>Mensagem</th><th></th></tr></thead>
+    <tbody>
+    {% for item in results %}
+      <tr>
+        <td data-label="Arquivo">{{ item.name }}<span class="sub">{{ item.size }}</span></td>
+        <td data-label="Status">
+          {% set cls = {'imported':'ok','duplicate':'warn','unsupported':'warn'}.get(item.status, 'err') %}
+          <span class="badge {{ cls }}">{{ status_label(item.status) }}</span>
+        </td>
+        <td data-label="Tipo" class="muted small">{{ content_label(item.detection.content_type) if item.detection }} / .{{ item.detection.format if item.detection }}</td>
+        <td data-label="Conversão">
+          {% if item.queued %}
+            <span class="badge ok">na fila: {{ format_label(item.job_target) }}</span>
+          {% elif item.targets %}
+            <div class="button-row">
+            {% for target in item.targets[:4] %}
+              <form method="post" action="/conversions/create">
+                <input type="hidden" name="book_ids" value="{{ item.book_id }}">
+                <input type="hidden" name="target_format" value="{{ target.format }}">
+                <input type="hidden" name="device_profile" value="{{ device_profile }}">
+                <input type="hidden" name="keep_original" value="on">
+                <button class="button ghost small" type="submit">{{ format_label(target.format) }}</button>
+              </form>
+            {% endfor %}
+            </div>
+          {% else %}<span class="muted">—</span>{% endif %}
+        </td>
+        <td data-label="Mensagem" class="muted small">{{ item.message }}</td>
+        <td data-label="">{% if item.book_id %}<a class="button ghost small" href="/library/{{ item.book_id }}">Abrir</a>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="muted small">Acompanhe o progresso em <a href="/conversions">Conversões</a>.</p>
+{% endif %}
+
+{% if report %}
+<h2 class="mt4">Resultado da varredura</h2>
+<div class="grid stats">
+  <div class="stat"><div class="value num">{{ report.imported }}</div><div class="label">Importados</div></div>
+  <div class="stat accent"><div class="value num">{{ queued }}</div><div class="label">Na fila</div></div>
+  <div class="stat"><div class="value num">{{ report.duplicates }}</div><div class="label">Duplicados</div></div>
+  <div class="stat"><div class="value num">{{ report.skipped }}</div><div class="label">Ignorados</div></div>
+  <div class="stat"><div class="value num">{{ report.errors }}</div><div class="label">Erros</div></div>
+</div>
+{% endif %}
+
+{% if inspection %}
+<div class="card mt4">
+  <div class="card-head"><h2>Inspeção: <span class="mono small">{{ inspection.path }}</span></h2></div>
+  <dl class="kv">
+    <dt>Formato</dt><dd>{{ format_label(inspection.detection.format) }}</dd>
+    <dt>Tipo</dt><dd>{{ content_label(inspection.detection.content_type) }}</dd>
+    <dt>Páginas</dt><dd class="num">{{ inspection.detection.page_count or '—' }}</dd>
+    <dt>Título sugerido</dt><dd>{{ inspection.metadata.title }}</dd>
+    <dt>Autor sugerido</dt><dd>{{ inspection.metadata.author or '—' }}</dd>
+  </dl>
+  <p class="muted small mt4">Conversões compatíveis:</p>
+  <p class="pill-list">{% for target in targets %}<span class="badge {{ 'ok' if target.recommended }}">{{ format_label(target.format) }}</span>{% endfor %}</p>
+</div>
+{% endif %}
+{% endblock %}

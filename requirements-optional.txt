@@ -1,0 +1,2 @@
+# Nao ha mais dependencias opcionais: tudo o que o servidor precisa para
+# converter esta em requirements.txt (pacotes Python) e em app/vendor/unrar.

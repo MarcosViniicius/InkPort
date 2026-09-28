@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="Biblioteca digital com catálogo OPDS 1.2/2.0 e conversão para leitores e-ink.">
+  <meta name="theme-color" content="#f6f4f0" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#14161a" media="(prefers-color-scheme: dark)">
+  <meta property="og:title" content="{{ app_name }}">
+  <meta property="og:description" content="Sua biblioteca, no seu leitor.">
+  <meta property="og:type" content="website">
+  <title>{% block title %}{{ app_name }}{% endblock %}</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%231f6f5c'/><path d='M18 46V20h6.6l7.4 12 7.4-12H46v26h-6V31l-6.4 10h-2.6L24 31v15z' fill='%23fff'/></svg>">
+  <link rel="stylesheet" href="{{ static_url('style.css') }}">
+  <script defer src="{{ static_url('app.js') }}"></script>
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <a class="skip-link" href="#main">Pular para o conteúdo</a>
+  <div class="scrim" data-nav-close></div>
+
+  <div class="shell">
+    {% from "partials/icons.html" import icon %}
+    <aside class="sidebar" id="sidebar" aria-label="Navegação principal">
+      <a class="brand" href="/">
+        <span class="mark" aria-hidden="true">M</span>
+        <span>
+          <span class="word">{{ app_name }}</span>
+          <span class="tag">para leitores e-ink</span>
+        </span>
+      </a>
+
+      <nav class="nav">
+        <span class="group">Biblioteca</span>
+        <a href="/" class="{{ 'active' if active == 'dashboard' }}" {{ 'aria-current=page' if active == 'dashboard' }}>{{ icon('dashboard') }} Painel</a>
+        <a href="/library" class="{{ 'active' if active == 'library' }}" {{ 'aria-current=page' if active == 'library' }}>{{ icon('library') }} Biblioteca</a>
+        <a href="/import" class="{{ 'active' if active == 'import' }}" {{ 'aria-current=page' if active == 'import' }}>{{ icon('import') }} Importar</a>
+
+        <span class="group">Automação</span>
+        <a href="/conversions" class="{{ 'active' if active == 'conversions' }}" {{ 'aria-current=page' if active == 'conversions' }}>{{ icon('conversions') }} Conversões</a>
+        <a href="/feeds" class="{{ 'active' if active == 'feeds' }}" {{ 'aria-current=page' if active == 'feeds' }}>{{ icon('feeds') }} Feeds</a>
+
+        <span class="group">Sistema</span>
+        <a href="/devices" class="{{ 'active' if active == 'devices' }}" {{ 'aria-current=page' if active == 'devices' }}>{{ icon('devices') }} Dispositivos</a>
+        <a href="/settings" class="{{ 'active' if active == 'settings' }}" {{ 'aria-current=page' if active == 'settings' }}>{{ icon('settings') }} Configurações</a>
+      </nav>
+
+      <div class="sidebar-foot">
+        <span class="opds" title="Endereço do catálogo">{{ opds_url }}</span>
+        <div class="button-row">
+          <a class="button ghost small" href="{{ opds_url }}" target="_blank" rel="noopener">{{ icon('external', 15) }} Abrir OPDS</a>
+          <a class="button ghost small" href="/logout">Sair</a>
+        </div>
+      </div>
+    </aside>
+
+    <div>
+      <header class="topbar">
+        <button class="burger" type="button" data-nav-toggle aria-controls="sidebar" aria-expanded="false" aria-label="Abrir menu"><span></span></button>
+        <a class="brand" href="/">
+          <span class="mark" aria-hidden="true">M</span>
+          <span class="word">{{ app_name }}</span>
+        </a>
+        <span class="spacer"></span>
+        <a class="button ghost small" href="/logout">Sair</a>
+      </header>
+
+      <main id="main" class="content">
+        {% set ok = ok|default(request.query_params.get('ok')) %}
+        {% set err = err|default(request.query_params.get('err')) %}
+        {% if ok %}
+        <div class="flash" role="status" aria-live="polite" data-flash>
+          {{ icon('check') }}<span>{{ ok }}</span>
+          <button class="x" type="button" data-flash-close aria-label="Fechar">✕</button>
+        </div>
+        {% endif %}
+        {% if err %}
+        <div class="flash err" role="alert" aria-live="assertive" data-flash>
+          {{ icon('alert') }}<span>{{ err }}</span>
+          <button class="x" type="button" data-flash-close aria-label="Fechar">✕</button>
+        </div>
+        {% endif %}
+        {% block content %}{% endblock %}
+      </main>
+
+      <footer class="foot">
+        <span>{{ app_name }} <span class="mono">{{ version }}</span> · biblioteca e-ink</span>
+        <span>OPDS <code>{{ opds_url }}</code></span>
+      </footer>
+    </div>
+  </div>
+
+  {% block scripts %}{% endblock %}
+  <dialog id="confirm-dialog" class="modal" aria-labelledby="confirm-title">
+    <form method="dialog" class="modal-body">
+      <h2 id="confirm-title">Confirmar</h2>
+      <p id="confirm-message" class="muted"></p>
+      <p id="confirm-detail" class="hint mb0" hidden></p>
+      <div class="button-row mt4">
+        <button class="button ghost" value="cancel">Cancelar</button>
+        <button class="button danger" id="confirm-ok" value="ok">Confirmar</button>
+      </div>
+    </form>
+  </dialog>
+  <script src="{{ static_url('confirm.js') }}" defer></script>
+  <script>
+    // Fallback for the mobile drawer: only if app.js did not run (it fires on
+    // "load", after deferred scripts, so it never fights the primary handler).
+    window.addEventListener("load", function () {
+      if (window.__opdsNavBound) return;
+      document.querySelectorAll("[data-nav-toggle]").forEach(function (button) {
+        button.addEventListener("click", function () {
+          var open = document.body.classList.toggle("nav-open");
+          button.setAttribute("aria-expanded", open ? "true" : "false");
+        });
+      });
+      document.querySelectorAll("[data-nav-close]").forEach(function (element) {
+        element.addEventListener("click", function () {
+          document.body.classList.remove("nav-open");
+        });
+      });
+    });
+  </script>
+</body>
+</html>

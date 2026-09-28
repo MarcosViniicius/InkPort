@@ -1,0 +1,42 @@
+[project]
+name = "opds-server"
+version = "0.1.0"
+description = "Servidor OPDS 1.2/2.0 leve com painel web, biblioteca e conversão para e-readers."
+requires-python = ">=3.11"
+readme = "README.md"
+# Tudo em Python: nenhum programa externo precisa ser instalado. A biblioteca
+# UnRAR usada para CBR/RAR acompanha o projeto em app/vendor/unrar.
+dependencies = [
+    "fastapi>=0.110,<1.0",
+    "uvicorn[standard]>=0.29",
+    "sqlalchemy>=2.0,<3.0",
+    "pydantic>=2.6",
+    "pydantic-settings>=2.2",
+    "python-multipart>=0.0.9",
+    "jinja2>=3.1",
+    "itsdangerous>=2.2",
+    "httpx>=0.27",
+    "feedparser>=6.0",
+    "Pillow>=10.2",
+    "python-dotenv>=1.0",
+    "PyMuPDF>=1.24",
+    "pypdf>=4.2",
+    "lxml>=5.2",
+    "py7zr>=0.21",
+    "rarfile>=4.1",
+    "python-docx>=1.1",
+    "striprtf>=0.0.28",
+    "mobi>=0.4.1",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["data", ".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM"]
+ignore = ["E501", "B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E402"]

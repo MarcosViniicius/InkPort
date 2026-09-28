@@ -1,0 +1,83 @@
+"""Web panel: settings, security and maintenance."""
+
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends, Form, Request
+from fastapi.responses import RedirectResponse
+from sqlalchemy.orm import Session
+
+from app.config import get_settings
+from app.converters.tools import detect_toolchain
+from app.database.base import get_session
+from app.library.repairs import run_repairs
+from app.library.service import mark_missing
+from app.security import auth
+from app.security.auth import require_panel
+from app.storage.temp import clean_temp_dir
+from app.storage.usage import library_usage
+from app.web.templating import render
+from app.workers import queue
+
+router = APIRouter(prefix="/settings", dependencies=[Depends(require_panel)], tags=["painel"])
+
+
+@router.get("")
+def settings_page(request: Request, session: Session = Depends(get_session)):
+    settings = get_settings()
+    return render(
+        request,
+        "settings.html",
+        {
+            "active": "settings",
+            "settings": settings,
+            "usage": library_usage(),
+            "tools": detect_toolchain().as_dict(),
+            "admin_username": auth.admin_username(session),
+            "queue": queue.counts_by_status(session),
+            "network_urls": settings.access_urls,
+            "on_network": settings.on_network,
+        },
+    )
+
+
+@router.post("/password")
+def change_password(
+    request: Request,
+    current_password: str = Form(...),
+    new_password: str = Form(...),
+    confirm_password: str = Form(...),
+    username: str = Form(""),
+    session: Session = Depends(get_session),
+):
+    from urllib.parse import quote
+
+    if new_password != confirm_password:
+        return RedirectResponse(
+            f"/settings?err={quote('As senhas não conferem.')}", status_code=303
+        )
+    if len(new_password) < 6:
+        return RedirectResponse(
+            f"/settings?err={quote('A senha deve ter ao menos 6 caracteres.')}",
+            status_code=303,
+        )
+    if not auth.verify_credentials(session, auth.admin_username(session), current_password):
+        return RedirectResponse(
+            f"/settings?err={quote('A senha atual está incorreta.')}", status_code=303
+        )
+    auth.change_password(session, new_password, username=username.strip() or None)
+    return RedirectResponse(
+        f"/settings?ok={quote('Credenciais atualizadas.')}", status_code=303
+    )
+
+
+@router.post("/maintenance")
+def maintenance(session: Session = Depends(get_session)):
+    from urllib.parse import quote
+
+    clean_temp_dir(max_age_seconds=0)
+    queue.requeue_stale(session, older_than_seconds=1800)
+    mark_missing(session)
+    run_repairs(session)
+    return RedirectResponse(
+        f"/settings?ok={quote('Manutenção concluída.')}", status_code=303
+    )

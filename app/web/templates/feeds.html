@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
+{% from "partials/device_select.html" import device_select %}
+{% block title %}Feeds · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Feeds RSS / Atom</h1>
+    <p class="lead">O worker busca novos itens, identifica o que é (livro, artigo ou podcast), converte e coloca na biblioteca.</p>
+  </div>
+</div>
+
+{% if feeds %}
+<div class="stack">
+  {% for feed in feeds %}
+  <div class="card">
+    <div class="spread pad-sm">
+      <div class="min0">
+        <h2 class="mt0">{{ feed.name }}</h2>
+        <p class="muted small mb0 break">
+          <a href="{{ feed.url }}" target="_blank" rel="noopener">{{ feed.url }}</a>
+        </p>
+        <div class="pill-list mt4">
+          <span class="badge plain">{{ icon('tag', 13) }} rss/{{ feed.destination_folder or feed.name }}</span>
+          <span class="badge plain">a cada {{ feed.interval_minutes }} min</span>
+          <span class="badge info">{{ format_label(feed.output_format) }}</span>
+          <span class="badge plain">{{ profile_label(feed.device_profile) }}</span>
+          <span class="badge plain">{{ feed.max_items_per_run }} itens por busca</span>
+          {% if not feed.keep_original %}<span class="badge plain">não mantém o original</span>{% endif %}
+        </div>
+      </div>
+      <div class="align-right">
+        {% if feed.id in running_feeds %}<span class="badge info">buscando…</span>
+        {% elif not feed.active %}<span class="badge">inativo</span>
+        {% elif feed.consecutive_failures %}<span class="badge err">{{ feed.consecutive_failures }} falha(s)</span>
+        {% else %}<span class="badge ok">ativo</span>{% endif %}
+        <div class="muted small mt4">última busca: {{ feed.last_checked_at|relative }}</div>
+      </div>
+    </div>
+
+    {% if feed.last_error %}
+    <p class="muted small mt4 mb0 text-danger">{{ feed.last_error[:200] }}</p>
+    {% endif %}
+
+    <div class="button-row mt4">
+      <form method="post" action="/feeds/{{ feed.id }}/refresh">
+        <button class="button small" type="submit" {% if feed.id in running_feeds %}disabled{% endif %}>
+          {{ icon('refresh', 14) }} {{ 'Buscando…' if feed.id in running_feeds else 'Buscar agora' }}
+        </button>
+      </form>
+      <form method="post" action="/feeds/{{ feed.id }}/rebuild"
+            data-confirm="Refazer «{{ feed.name }}»?"
+            data-confirm-msg="O feed será reimportado do zero com o conversor atual."
+            data-confirm-detail="Todos os livros que este feed importou e as conversões deles serão apagados do disco. Isto não pode ser desfeito."
+            data-confirm-ok="Apagar e reimportar"
+            data-confirm-danger
+            onsubmit="return confirm('Apagar os livros deste feed e reimportar tudo?')">
+        <button class="button ghost small" type="submit" title="Apaga os livros deste feed e reimporta tudo">Refazer feed</button>
+      </form>
+      <form method="post" action="/feeds/{{ feed.id }}/reset"
+            data-confirm="Esquecer os itens já processados de «{{ feed.name }}»?"
+            data-confirm-msg="Nada é apagado da biblioteca."
+            data-confirm-detail="O próximo «Buscar agora» vai importar os itens de novo (podendo criar cópias dos que já existem)."
+            data-confirm-ok="Esquecer itens"
+            onsubmit="return confirm('Esquecer os itens já processados (sem apagar livros)?')">
+        <button class="button ghost small" type="submit">Limpar histórico</button>
+      </form>
+      <a class="button ghost small" href="/library?q={{ feed.name }}">Ver na biblioteca</a>
+      <form method="post" action="/feeds/{{ feed.id }}/delete"
+            data-confirm="Remover o feed «{{ feed.name }}»?"
+            data-confirm-msg="Os livros já importados continuam na biblioteca."
+            data-confirm-ok="Remover"
+            data-confirm-danger
+            onsubmit="return confirm('Remover este feed?')" class="push-right">
+        <button class="button ghost small danger" type="submit">Excluir</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty">
+  <div class="glyph">{{ icon('feeds', 38) }}</div>
+  <h3>Nenhum feed cadastrado</h3>
+  <p>Cadastre um feed RSS/Atom abaixo e o servidor passa a buscar novidades sozinho.</p>
+</div>
+{% endif %}
+
+<div class="card mt4">
+  <div class="card-head">
+    <h2>{{ icon('plus', 16) }} Adicionar feed</h2>
+    <span class="muted small">os itens vão para a categoria <code>rss/&lt;nome&gt;</code></span>
+  </div>
+  <form method="post" action="/feeds/save">
+    <input type="hidden" name="feed_id" value="">
+    <div class="field-row">
+      <div class="field"><label for="name">Nome</label><input id="name" name="name" required placeholder="ex.: Blog do autor"></div>
+      <div class="field field--wide">
+        <label for="url">URL do feed</label>
+        <div class="input-with-action">
+          <input id="url" name="url" type="url" required placeholder="https://exemplo.com/feed.xml">
+          <button class="button ghost" type="button" id="feed-test-button">Testar</button>
+        </div>
+        <p class="hint">Aceita RSS 2.0, Atom e JSON Feed. O teste só lê o feed — nada é baixado nem importado.</p>
+      </div>
+    </div>
+    <div class="card soft result-box" id="feed-test-result" hidden aria-live="polite"></div>
+    <div class="field-row">
+      <div class="field"><label for="interval_minutes">Frequência (minutos)</label><input id="interval_minutes" name="interval_minutes" type="number" value="360" min="5"></div>
+      <div class="field">
+        <label for="output_format">Formato de saída</label>
+        <select id="output_format" name="output_format">
+          {% for fmt in output_formats %}<option value="{{ fmt }}">{{ format_label(fmt) }}</option>{% endfor %}
+        </select>
+      </div>
+      {{ device_select(profiles, selected='xteink_x4_pro', label='Perfil de dispositivo') }}
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="destination_folder">Subcategoria (opcional)</label>
+        <input id="destination_folder" name="destination_folder" placeholder="padrão: o nome do feed">
+        <p class="hint">Os itens sempre vão para <code>rss/&lt;subcategoria ou nome do feed&gt;</code>.</p>
+      </div>
+      <div class="field"><label for="max_items_per_run">Itens por execução</label><input id="max_items_per_run" name="max_items_per_run" type="number" value="20" min="1"></div>
+    </div>
+    <div class="check-stack">
+      <label class="check"><input type="checkbox" name="active" checked> ativo</label>
+      <label class="check"><input type="checkbox" name="keep_original"> manter o original baixado</label>
+    </div>
+    <button class="button" type="submit">Salvar feed</button>
+  </form>
+</div>
+
+{% if recent_items %}
+<h2 class="mt4">Itens recentes</h2>
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>Título</th><th>Status</th><th>Quando</th><th></th></tr></thead>
+    <tbody>
+    {% for item in recent_items %}
+      <tr>
+        <td data-label="Título">{{ item.title or item.guid }}</td>
+        <td data-label="Status"><span class="badge {{ {'downloaded':'ok','converted':'ok','error':'err','skipped':'warn'}.get(item.status,'') }}">{{ status_label(item.status) }}</span></td>
+        <td data-label="Quando" class="muted small">{{ item.created_at|relative }}</td>
+        <td data-label="">{% if item.book_id %}<a class="button ghost small" href="/library/{{ item.book_id }}">Abrir</a>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  "use strict";
+
+  // --- "Testar feed": reads the feed and reports what would be imported -----
+  var button = document.getElementById("feed-test-button");
+  var urlField = document.getElementById("url");
+  var box = document.getElementById("feed-test-result");
+  var kindLabels = {
+    article: "Página (vira EPUB)", ebook: "Livro (EPUB/AZW)", pdf: "PDF",
+    comic: "Quadrinho (CBZ/ZIP)", image: "Imagem", file: "Arquivo", podcast: "Podcast (ignorado)"
+  };
+
+  function render(data) {
+    if (!box) return;
+    box.hidden = false;
+    if (!data.ok) {
+      box.innerHTML = '<p class="text-danger mb0"><strong>Não deu para ler o feed.</strong> ' +
+        escapeHtml(data.error || "") + "</p>";
+      return;
+    }
+    var parts = Object.keys(data.kinds).map(function (kind) {
+      return data.kinds[kind] + " " + (kindLabels[kind] || kind);
+    });
+    var html = "<p class=\"mb2\"><strong>" + escapeHtml(data.title || "Feed sem título") +
+      "</strong> — " + data.total + " item(ns): " + parts.join(" · ") + "</p>";
+    if (data.sample && data.sample.length) {
+      html += '<ul class="tight small muted">' + data.sample.slice(0, 6).map(function (item) {
+        return "<li>" + escapeHtml(item.title) + " <em>(" + (kindLabels[item.kind] || item.kind) + ")</em></li>";
+      }).join("") + "</ul>";
+    }
+    box.innerHTML = html;
+  }
+
+  function escapeHtml(value) {
+    return String(value == null ? "" : value).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  if (button && urlField && box) {
+    button.addEventListener("click", async function () {
+      var url = urlField.value.trim();
+      if (!url) { urlField.focus(); return; }
+      button.disabled = true;
+      button.textContent = "Lendo…";
+      box.hidden = false;
+      box.innerHTML = '<p class="muted mb0">Lendo o feed…</p>';
+      try {
+        var body = new URLSearchParams({ url: url });
+        var response = await fetch("/feeds/test", {
+          method: "POST", body: body,
+          headers: { "Content-Type": "application/x-www-form-urlencoded" }
+        });
+        render(await response.json());
+      } catch (e) {
+        render({ ok: false, error: "falha de conexão" });
+      } finally {
+        button.disabled = false;
+        button.textContent = "Testar";
+      }
+    });
+  }
+
+  // --- Reload while a feed is being fetched, so the badges stay true -------
+  if ({{ 'true' if running_feeds else 'false' }}) {
+    setTimeout(function () { window.location.reload(); }, 6000);
+  }
+})();
+</script>
+{% endblock %}

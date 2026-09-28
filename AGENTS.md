@@ -1,0 +1,209 @@
+# AGENTS.md — guia para agentes de IA
+
+Contexto de engenharia deste repositório. Leia antes de editar. O público-alvo
+são **agentes de código**; para humanos veja o [README](README.md).
+
+## 1. O que é
+
+Servidor pessoal **OPDS 1.2/2.0** para leitores e-ink, com painel web,
+biblioteca em `DATA_DIR`, fila de conversão persistente e ingestão RSS/Atom.
+Monólito modular FastAPI + SQLite + SQLAlchemy + Jinja2. **Um processo.**
+
+Regras de ouro do projeto:
+
+1. **Nenhuma ferramenta externa é necessária.** Conversões usam só Python
+   (`Pillow`, `PyMuPDF`, `lxml`, `py7zr`, `python-docx`, `rarfile`) + a
+   `unrar.dll` em `app/vendor/unrar`. Calibre/Ghostscript/ImageMagick/FFmpeg são
+   **opcionais** e nunca podem virar requisito. Não adicione dependência que
+   exija binário do sistema.
+2. **Nunca dependa de internet/CDN.** CSS/JS são locais (`app/web/static`), sem
+   `fonts.googleapis.com` etc. URLs de assets passam por `static_url()` para
+   versionamento de cache.
+3. **UI e mensagens em pt-BR; comentários/docstrings em inglês.** Nomes de
+   código em inglês.
+4. **Arquivos pequenos, uma responsabilidade cada.** Prefira criar módulo novo a
+   inchar um existente. O projeto já é bem subdividido — siga o padrão da pasta.
+5. **Auditoria não muda regra de negócio.** Antes de remover algo, entenda para
+   que serve e verifique se nada mais usa.
+
+## 2. Comandos
+
+```bash
+# rodar o servidor (usa .env; DATA_DIR=./data por padrão)
+.\.venv\Scripts\python.exe -m app          # Windows
+python -m app                               # Linux/macOS
+
+# lint
+.\.venv\Scripts\ruff.exe check app tests
+
+# testes (cada arquivo é um script independente; usa DATA_DIR temporário)
+python tests/smoke.py
+python tests/conversions.py
+python tests/native_pdf.py
+python tests/native_formats.py
+python tests/kindle_writer.py
+python tests/crosspoint_compat.py
+python tests/reader.py
+python tests/rss_feeds.py
+python tests/sitemap.py
+python tests/archives.py
+python tests/frontend.py
+python tests/cancellation.py
+```
+
+Windows: `.\tasks.ps1 run|test|smoke|convert|rss|crosspoint|clean`.
+Linux/macOS: `make run|test|smoke|convert|crosspoint|clean`.
+
+### Fluxo de verificação esperado
+
+Ao terminar uma mudança: `ruff check app tests` **e** rode pelo menos
+`tests/smoke.py` + o suite da área tocada. Se mexeu em OPDS, rode
+`tests/crosspoint_compat.py`; se mexeu em conversão, `tests/conversions.py` +
+`tests/native_formats.py`; se mexeu em importação/painel, `tests/smoke.py` +
+`tests/frontend.py`.
+
+**Pegadinha:** o servidor em execução carrega os módulos **na memória**. Depois
+de editar Python, **reinicie o processo** antes de validar no navegador/OPDS —
+senão você testa código velho. Testes que sobem `TestClient` carregam o código
+novo.
+
+## 3. Mapa do código
+
+```
+app/
+├── main.py            create_app(), lifespan (init_db, seed, repairs, workers)
+├── config.py          Settings pydantic (.env) + caminhos derivados
+├── logging_conf.py    log texto/JSON
+├── networking.py      resolução de BASE_URL e IPs de acesso
+├── request_context.py base URL por requisição (contextvar)
+│
+├── database/          engine SQLite (WAL) + session_scope + modelos ORM
+│   └── models/        book, classification, jobs, feeds, system, enums
+│
+├── storage/           paths.py (nomes seguros/relativos), temp.py, usage.py
+│
+├── library/           domínio biblioteca
+│   ├── formats.py     taxonomia extensão↔MIME↔assinatura   <-- novo formato aqui
+│   ├── sniff.py       magic bytes
+│   ├── detect.py      detecção em camadas
+│   ├── importer.py    importação + dedup SHA-256 + capa
+│   ├── scanner.py     varredura de pasta
+│   ├── repository.py  consultas/filtros/facetas
+│   ├── taxonomy.py    categorias e tags
+│   ├── service.py     editar/renomear/mover/excluir/capa
+│   ├── repairs.py     reparos idempotentes (rodam no boot)  <-- migrações leves
+│   └── conversions.py enqueue_conversion()/link_conversion()
+│
+├── metadata/          extratores por formato + cover.py (gera capa)
+│
+├── converters/        pipeline
+│   ├── capabilities.py  o que esta instalação consegue fazer
+│   ├── catalog.py       formatos de saída compatíveis
+│   ├── planner.py       decide destino + opções (auto)
+│   ├── registry.py      escolhe a estratégia
+│   ├── runner.py        executa o plano (roda em thread)
+│   ├── collections/images/pdf: collectors, imageops, pdf_render, normalise
+│   ├── archives.py + unrar_dll.py   ZIP/TAR/7z/RAR
+│   ├── epub/            escritor E leitor de EPUB próprios
+│   ├── native/          reflow de PDF (pdf_text), escrita de PDF (pdf_writer),
+│   │                    KF8/MOBI (kindle)
+│   ├── webpage/         HTML → EPUB (dom, main_content, images, split…)
+│   └── strategies/      conversores concretos  <-- novo conversor aqui
+│
+├── devices/           builtin.py (presets) + profile.py + registry.py
+├── opds/              v1/ (navigation, acquisition, assets) + v2.py + entries/feeds
+├── rss/               parser, downloader, service (política de fonte), sitemap
+├── reader/            leitor web: registry + epub/pdf/comic/text/fb2 + sanitize
+├── workers/           queue.py (claim no banco), conversion_loop, rss_loop,
+│                      maintenance, manager, progress.py (cancelamento)
+├── security/          passwords, auth (sessão + Basic), settings_store
+├── api/               REST /api (books, uploads, conversions, devices, feeds, system)
+├── tools/             CLIs internas (ex.: import_site)
+└── web/               errors.py, labels.py, templating.py
+    ├── routes/        auth, dashboard, library, imports, conversions,
+    │                  devices, feeds, reader, settings  <-- nova página aqui
+    └── templates/ + static/  (base.html, style.css, app.js, reader.*)
+```
+
+## 4. Invariantes (não quebre sem entender)
+
+- **OPDS raiz configurável.** `OPDS_ROOT_MODE ∈ {mixed, navigation, books}`
+  (`config.py`). O padrão é `mixed` *no código*, mas o `.env` do usuário pode
+  fixar outro. Testes que dependem da raiz devem ser **cientes do modo**
+  (ver `tests/smoke.py::_opds_root_checks`).
+- **Clientes simples** (CrossPoint/Xteink) só listam entradas com link de
+  download — por isso existem `/opds/device/{slug}`, `/opds/all` e `/opds/new`
+  como catálogos de aquisição independentes do modo da raiz.
+- **Livro sem autor não emite `<author>`** na entrada (o feed declara autor no
+  nível do feed) para o leitor nomear o arquivo pelo título.
+- **Categoria é obrigatória na importação** (upload/varredura no painel): o
+  formulário marca `required` e a rota valida no servidor. Feeds criam
+  `rss/<nome do feed>` automaticamente.
+- **Um formato por arquivo = um `Book`.** Conversão gera um novo `Book` ligado ao
+  origem por `origin_book_id`; o OPDS agrupa como variantes do mesmo título.
+- **Imagens de EPUB convertido** apontam para `../images/` (ver
+  `epub/text_builder._fix_image_sources` e `repairs.repair_epub_image_paths`).
+  Se mexer em escrita de EPUB, verifique imagens no leitor **e** no Web Reader.
+- **Caminhos de arquivo são relativos** à biblioteca (`Book.file_path`). Nunca
+  guarde caminho absoluto no banco. Resolva via `storage/paths.py`.
+- **Sessão de banco não cruza threads.** Leitura/escrita de ORM só na thread
+  principal; a thread de conversão recebe dados puros e o callback de progresso
+  abre a própria sessão.
+- **Fila = tabela `conversion_jobs`.** Claim é `UPDATE` condicional; jobs
+  `running` sem heartbeat voltam a `pending` no boot (`startup_recovery`).
+- **Cancelamento** usa `JobCancelled(BaseException)` (`workers/progress.py`) e
+  `is_cancelled`/`note_cancelled` (`workers/queue.py`). Não engula essa exceção.
+- **MIME/types** saem de `library/formats.py`; não invente string solta.
+
+## 5. Onde mexer
+
+| Quero… | Vá em… |
+| --- | --- |
+| Novo formato de entrada | `library/formats.py` (+ `sniff.py` se precisar) |
+| Novo conversor | subclasse em `converters/strategies/`, registre em `strategies/__init__.py`; declare `can_handle` e `priority` |
+| Novo motor (ex. render) | `converters/native/` |
+| Ajustar escolha automática | `converters/planner.py` |
+| Formato de saída por dispositivo | `devices/builtin.py` (+ `converters/catalog.py`) |
+| Nova página do painel | `web/routes/*.py` + template + incluir em `build_web_router()`; adicione link em `templates/base.html` |
+| Nova rota da API | `api/*.py` + incluir em `build_api_router()` + schema em `api/schemas.py` |
+| Nova rota OPDS | `opds/v1/navigation.py` (seções) ou `acquisition.py` (livros) |
+| Novo endpoint do leitor | `reader/registry.py` + handler em `reader/` |
+| Reparo/migração leve | `library/repairs.py` (idempotente, roda no boot) |
+| CLI interna | `app/tools/` |
+
+## 6. Convenções de código
+
+- `from __future__ import annotations` no topo; tipos modernos (`list[str]`,
+  `X | None`).
+- `ruff` com `line-length=100`, regras `E,F,W,I,UP,B,C4,SIM` (`E501`/`B008`
+  ignoradas). Mantenha o lint limpo.
+- Docstrings/comentários **em inglês**, curtas e explicando o *porquê*.
+- Texto de interface **em pt-BR**, direto, sem jargão. Mensagens de erro devem
+  dizer o que fazer (o painel converte erros em flash legível via `web/errors.py`).
+- Templates Jinja herdam de `base.html`; flashes de sucesso/erro usam
+  `?ok=`/`?err=` **ou** contexto `ok`/`err` (base.html aceita os dois).
+- Nunca use `print` para log; use `logging`.
+- Testes são scripts com `check(...)` (sem pytest); siga o padrão do arquivo.
+
+## 7. Armadilhas conhecidas
+
+- **Reinicie o app** depois de editar Python (código em memória).
+- `/opds/all?per_page=` tem teto **100** (acima disso → 422); pagine.
+- EPUB→PDF: caminhos do OPF são **relativos ao OPF** — bug já visto gerando PDFs
+  vazios; use as helpers existentes.
+- PDF texto: figuras/tabelas dependem da **legenda** ("Figura/Figure" → imagem;
+  "Tabela/Table" → `<table>` com fallback de imagem). Equações com MathML/LaTeX
+  são aceitas como *out of scope* (fallback de imagem).
+- Upload via **painel** (`/import/upload`) exige categoria; a rota **API**
+  (`/api/imports/upload`) não exige (usada por testes/integrações).
+- Vídeo/podcast em feed é **ignorado sem erro** — não é falha.
+
+## 8. Onde procurar mais
+
+- Arquitetura e decisões: [`docs/architecture.md`](docs/architecture.md)
+- Painel: [`docs/panel.md`](docs/panel.md)
+- OPDS: [`docs/opds.md`](docs/opds.md)
+- Conversão e formatos: [`docs/conversion.md`](docs/conversion.md),
+  [`docs/device-formats.md`](docs/device-formats.md)
+- Feeds: [`docs/rss.md`](docs/rss.md)
+- Fluxo de dev (adicionar conversor/dispositivo/rota): [`docs/development.md`](docs/development.md)

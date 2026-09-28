@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
+{% block title %}Configurações · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Configurações</h1>
+    <p class="lead">Catálogo, armazenamento, segurança e manutenção.</p>
+  </div>
+</div>
+
+<div class="grid two">
+  <div class="card">
+    <div class="card-head"><h2>{{ icon('external', 17) }} Catálogo OPDS</h2></div>
+    <dl class="kv">
+      <dt>OPDS 1.2</dt><dd class="copy-line"><code>{{ base_url }}/opds</code><button class="button ghost small" type="button" data-copy="{{ base_url }}/opds">{{ icon('copy', 14) }} Copiar</button></dd>
+      <dt>OPDS 2.0</dt><dd class="copy-line"><code>{{ base_url }}/opds/v2</code><button class="button ghost small" type="button" data-copy="{{ base_url }}/opds/v2">{{ icon('copy', 14) }} Copiar</button></dd>
+      <dt>Busca</dt><dd><code>{{ base_url }}/opds/search.xml</code></dd>
+      <dt>Raiz do OPDS</dt><dd>{{ 'só os menus' if settings.opds_root_mode == 'navigation' else ('só os livros' if settings.opds_root_mode == 'books' else 'livros e menus') }}</dd>
+      <dt>Acesso</dt><dd>{% if settings.opds_username %}<span class="badge warn">Basic auth ativo</span>{% else %}<span class="badge">aberto na rede</span>{% endif %}</dd>
+    </dl>
+    <p class="hint">No leitor, cadastre o catálogo com o endereço mostrado aqui. A biblioteca é servida direto, sem duplicar arquivos.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>{{ icon('devices', 17) }} Acesso na rede</h2></div>
+    <p class="muted small">
+      {% if on_network %}
+        Escutando em todas as interfaces (<code>{{ settings.host }}:{{ settings.port }}</code>). Use um destes endereços:
+      {% else %}
+        Escutando apenas em <code>{{ settings.host }}:{{ settings.port }}</code>. Defina <code>HOST=0.0.0.0</code> no .env para liberar a rede.
+      {% endif %}
+    </p>
+    <ul class="small list">
+      {% for url in network_urls %}<li><code>{{ url }}/opds</code></li>{% endfor %}
+    </ul>
+    <p class="hint">
+      Os links do catálogo seguem o endereço por onde o cliente chega (LAN, Tailscale, domínio) — não é preciso configurar nada.
+      No Windows, se outro aparelho não conectar:
+      <code>New-NetFirewallRule -DisplayName "OPDS" -Direction Inbound -LocalPort {{ settings.port }} -Protocol TCP -Action Allow</code>
+    </p>
+  </div>
+</div>
+
+<div class="grid two mt4">
+  <div class="card">
+    <div class="card-head"><h2>{{ icon('library', 17) }} Armazenamento</h2></div>
+    <div class="spread mb4">
+      <strong class="big-num">{{ human_size(usage.total_bytes) }}</strong>
+      <span class="muted small">{{ usage.file_count }} arquivo(s){% if usage.limit_bytes %} de {{ human_size(usage.limit_bytes) }}{% endif %}</span>
+    </div>
+    {% if usage.limit_bytes %}<div class="bar mb4"><span style="width: {{ usage.percent if usage.percent < 100 else 100 }}%"></span></div>{% endif %}
+    <dl class="kv">
+      <dt>Limite</dt><dd>{{ settings.storage_limit_gb }} GB</dd>
+      <dt>Upload máximo</dt><dd>{{ settings.max_upload_mb }} MB</dd>
+      <dt>Conversões simultâneas</dt><dd class="num">{{ settings.conversion_concurrency }}</dd>
+      <dt>Worker de feeds</dt><dd>{{ 'ativo' if settings.rss_worker_enabled else 'inativo' }}</dd>
+      <dt>Fila</dt><dd>{{ queue.pending }} pendente(s) · {{ queue.running }} executando</dd>
+    </dl>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>{{ icon('settings', 17) }} Segurança</h2></div>
+    <form method="post" action="/settings/password">
+      <div class="field-row">
+        <div class="field"><label for="username">Usuário</label><input id="username" name="username" value="{{ admin_username }}"></div>
+        <div class="field"><label for="current_password">Senha atual</label><input id="current_password" name="current_password" type="password" required autocomplete="current-password"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label for="new_password">Nova senha</label><input id="new_password" name="new_password" type="password" required autocomplete="new-password"></div>
+        <div class="field"><label for="confirm_password">Confirmar</label><input id="confirm_password" name="confirm_password" type="password" required autocomplete="new-password"></div>
+      </div>
+      <button class="button" type="submit">Atualizar credenciais</button>
+    </form>
+    <hr>
+    <h3>Manutenção</h3>
+    <p class="muted small">Remove temporários, retoma tarefas interrompidas, religa itens, organiza categorias e marca livros ausentes.</p>
+    <form method="post" action="/settings/maintenance">
+      <button class="button ghost" type="submit">{{ icon('refresh', 14) }} Executar agora</button>
+    </form>
+  </div>
+</div>
+
+<div class="card mt4">
+  <div class="card-head"><h2>{{ icon('settings', 17) }} Recursos de conversão</h2></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Recurso</th><th>Estado</th><th>Detalhe</th></tr></thead>
+      <tbody>
+      {% for tool, path in tools.items() %}
+        <tr>
+          <td data-label="Recurso">{{ tool }}</td>
+          <td data-label="Estado">{% if path %}<span class="badge ok">ok</span>{% else %}<span class="badge">opcional</span>{% endif %}</td>
+          <td data-label="Detalhe" class="muted small mono">{{ path or '—' }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="hint">Tudo isso vem com o servidor (pacotes Python + a biblioteca UnRAR que acompanha o projeto): nenhum programa precisa ser instalado. Os itens “opcionais” são apenas aceleradores que o servidor usa se já existirem.</p>
+</div>
+{% endblock %}

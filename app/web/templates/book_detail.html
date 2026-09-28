@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
+{% from "partials/device_select.html" import device_select %}
+{% block title %}{{ book.title }} · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="crumbs"><a href="/library">Biblioteca</a> / {{ book.display_author }}</p>
+    <h1>{{ book.title }}</h1>
+    <p class="lead">
+      {{ book.display_author }}{% if book.series %} · {{ book.series }}{% if book.series_index %} #{{ book.series_index|volume }}{% endif %}{% endif %}
+      · <span class="badge">{{ format_label(book.format) }}</span>
+      {% if not file_exists %}<span class="badge err">arquivo ausente</span>{% endif %}
+      {% if not book.is_original %}<span class="badge info">conversão{% if origin %} de «<a href="/library/{{ origin.id }}">{{ origin.title }}</a>»{% endif %}</span>{% endif %}
+    </p>
+  </div>
+  <div class="button-row">
+    {% set reader_unsupported = detection.format in ['djvu', 'djv'] %}
+    <a class="button" href="/reader/{{ book.id }}"
+       {% if reader_unsupported or not file_exists %}aria-disabled="true" title="{% if not file_exists %}Arquivo ausente{% else %}Este formato não abre no navegador; baixe o arquivo{% endif %}"{% endif %}>{{ icon('reader', 15) }} Abrir no Web Reader</a>
+    <a class="button ghost" href="/library/{{ book.id }}/file">{{ icon('download', 15) }} Baixar</a>
+    <a class="button ghost" href="/opds/books/{{ book.id }}" target="_blank" rel="noopener">{{ icon('external', 15) }} Ver no OPDS</a>
+  </div>
+</div>
+
+<div class="detail">
+  <div class="sticky">
+    <div class="cover-lg">
+      {% if book.cover_path %}<img src="/library/{{ book.id }}/cover" alt="Capa de {{ book.title }}">{% else %}{{ icon('book', 46) }}{% endif %}
+    </div>
+    <form class="card" method="post" action="/library/{{ book.id }}/cover" enctype="multipart/form-data">
+      <div class="field">
+        <label for="cover-file">Trocar a capa</label>
+        <input id="cover-file" type="file" name="file" accept="image/*">
+      </div>
+      <button class="button small block" type="submit">Enviar capa</button>
+    </form>
+
+    <div class="card">
+      <h3 class="mt0">Ficha</h3>
+      <dl class="kv">
+        <dt>Formato</dt><dd>{{ format_label(book.format) }}</dd>
+        <dt>Tipo</dt><dd>{{ content_label(book.content_type) }}{% if detection.image_only %} (só imagens){% endif %}</dd>
+        <dt>Tamanho</dt><dd class="num">{{ human_size(file_size) }}</dd>
+        <dt>Páginas</dt><dd class="num">{{ book.page_count or '—' }}</dd>
+        <dt>Leitura</dt><dd>{{ 'Direita → esquerda' if book.reading_direction == 'rtl' else 'Esquerda → direita' }}</dd>
+        <dt>Origem</dt><dd>{{ source_label(book.source) }}{% if book.source_url %} · <a href="{{ book.source_url }}" target="_blank" rel="noopener">link</a>{% endif %}</dd>
+        {% if detection.note %}<dt>Nota</dt><dd class="muted small">{{ detection.note }}</dd>{% endif %}
+      </dl>
+      <p class="hint mb0 mono break">{{ book.file_path }}</p>
+    </div>
+  </div>
+
+  <div class="stack">
+    <div class="card">
+      <div class="card-head">
+        <h2>{{ icon('conversions', 17) }} Converter</h2>
+        <span class="badge info">{{ plan }}</span>
+      </div>
+      <form method="post" action="/conversions/create">
+        <input type="hidden" name="book_ids" value="{{ book.id }}">
+        <div class="field-row">
+          <div class="field">
+            <label for="target_format">Formato de saída</label>
+            <select id="target_format" name="target_format">
+              <option value="auto">Automático (recomendado)</option>
+              {% for target in targets %}
+                <option value="{{ target.format }}">{{ target.label }}{% if target.recommended %} — recomendado{% endif %}</option>
+              {% endfor %}
+            </select>
+          </div>
+          {{ device_select(profiles, selected=device_profile, label='Dispositivo de destino') }}
+        </div>
+        {% if targets %}
+        <p class="muted small">Compatíveis:
+          {% for target in targets %}<span class="badge {{ 'ok' if target.recommended }}">{{ format_label(target.format) }}</span> {% endfor %}
+        </p>
+        {% endif %}
+        <label class="check my3"><input type="checkbox" name="keep_original" checked> manter o arquivo original</label>
+        <button class="button" type="submit">Adicionar à fila</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Metadados</h2></div>
+      <form method="post" action="/library/{{ book.id }}/edit">
+        <div class="field-row">
+          <div class="field field--wide"><label for="title">Título</label><input id="title" name="title" value="{{ book.title }}" required></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label for="author">Autor</label><input id="author" name="author" value="{{ book.author or '' }}"></div>
+          <div class="field"><label for="series">Série</label><input id="series" name="series" value="{{ book.series or '' }}"></div>
+          <div class="field"><label for="series_index">Volume</label><input id="series_index" name="series_index" value="{{ book.series_index|volume if book.series_index is not none else '' }}"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label for="language">Idioma</label><input id="language" name="language" value="{{ book.language or 'pt' }}"></div>
+          <div class="field"><label for="publisher">Editora</label><input id="publisher" name="publisher" value="{{ book.publisher or '' }}"></div>
+          <div class="field"><label for="published">Publicado</label><input id="published" name="published" value="{{ book.published or '' }}"></div>
+          <div class="field"><label for="isbn">ISBN</label><input id="isbn" name="isbn" value="{{ book.isbn or '' }}"></div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="category">Categoria / pasta</label>
+            <input id="category" name="category" list="category-list" value="{{ book.category_rel.name if book.category_rel else '' }}">
+            <datalist id="category-list">{% for row in categories %}<option value="{{ row.category.name }}">{% endfor %}</datalist>
+            <p class="hint">Use <code>rss/nome</code> para pastas aninhadas.</p>
+          </div>
+          <div class="field"><label for="tags">Tags (separadas por vírgula)</label><input id="tags" name="tags" value="{{ book.tag_names|join(', ') }}"></div>
+          <div class="field">
+            <label for="reading_direction">Direção de leitura</label>
+            <select id="reading_direction" name="reading_direction">
+              <option value="ltr" {{ 'selected' if book.reading_direction != 'rtl' }}>Esquerda → direita</option>
+              <option value="rtl" {{ 'selected' if book.reading_direction == 'rtl' }}>Direita → esquerda (mangá)</option>
+            </select>
+          </div>
+        </div>
+        <div class="field"><label for="description">Descrição</label><textarea id="description" name="description">{{ book.description or '' }}</textarea></div>
+        <label class="check mb4"><input type="checkbox" name="rename_file"> renomear o arquivo conforme os metadados</label>
+        <button class="button" type="submit">Salvar alterações</button>
+      </form>
+    </div>
+
+    {% if variants|length > 1 %}
+    <div class="card">
+      <div class="card-head"><h2>Arquivos relacionados</h2><span class="muted small">variantes da mesma obra</span></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Título</th><th>Formato</th><th>Perfil</th><th>Tamanho</th></tr></thead>
+          <tbody>
+          {% for variant in variants %}
+            <tr>
+              <td data-label="Título"><a href="/library/{{ variant.id }}">{{ variant.title }}</a>
+                  {% if variant.id == book.id %}<span class="badge info">atual</span>{% endif %}</td>
+              <td data-label="Formato"><span class="badge">{{ format_label(variant.format) }}</span></td>
+              <td data-label="Perfil" class="muted small">{{ profile_label(variant.device_profile) }}</td>
+              <td data-label="Tamanho" class="num">{{ variant.size_mb|decimal }} MB</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-head"><h2>Zona de risco</h2></div>
+      <form method="post" action="/library/{{ book.id }}/delete"
+            data-confirm="Excluir «{{ book.title }}»?"
+            data-confirm-msg="Esta ação não pode ser desfeita."
+            data-confirm-detail="{% if variants|length > 1 %}Existem {{ variants|length }} arquivos relacionados; eles ficarão sem vínculo. {% endif %}Se «apagar o arquivo» estiver marcado, o arquivo também será removido do disco."
+            data-confirm-ok="Excluir"
+            data-confirm-danger
+            onsubmit="return confirm('Excluir definitivamente este livro?')">
+        <label class="check mb3"><input type="checkbox" name="delete_files" checked> apagar o arquivo do disco</label>
+        <button class="button danger" type="submit">Excluir livro</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

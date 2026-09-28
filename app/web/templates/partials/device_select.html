@@ -1,0 +1,25 @@
+{# Device profile picker, grouped by brand.
+
+   A flat list of 26 profiles is unusable: the user knows their device, not the
+   slug. Groups let them find "Xteink" or "Kobo" and pick from there.
+
+   Accepts either a mapping (slug -> profile) or an iterable of profiles.
+#}
+{% macro device_select(profiles, name="device_profile", id="device_profile", selected="", label="", hint="") %}
+{% set items = profiles.values()|list if profiles is mapping else profiles|list %}
+<div class="field">
+  {% if label %}<label for="{{ id }}">{{ label }}</label>{% endif %}
+  <select id="{{ id }}" name="{{ name }}" data-device-select>
+    {% for brand, group in items|sort(attribute='brand')|groupby('brand') %}
+    <optgroup label="{{ brand }}">
+      {% for profile in group|sort(attribute='name') %}
+      <option value="{{ profile.slug }}" {% if profile.slug == selected %}selected{% endif %}>
+        {{ profile.name }}{% if profile.recommended %} — recomendado{% endif %}
+      </option>
+      {% endfor %}
+    </optgroup>
+    {% endfor %}
+  </select>
+  {% if hint %}<p class="hint">{{ hint }}</p>{% endif %}
+</div>
+{% endmacro %}

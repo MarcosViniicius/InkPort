@@ -1,0 +1,67 @@
+"""Periodic housekeeping: temp cleanup, stale jobs, missing files."""
+
+from __future__ import annotations
+
+import asyncio
+import contextlib
+import logging
+
+from app.config import get_settings
+from app.database import session_scope
+from app.library.repairs import run_repairs
+from app.library.service import mark_missing
+from app.storage.temp import clean_temp_dir
+from app.workers import queue
+
+logger = logging.getLogger(__name__)
+
+
+class MaintenanceLoop:
+    def __init__(self, interval_seconds: float = 900.0) -> None:
+        self.interval = interval_seconds
+
+    async def run(self, stop: asyncio.Event) -> None:
+        logger.info("maintenance loop started")
+        while not stop.is_set():
+            try:
+                await asyncio.to_thread(self._tick)
+            except asyncio.CancelledError:
+                raise
+            except Exception:  # noqa: BLE001
+                logger.exception("maintenance tick failed")
+            await self._sleep(stop)
+        logger.info("maintenance loop stopped")
+
+    def _tick(self) -> None:
+        removed = clean_temp_dir(max_age_seconds=3600)
+        with session_scope() as session:
+            resumed = queue.requeue_stale(session, older_than_seconds=1800)
+            missing = mark_missing(session)
+            repairs = run_repairs(session)
+        if removed or resumed or missing or any(repairs.values()):
+            logger.info(
+                "maintenance done",
+                extra={
+                    "temp_removed": removed,
+                    "resumed": resumed,
+                    "missing": missing,
+                    **repairs,
+                },
+            )
+
+    async def _sleep(self, stop: asyncio.Event) -> None:
+        with contextlib.suppress(TimeoutError):
+            await asyncio.wait_for(stop.wait(), timeout=self.interval)
+
+
+def startup_recovery() -> int:
+    """Called once at boot: requeue everything left RUNNING by a crash."""
+    with session_scope() as session:
+        count = queue.requeue_stale(session, older_than_seconds=0)
+    if count:
+        logger.warning("requeued interrupted jobs", extra={"count": count})
+    return count
+
+
+def current_settings_interval() -> float:
+    return max(300.0, get_settings().worker_poll_interval * 300)
