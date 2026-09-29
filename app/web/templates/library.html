@@ -12,8 +12,8 @@
   </div>
   <div class="button-row">
     <div class="tabs" data-view-toggle role="group" aria-label="Modo de visualização">
-      <button type="button" data-set-view="grid" class="on" aria-pressed="true">Grade</button>
-      <button type="button" data-set-view="list" aria-pressed="false">Lista</button>
+      <button type="button" data-set-view="grid" class="on" aria-pressed="true">{{ icon('grid', 15) }} Grade</button>
+      <button type="button" data-set-view="list" aria-pressed="false">{{ icon('list', 15) }} Lista</button>
     </div>
     <a class="button" href="/import">{{ icon('import', 16) }} Importar</a>
   </div>
@@ -77,7 +77,7 @@
 
 {% if page_data.items %}
 <form method="post" action="/library/bulk">
-  <div class="card mt4 toolbar" data-selection-bar>
+  <div class="card mt4 toolbar" data-selection-bar role="toolbar" aria-label="Ações em lote">
     <label class="check">
       <input type="checkbox" data-check-all aria-label="Selecionar todos os livros desta página">
       <span>Selecionar todos</span>
@@ -96,19 +96,19 @@
         {% for profile in profiles %}<option value="{{ profile.slug }}" {{ 'selected' if profile.recommended }}>{{ profile.name }}</option>{% endfor %}
       </select>
       {% endif %}
-      <button class="button small" type="submit" name="action" value="convert">Converter selecionados</button>
-      <button class="button small ghost" type="submit" name="action" value="refresh">Atualizar metadados</button>
-      <button class="button small ghost" type="submit" name="action" value="rename">Renomear arquivos</button>
+      <button class="button small" type="submit" name="action" value="convert" aria-label="Converter os livros selecionados">{{ icon('conversions', 15) }} Converter</button>
+      <button class="button small ghost" type="submit" name="action" value="refresh" aria-label="Atualizar os metadados dos livros selecionados">{{ icon('refresh', 15) }} Metadados</button>
+      <button class="button small ghost" type="submit" name="action" value="rename" aria-label="Renomear os arquivos selecionados">{{ icon('edit', 15) }} Renomear</button>
       <button class="button small ghost danger" type="submit" name="action" value="delete"
               data-confirm="Excluir os livros selecionados?"
-              data-confirm-count=".row-check:checked"
-              data-confirm-detail="Os registros somem e, se «apagar os arquivos» estiver marcado, os arquivos também. Isto não pode ser desfeito."
+              data-confirm-count=".row-check:checked:not(:disabled)"
+              data-confirm-detail="Os registros e os arquivos escolhidos serão apagados do disco. Isto não pode ser desfeito."
               data-confirm-ok="Excluir"
               data-confirm-danger
-              onclick="return confirm('Excluir os livros selecionados?')">Excluir</button>
-      <label class="check"><input type="checkbox" name="delete_files" checked> apagar os arquivos</label>
+              onclick="return confirm('Excluir os livros selecionados?')">{{ icon('trash', 15) }} Excluir</button>
     </div>
   </div>
+  <p class="hint mt2">Selecione os livros na grade ou na lista e escolha uma ação — a conversão e a exclusão valem para todos os selecionados.</p>
 
   <div data-view="grid" class="grid cards mt4">
     {% for book in page_data.items %}{% include "partials/book_card.html" %}{% endfor %}

@@ -154,11 +154,27 @@
     fetch(MANIFEST_URL, { headers: { Accept: "application/json" } })
       .then(function (response) {
         if (!response.ok) throw new Error("HTTP " + response.status);
+        // A VPS may sit behind a proxy/CDN that answers with a bot-check page
+        // instead of JSON. Without this check JSON.parse failed with an opaque
+        // message and the stage just stayed grey.
+        var type = (response.headers.get("content-type") || "").toLowerCase();
+        if (type.indexOf("json") === -1) {
+          throw new Error(
+            "O servidor respondeu em " + (type || "formato desconhecido") +
+            " em vez de JSON. Se há um proxy/CDN na frente, libere /reader/… " +
+            "para este endereço."
+          );
+        }
         return response.json();
       })
       .then(handleManifest)
       .catch(function (err) {
-        showState("error", "Não foi possível abrir este livro.", String(err), null);
+        showState(
+          "error",
+          "Não foi possível abrir este livro.",
+          (err && err.message) ? err.message : String(err),
+          null
+        );
       });
   }
 

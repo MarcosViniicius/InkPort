@@ -31,9 +31,16 @@ logger = logging.getLogger(__name__)
 #: Cabeçalhos de segurança aplicados em toda resposta. A CSP é pragmática:
 #: permite o CSS/JS próprios embutidos nos templates, mas bloqueia qualquer
 #: origem externa (o projeto não usa CDN) e o enquadramento por terceiros.
+#:
+#: O enquadramento é ``self``, não ``none``: o Web Reader desenha capítulos de
+#: EPUB e o visualizador de PDF **em iframes da própria origem**
+#: (``/reader/{id}/chapter``, ``/reader/{id}/raw``). Com ``DENY``/``none`` o
+#: navegador recusa esses frames e o leitor mostra só a tela cinza — inclusive
+#: numa VPS, onde o problema só aparecia de forma sistemática. Terceiros
+#: continuam impedidos (``SAMEORIGIN`` + ``frame-ancestors 'self'``).
 SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
-    "X-Frame-Options": "DENY",
+    "X-Frame-Options": "SAMEORIGIN",
     "Referrer-Policy": "no-referrer",
     "Cross-Origin-Opener-Policy": "same-origin",
     "Permissions-Policy": "geolocation=(), microphone=(), camera=(), usb=()",
@@ -44,7 +51,8 @@ SECURITY_HEADERS = {
         "script-src 'self' 'unsafe-inline'; "
         "font-src 'self' data:; "
         "connect-src 'self'; "
-        "frame-ancestors 'none'; "
+        "frame-src 'self'; "
+        "frame-ancestors 'self'; "
         "base-uri 'self'; "
         "form-action 'self'; "
         "object-src 'none'"

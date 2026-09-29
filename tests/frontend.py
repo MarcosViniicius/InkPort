@@ -63,6 +63,10 @@ def main() -> int:
           ".table-wrap td::before" in body and "attr(data-label)" in body)
     check("CSS respeita quem prefere menos animação",
           "prefers-reduced-motion" in body)
+    # .grid{display:grid}/.table-wrap tr{display:block} beat the UA [hidden] rule,
+    # which broke the library grid/list switch and the queue filters.
+    check("[hidden] vence os displays dos componentes",
+          "[hidden] { display: none !important; }" in body)
     check("CSS tem foco visível", ":focus-visible" in body)
     check("CSS tem alvos de toque no celular", "min-height: 42px" in body)
     check("JS existe", JS.exists() and "nav-open" in JS.read_text(encoding="utf-8"))

@@ -166,6 +166,23 @@
     });
   });
 
+  /* --- reveal/disable fields behind a switch --------------------------- */
+  /* Progressive enhancement for the import/conversion forms: with the switch
+     off, the target options get out of the way (and are not submitted). Without
+     JS they simply stay visible and submitted, so nothing breaks. */
+  document.querySelectorAll("[data-toggle-target]").forEach(function (control) {
+    var target = document.querySelector(control.getAttribute("data-toggle-target"));
+    if (!target) return;
+    function sync() {
+      target.hidden = !control.checked;
+      target.querySelectorAll("input, select, textarea").forEach(function (el) {
+        el.disabled = !control.checked;
+      });
+    }
+    control.addEventListener("change", sync);
+    sync();
+  });
+
   /* --- library view toggle (grid/list) --------------------------------- */
   var toggle = document.querySelector("[data-view-toggle]");
   if (toggle) {
@@ -204,6 +221,13 @@
       panel.removeAttribute("open");
     }
   });
+
+  /* --- deep link into a collapsed section (e.g. /settings#ferramentas) --- */
+  (function () {
+    if (!location.hash || location.hash.length < 2) return;
+    var target = document.getElementById(location.hash.slice(1));
+    if (target && target.tagName === "DETAILS") target.open = true;
+  })();
 
   /* --- settings: sections that remember, and unsaved-change feedback ----- */
   (function () {

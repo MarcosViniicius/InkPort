@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% from "partials/icons.html" import icon %}
 {% from "partials/device_select.html" import device_select %}
+{% from "partials/toggle.html" import toggle %}
 {% block title %}Conversões · {{ app_name }}{% endblock %}
 {% block content %}
 {% set active_jobs = counts.pending + counts.running %}
@@ -50,7 +51,10 @@
       </div>
       {{ device_select(profiles, label='Dispositivo') }}
     </div>
-    <label class="check mt4 mb3"><input type="checkbox" name="keep_original" checked> manter o original</label>
+    <div class="switch-stack mt4 mb3">
+      {{ toggle('keep_original', 'Manter o arquivo original', checked=true,
+                hint='Desligado, o original é removido depois que a conversão termina.') }}
+    </div>
     <button class="button" type="submit">Enfileirar</button>
   </form>
 </details>
@@ -67,11 +71,11 @@
     </form>
     {% endif %}
   </div>
-  <div class="tabs" id="job-tabs" role="tablist" aria-label="Filtrar a fila">
-    <button type="button" role="tab" data-filter="active" aria-pressed="{{ 'true' if default_tab == 'active' else 'false' }}" class="{{ 'on' if default_tab == 'active' }}">Em andamento</button>
-    <button type="button" role="tab" data-filter="" aria-pressed="{{ 'true' if default_tab == 'all' else 'false' }}" class="{{ 'on' if default_tab == 'all' }}">Todas</button>
-    <button type="button" role="tab" data-filter="done" aria-pressed="false">Concluídas</button>
-    <button type="button" role="tab" data-filter="failed" aria-pressed="false">Falhas</button>
+  <div class="tabs" id="job-tabs" role="group" aria-label="Filtrar a fila por situação">
+    <button type="button" data-filter="active" aria-pressed="{{ 'true' if default_tab == 'active' else 'false' }}" class="{{ 'on' if default_tab == 'active' }}">Em andamento<span class="count" data-tab-count="active">{{ active_jobs }}</span></button>
+    <button type="button" data-filter="" aria-pressed="{{ 'true' if default_tab == 'all' else 'false' }}" class="{{ 'on' if default_tab == 'all' }}">Todas<span class="count" data-tab-count="all">{{ jobs|length }}</span></button>
+    <button type="button" data-filter="done" aria-pressed="false">Concluídas<span class="count" data-tab-count="done">{{ counts.done }}</span></button>
+    <button type="button" data-filter="failed" aria-pressed="false">Falhas<span class="count" data-tab-count="failed">{{ counts.failed }}</span></button>
   </div>
 </div>
 
@@ -82,7 +86,8 @@
     </thead>
     <tbody id="jobs-body">
     {% for job in jobs %}
-      <tr data-job="{{ job.id }}" data-status="{{ job.status }}">
+      <tr data-job="{{ job.id }}" data-status="{{ job.status }}"
+          {{ 'hidden' if default_tab == 'active' and job.status not in ['pending', 'running'] }}>
         <td data-label="Livro">{{ job.book.title if job.book else 'livro removido' }}
             <span class="sub">{{ job.created_at|relative }}</span></td>
         <td data-label="Destino"><span class="badge info">{{ format_label(job.target_format) }}</span></td>
@@ -128,6 +133,11 @@
         </div>
       </td></tr>
     {% endfor %}
+    {% if jobs %}
+      <tr data-empty-filter hidden><td colspan="7" data-label="">
+        <p class="muted center mb0">Nenhuma conversão nesta situação.</p>
+      </td></tr>
+    {% endif %}
     </tbody>
   </table>
 </div>
@@ -182,19 +192,53 @@
       + '<td data-label="">' + action + "</td></tr>";
   }
 
+  function emptyRow() {
+    return '<tr data-empty-filter hidden><td colspan="7" data-label="">' +
+      '<p class="muted center mb0">Nenhuma conversão nesta situação.</p></td></tr>';
+  }
+
+  /* Show/hide rows for the current filter. Applied on load too, so what the
+     active tab says is what the table shows (the server already renders the
+     right initial state, this keeps it honest after a refresh). */
+  function applyFilter() {
+    var visible = 0;
+    document.querySelectorAll("#jobs-body tr[data-status]").forEach(function (row) {
+      var show = matches(row.getAttribute("data-status"));
+      row.hidden = !show;
+      if (show) visible += 1;
+    });
+    var empty = document.querySelector("#jobs-body [data-empty-filter]");
+    if (empty) empty.hidden = visible !== 0;
+  }
+
+  function activate(button) {
+    filter = button.getAttribute("data-filter");
+    tabs.querySelectorAll("button").forEach(function (b) {
+      var on = b === button;
+      b.classList.toggle("on", on);
+      b.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+    applyFilter();
+  }
+
   if (tabs) {
     tabs.addEventListener("click", function (event) {
       var button = event.target.closest("[data-filter]");
-      if (!button) return;
-      filter = button.getAttribute("data-filter");
-      tabs.querySelectorAll("button").forEach(function (b) {
-        var on = b === button;
-        b.classList.toggle("on", on);
-        b.setAttribute("aria-pressed", on ? "true" : "false");
-      });
-      document.querySelectorAll("#jobs-body tr[data-status]").forEach(function (row) {
-        row.hidden = !matches(row.getAttribute("data-status"));
-      });
+      if (button) activate(button);
+    });
+  }
+
+  function updateTabCounts(counts) {
+    var map = {
+      active: (counts.pending || 0) + (counts.running || 0),
+      all: (counts.pending || 0) + (counts.running || 0) + (counts.done || 0) +
+        (counts.failed || 0) + (counts.cancelled || 0),
+      done: counts.done || 0,
+      failed: counts.failed || 0
+    };
+    Object.keys(map).forEach(function (key) {
+      var el = tabs && tabs.querySelector('[data-tab-count="' + key + '"]');
+      if (el) el.textContent = map[key];
     });
   }
 
@@ -221,13 +265,16 @@
           data.counts.done + " concluídas, " + data.counts.failed + " com falha.";
       }
       var body = document.getElementById("jobs-body");
-      if (body && data.jobs.length) body.innerHTML = data.jobs.map(jobRow).join("");
+      if (body && data.jobs.length) body.innerHTML = data.jobs.map(jobRow).join("") + emptyRow();
+      updateTabCounts(data.counts);
+      applyFilter();
     } catch (e) {
       failures += 1;
       if (failures >= 2) document.getElementById("queue-offline").hidden = false;
     }
   }
 
+  applyFilter();
   setInterval(refresh, 3000);
   document.addEventListener("visibilitychange", refresh);
   refresh();

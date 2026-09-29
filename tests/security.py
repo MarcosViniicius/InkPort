@@ -173,14 +173,17 @@ def main() -> int:
         pagina = client.get("/")
         for nome, esperado in (
             ("x-content-type-options", "nosniff"),
-            ("x-frame-options", "DENY"),
+            # SAMEORIGIN: o Web Reader enquadra o próprio conteúdo (capítulo de
+            # EPUB, PDF). Terceiros continuam barrados.
+            ("x-frame-options", "SAMEORIGIN"),
             ("referrer-policy", "no-referrer"),
         ):
             valor = pagina.headers.get(nome, "")
             check(f"{nome}: {esperado}", valor == esperado, valor)
         csp = pagina.headers.get("content-security-policy", "")
         check("CSP sem origem externa", "default-src 'self'" in csp, csp[:60])
-        check("CSP impede enquadramento", "frame-ancestors 'none'" in csp)
+        check("CSP permite enquadrar a própria origem", "frame-ancestors 'self'" in csp, csp)
+        check("CSP bloqueia enquadramento por terceiros", "frame-ancestors 'none'" not in csp)
         check("HSTS ausente em HTTP", pagina.headers.get("strict-transport-security") is None)
         check("cabeçalhos também nas respostas do OPDS", client.get("/opds", auth=("leitor", OPDS_SENHA)).headers.get("x-content-type-options") == "nosniff")
 

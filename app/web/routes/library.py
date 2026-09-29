@@ -166,12 +166,13 @@ def edit_book(
 @router.post("/{book_id}/delete")
 def delete_book(
     book_id: str,
-    delete_files: str = Form(""),
     session: Session = Depends(get_session),
 ):
+    # Deleting means deleting: the confirmation dialog is the consent, so the
+    # file leaves the disk with the record (no redundant checkbox).
     book = repository.get_book(session, book_id)
     if book is not None:
-        service.delete_books(session, [book], delete_files=bool(delete_files))
+        service.delete_books(session, [book], delete_files=True)
     return RedirectResponse("/library", status_code=303)
 
 
@@ -179,7 +180,6 @@ def delete_book(
 def bulk_action(
     action: str = Form(...),
     book_ids: list[str] = Form(default=[]),
-    delete_files: str = Form(""),
     target_format: str = Form(""),
     device_profile: str = Form(""),
     session: Session = Depends(get_session),
@@ -193,7 +193,8 @@ def bulk_action(
         )
 
     if action == "delete":
-        service.delete_books(session, books, delete_files=bool(delete_files))
+        # No "keep file" option: deleting implies removing from disk too.
+        service.delete_books(session, books, delete_files=True)
         removed = len(books)
         return RedirectResponse(
             f"/library?ok={quote(f'{removed} livro(s) excluído(s).')}", status_code=303

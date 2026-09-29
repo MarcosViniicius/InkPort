@@ -32,9 +32,6 @@
     <h1>Configurações</h1>
     <p class="lead">Tudo o que você muda aqui fica no banco cifrado desta instalação e vale na hora — sem editar arquivo nenhum.</p>
   </div>
-  <div class="button-row">
-    <a class="button ghost" href="{{ opds_url }}" target="_blank" rel="noopener">{{ icon('external', 15) }} Abrir catálogo</a>
-  </div>
 </div>
 
 {#- Um formulário só para tudo que é configurável: as seções recolhidas
@@ -233,7 +230,7 @@
 </details>
 
 {% set prontos = tools.values() | select | list | length %}
-<details class="sect" data-sect="ferramentas">
+<details class="sect" data-sect="ferramentas" id="ferramentas">
   <summary>
     <span class="s-ico" aria-hidden="true">{{ icon('sliders', 17) }}</span>
     <span class="s-txt">

@@ -95,6 +95,11 @@
 /* --- reset ------------------------------------------------------------- */
 *, *::before, *::after { box-sizing: border-box; }
 
+/* The UA rule for [hidden] loses to any author `display` (e.g. .grid{display:grid}
+   or the mobile .table-wrap tr{display:block}). Without this, the library
+   grid/list switch and the queue status filters silently stop hiding things. */
+[hidden] { display: none !important; }
+
 html { scroll-behavior: smooth; overflow-x: clip; }
 
 body {
@@ -343,6 +348,24 @@ fieldset > legend { font-size: .76rem; font-weight: 600; text-transform: upperca
   font-weight: 600; font-size: .78rem; display: grid; place-items: center;
 }
 
+/* Horizontal "how it works" steps (import flow). */
+.flow { display: flex; flex-wrap: wrap; gap: var(--s3); margin: 0 0 var(--s5); padding: 0; list-style: none; }
+.flow li {
+  display: flex; gap: var(--s3); align-items: flex-start; flex: 1 1 220px;
+  padding: var(--s3) var(--s4); background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow-sm);
+}
+.flow .n {
+  flex: none; display: grid; place-items: center; width: 26px; height: 26px;
+  border-radius: 50%; background: var(--accent-soft); color: var(--accent-ink);
+  font-weight: 600; font-size: .8rem;
+}
+.flow strong { display: block; font-size: .88rem; }
+.flow em { display: block; font-style: normal; font-size: .78rem; color: var(--muted); }
+
+/* A short inline hint right under a form action. */
+.form-note { display: flex; align-items: center; gap: var(--s2); font-size: .78rem; color: var(--muted); margin: var(--s3) 0 0; }
+
 /* Address line with a copy button. */
 .copy-line {
   display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap;
@@ -433,7 +456,9 @@ td .sub { display: block; font-size: .76rem; color: var(--muted); }
   color: var(--muted); font: 600 .82rem var(--sans); cursor: pointer;
 }
 .tabs a:hover, .tabs button:hover { color: var(--ink); }
-.tabs .on { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sm); }
+.tabs a:active, .tabs button:active { transform: translateY(1px); }
+.tabs .on { background: var(--surface); color: var(--accent-ink); box-shadow: var(--shadow-sm); }
+.tabs .count { margin-left: 5px; font-variant-numeric: tabular-nums; opacity: .75; }
 
 /* --- modal (confirmation) ---------------------------------------------- */
 .modal {
@@ -503,7 +528,7 @@ td .sub { display: block; font-size: .76rem; color: var(--muted); }
 .stack { display: grid; gap: var(--s3); }
 .row { display: flex; gap: var(--s3); align-items: center; flex-wrap: wrap; }
 .spread { display: flex; justify-content: space-between; gap: var(--s3); align-items: center; }
-.mt0 { margin-top: 0; } .mb0 { margin-bottom: 0; } .mt4 { margin-top: var(--s4); } .mb4 { margin-bottom: var(--s4); }
+.mt0 { margin-top: 0; } .mb0 { margin-bottom: 0; } .mt2 { margin-top: var(--s2); } .mt4 { margin-top: var(--s4); } .mb4 { margin-bottom: var(--s4); }
 .pill-list { display: flex; flex-wrap: wrap; gap: var(--s2); }
 .bar { height: 8px; border-radius: var(--r-full); background: var(--surface-3); overflow: hidden; }
 .bar > span { display: block; height: 100%; background: var(--accent); }
@@ -565,6 +590,8 @@ td .sub { display: block; font-size: .76rem; color: var(--muted); }
 .sect > .s-body { padding: var(--s5); }
 .sect > .s-body > :first-child { margin-top: 0; }
 .sect > .s-body > :last-child { margin-bottom: 0; }
+/* Leave room for the fixed save bar at the end of the settings page. */
+.sect:last-of-type { margin-bottom: 88px; }
 .s-sub { margin: var(--s5) 0 var(--s3); padding-top: var(--s4); border-top: 1px solid var(--border); font-size: .95rem; }
 
 /* Nested "advanced" disclosure: same idea, quieter surface, dashed edge. */
@@ -597,6 +624,9 @@ td .sub { display: block; font-size: .76rem; color: var(--muted); }
 .switch .switch-txt { min-width: 0; display: grid; gap: 2px; }
 .switch .switch-label { font-size: .9rem; font-weight: 500; color: var(--ink); }
 .switch .hint { margin: 0; }
+/* Stack of switches used inside forms (import, book detail, conversion). */
+.switch-stack { display: grid; gap: var(--s3); }
+.switch-stack + .field, .field + .switch-stack { margin-top: var(--s4); }
 
 /* Segmented control for short option lists (radio inputs, no JS). */
 .segmented { display: flex; flex-wrap: wrap; gap: 2px; padding: 3px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-sm); }
@@ -611,13 +641,18 @@ td .sub { display: block; font-size: .76rem; color: var(--muted); }
 .segmented input:checked + span { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sm); }
 .segmented input:focus-visible + span { box-shadow: var(--ring); }
 
-/* Sticky action bar: always reachable while the page scrolls. */
+/* Action bar fixed to the bottom of the reading area: "Salvar" and "Desfazer"
+   stay reachable from anywhere in the long, collapsed settings page instead of
+   sinking with the end of the form. The trailing padding keeps the last field
+   from hiding behind the bar. */
+#settings-form { padding-bottom: 76px; }
+
 .save-bar {
-  position: sticky; bottom: var(--s4); z-index: 20;
+  position: fixed; z-index: 30; left: var(--sidebar); right: 0; bottom: 0;
   display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap;
-  margin-top: var(--s3); padding: var(--s3) var(--s4);
+  padding: var(--s3) var(--s5);
   background: var(--glass); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
-  border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow);
+  border-top: 1px solid var(--border); box-shadow: 0 -8px 24px rgba(60, 50, 35, .07);
 }
 .save-bar .state { font-size: .82rem; color: var(--muted); }
 .save-bar .state.dirty { color: var(--warn); font-weight: 600; }
@@ -633,7 +668,7 @@ td .sub { display: block; font-size: .76rem; color: var(--muted); }
   .sect .s-meta .badge { font-size: .66rem; }
   .sect > .s-body { padding: var(--s4); }
   .adv .adv-body { padding: var(--s3); }
-  .save-bar { bottom: var(--s2); padding: var(--s2) var(--s3); gap: var(--s2); }
+  .save-bar { left: 0; padding: var(--s2) var(--s3); gap: var(--s2); }
   .save-bar .state { order: 3; width: 100%; }
 }
 
@@ -665,6 +700,7 @@ td .sub { display: block; font-size: .76rem; color: var(--muted); }
   body.nav-open .sidebar { transform: none; }
   .content { padding: var(--s4) var(--s3) var(--s6); }
   .card { padding: var(--s4); border-radius: var(--r); }
+  .save-bar { left: 0; }
   .grid.cards { grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); }
   h1 { font-size: 1.3rem; }
   .grid.stats { grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); }

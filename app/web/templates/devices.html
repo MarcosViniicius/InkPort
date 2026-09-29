@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "partials/icons.html" import icon %}
+{% from "partials/toggle.html" import toggle %}
 {% block title %}Dispositivos · {{ app_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
@@ -127,14 +128,15 @@
     </div>
     <div class="field"><label for="notes">Observações</label><input id="notes" name="notes" placeholder="ex.: tela 6&quot; 300 ppi, abre EPUB e CBZ"></div>
 
-    <div class="check-stack">
-      <label class="check"><input type="checkbox" name="preserve_resolution" checked> universal (não fixar a tela)</label>
-      <label class="check"><input type="checkbox" name="grayscale"> tons de cinza</label>
-      <label class="check"><input type="checkbox" name="color" checked> colorido</label>
-      <label class="check"><input type="checkbox" name="autocontrast"> autocontraste (scans escuros)</label>
-      <label class="check"><input type="checkbox" name="crop_margins" checked> recortar margens</label>
-      <label class="check"><input type="checkbox" name="rotate_portrait"> girar páginas retrato</label>
-      <label class="check"><input type="checkbox" name="manga_rtl"> leitura RTL (mangá)</label>
+    <div class="switch-stack">
+      {{ toggle('preserve_resolution', 'Universal (não fixar a tela)', checked=true,
+                hint='Mantém a resolução e deixa o leitor ajustar.') }}
+      {{ toggle('color', 'Colorido', checked=true) }}
+      {{ toggle('grayscale', 'Tons de cinza', hint='Ideal para painéis e-ink.') }}
+      {{ toggle('autocontrast', 'Autocontraste', hint='Melhora scans escuros.') }}
+      {{ toggle('crop_margins', 'Recortar margens', checked=true) }}
+      {{ toggle('rotate_portrait', 'Girar páginas em retrato') }}
+      {{ toggle('manga_rtl', 'Leitura RTL (mangá)') }}
     </div>
     <p class="hint">Perfis <strong>universais</strong> (largura/altura 0) mantêm a resolução e deixam o leitor ajustar. Com largura e altura, o arquivo já sai dimensionado para aquele aparelho (mais nítido, porém preso à tela).</p>
     <button class="button" type="submit">Salvar perfil</button>

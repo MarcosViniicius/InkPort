@@ -1,0 +1,21 @@
+{#- Visual switch for boolean form fields (checkbox stays in the DOM, fully
+    functional without JS). Replaces the plain checkbox so the state reads at a
+    glance.
+
+    Usage:
+      {% from "partials/toggle.html" import toggle %}
+      <div class="switch-stack">
+        {{ toggle('convert', 'Converter automaticamente', checked=true,
+                  hint='O servidor escolhe o melhor formato para cada arquivo.') }}
+      </div>
+-#}
+{% macro toggle(name, label, checked=false, value='on', hint='', id='', attrs='') -%}
+<label class="switch">
+  <input type="checkbox" name="{{ name }}" value="{{ value }}" {{ 'checked' if checked }} {{ attrs|safe }}>
+  <span class="track" aria-hidden="true"></span>
+  <span class="switch-txt">
+    <span class="switch-label">{{ label }}</span>
+    {% if hint %}<span class="hint">{{ hint }}</span>{% endif %}
+  </span>
+</label>
+{%- endmacro %}

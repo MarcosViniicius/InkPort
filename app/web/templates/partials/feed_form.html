@@ -9,6 +9,7 @@
     Uso: {% from "partials/feed_form.html" import feed_form %}
 -#}
 {% from "partials/device_select.html" import device_select %}
+{% from "partials/toggle.html" import toggle %}
 {% macro feed_form(feed, profiles, output_formats, destination="") -%}
 <form method="post" action="/feeds/save">
   <input type="hidden" name="feed_id" value="{{ feed.id if feed else '' }}">
@@ -70,9 +71,11 @@
     </div>
   </div>
 
-  <div class="check-stack">
-    <label class="check"><input type="checkbox" name="active" {{ 'checked' if not feed or feed.active }}> ativo</label>
-    <label class="check"><input type="checkbox" name="keep_original" {{ 'checked' if feed and feed.keep_original }}> manter o original baixado</label>
+  <div class="switch-stack">
+    {{ toggle('active', 'Feed ativo', checked=(not feed or feed.active),
+              hint='Desligado, o feed fica cadastrado mas você busca quando quiser.') }}
+    {{ toggle('keep_original', 'Manter o original baixado', checked=(feed and feed.keep_original),
+              hint='Desligado, o arquivo baixado é removido depois da conversão.') }}
   </div>
 
   <div class="button-row">

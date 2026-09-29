@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% from "partials/icons.html" import icon %}
 {% from "partials/device_select.html" import device_select %}
+{% from "partials/toggle.html" import toggle %}
 {% block title %}{{ book.title }} · {{ app_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
@@ -76,7 +77,9 @@
           {% for target in targets %}<span class="badge {{ 'ok' if target.recommended }}">{{ format_label(target.format) }}</span> {% endfor %}
         </p>
         {% endif %}
-        <label class="check my3"><input type="checkbox" name="keep_original" checked> manter o arquivo original</label>
+        <div class="switch-stack my3">
+          {{ toggle('keep_original', 'Manter o arquivo original', checked=true) }}
+        </div>
         <button class="button" type="submit">Adicionar à fila</button>
       </form>
     </div>
@@ -115,7 +118,10 @@
           </div>
         </div>
         <div class="field"><label for="description">Descrição</label><textarea id="description" name="description">{{ book.description or '' }}</textarea></div>
-        <label class="check mb4"><input type="checkbox" name="rename_file"> renomear o arquivo conforme os metadados</label>
+        <div class="switch-stack mb4">
+          {{ toggle('rename_file', 'Renomear o arquivo conforme os metadados',
+                    hint='Aplica o padrão de nome do dispositivo escolhido.') }}
+        </div>
         <button class="button" type="submit">Salvar alterações</button>
       </form>
     </div>
@@ -147,11 +153,11 @@
       <form method="post" action="/library/{{ book.id }}/delete"
             data-confirm="Excluir «{{ book.title }}»?"
             data-confirm-msg="Esta ação não pode ser desfeita."
-            data-confirm-detail="{% if variants|length > 1 %}Existem {{ variants|length }} arquivos relacionados; eles ficarão sem vínculo. {% endif %}Se «apagar o arquivo» estiver marcado, o arquivo também será removido do disco."
+            data-confirm-detail="{% if variants|length > 1 %}Existem {{ variants|length }} arquivos relacionados; eles ficarão sem vínculo. {% endif %}O registro e o arquivo serão removidos do disco."
             data-confirm-ok="Excluir"
             data-confirm-danger
             onsubmit="return confirm('Excluir definitivamente este livro?')">
-        <label class="check mb3"><input type="checkbox" name="delete_files" checked> apagar o arquivo do disco</label>
+        <p class="muted small mb3">O arquivo também é apagado do disco. Não há como desfazer.</p>
         <button class="button danger" type="submit">Excluir livro</button>
       </form>
     </div>

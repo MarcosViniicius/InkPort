@@ -6,7 +6,6 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.converters.tools import detect_toolchain
 from app.database.base import get_session
 from app.library import repository
 from app.security.auth import require_panel
@@ -36,7 +35,6 @@ def dashboard(request: Request, session: Session = Depends(get_session)):
             "formats": repository.formats(session),
             "usage": library_usage(),
             "queue": queue.counts_by_status(session),
-            "tools": detect_toolchain().as_dict(),
             "max_upload_mb": settings.max_upload_mb,
         },
     )

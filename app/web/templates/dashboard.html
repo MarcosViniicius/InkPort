@@ -91,25 +91,19 @@
   </div>
 
   <div class="card">
-    <div class="card-head"><h2>{{ icon('settings', 17) }} Recursos de conversão</h2></div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Recurso</th><th>Estado</th><th>Detalhe</th></tr></thead>
-        <tbody>
-        {% for tool, path in tools.items() %}
-          <tr>
-            <td data-label="Recurso">{{ tool }}</td>
-            <td data-label="Estado">{% if path %}<span class="badge ok">ok</span>{% else %}<span class="badge">opcional</span>{% endif %}</td>
-            <td data-label="Detalhe" class="muted small mono">{{ path or '—' }}</td>
-          </tr>
-        {% endfor %}
-        </tbody>
-      </table>
+    <div class="card-head">
+      <h2>{{ icon('conversions', 17) }} Conversões</h2>
+      <a class="button link" href="/conversions">Ver a fila {{ icon('external', 14) }}</a>
     </div>
-    <p class="muted small mt4 mb0">
-      Tudo vem com o servidor: nada precisa ser instalado. EPUB, MOBI/AZW3, KEPUB,
-      PDF (ler e escrever), CBZ, 7z, RAR, DOCX, FB2 e TXT são convertidos por
-      bibliotecas Python que acompanham o projeto.
+    <div class="grid stats">
+      <div class="stat {{ 'accent' if queue.pending }}"><div class="value num">{{ queue.pending }}</div><div class="label">Pendentes</div></div>
+      <div class="stat {{ 'accent' if queue.running }}"><div class="value num">{{ queue.running }}</div><div class="label">Executando</div></div>
+      <div class="stat"><div class="value num">{{ queue.done }}</div><div class="label">Concluídas</div></div>
+      <div class="stat"><div class="value num">{{ queue.failed }}</div><div class="label">Falhas</div></div>
+    </div>
+    <p class="hint mb0 mt4">
+      Os formatos e recursos que esta instalação consegue gerar ficam em
+      <a href="/settings#ferramentas">Configurações → Recursos de conversão</a>.
     </p>
   </div>
 </div>

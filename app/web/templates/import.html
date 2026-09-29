@@ -1,14 +1,30 @@
 {% extends "base.html" %}
 {% from "partials/icons.html" import icon %}
 {% from "partials/device_select.html" import device_select %}
+{% from "partials/toggle.html" import toggle %}
 {% block title %}Importar · {{ app_name }}{% endblock %}
 {% block content %}
+{#- Eco do que o usuário já escolheu (o servidor devolve no erro). -#}
+{% set conv = convert if convert is defined else true %}
+{% set keep = keep_original if keep_original is defined else true %}
+{% set fmt_sel = target_format|default('auto') %}
+{% set prof_sel = device_profile|default('generic_epub') %}
+
 <div class="page-head">
   <div>
     <h1>Importar</h1>
-    <p class="lead">Envie arquivos, baixe de uma URL ou aponte uma pasta. A conversão pode acontecer na mesma etapa.</p>
+    <p class="lead">Traga arquivos para a biblioteca e, se quiser, já deixe a conversão na fila.</p>
+  </div>
+  <div class="button-row">
+    <a class="button ghost" href="/library">{{ icon('library', 16) }} Ver a biblioteca</a>
   </div>
 </div>
+
+<ol class="flow" aria-label="Como importar">
+  <li><span class="n">1</span><span><strong>Escolha os arquivos</strong><em>Arraste para a área ou selecione do computador.</em></span></li>
+  <li><span class="n">2</span><span><strong>Diga a categoria</strong><em>É a pasta no catálogo OPDS. Obrigatória.</em></span></li>
+  <li><span class="n">3</span><span><strong>Converta se quiser</strong><em>Ligue a conversão e escolha o formato.</em></span></li>
+</ol>
 
 <div class="grid two">
   <div class="card">
@@ -16,7 +32,7 @@
     <form method="post" action="/import/upload" enctype="multipart/form-data">
       <div class="drop" data-drop>
         <div class="big">Arraste os arquivos aqui</div>
-        <p class="hint" data-drop-name>PDF, EPUB, CBZ/CBR, imagens, MOBI/AZW… até {{ max_upload_mb }} MB cada</p>
+        <p class="hint" data-drop-name>ou clique para escolher · PDF, EPUB, CBZ/CBR, imagens, MOBI/AZW… até {{ max_upload_mb }} MB cada</p>
         <input type="file" name="files" multiple required aria-label="Escolher arquivos">
       </div>
 
@@ -34,24 +50,32 @@
 
       <fieldset>
         <legend>Conversão</legend>
-        <label class="check mb3">
-          <input type="checkbox" name="convert" checked> converter automaticamente
-        </label>
-        <div class="field-row">
-          <div class="field mb0">
-            <label for="target_format">Converter para</label>
-            <select id="target_format" name="target_format">
-              {% for fmt in output_formats %}
-                <option value="{{ fmt }}" {{ 'selected' if fmt == 'auto' }}>{{ 'Automático (melhor por arquivo)' if fmt == 'auto' else format_label(fmt) }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          {{ device_select(profiles, selected=device_profile, label='Dispositivo') }}
+        <div class="switch-stack mb3">
+          {{ toggle('convert', 'Converter automaticamente', checked=conv,
+                    hint='O servidor escolhe o melhor formato compatível quando você deixa em “Automático”.',
+                    attrs='data-toggle-target="#upload-targets"') }}
         </div>
-        <label class="check mt4"><input type="checkbox" name="keep_original" checked> manter o arquivo original</label>
+        <div id="upload-targets">
+          <div class="field-row">
+            <div class="field mb0">
+              <label for="target_format">Converter para</label>
+              <select id="target_format" name="target_format">
+                {% for fmt in output_formats %}
+                  <option value="{{ fmt }}" {{ 'selected' if fmt == fmt_sel }}>{{ 'Automático (melhor por arquivo)' if fmt == 'auto' else format_label(fmt) }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            {{ device_select(profiles, selected=prof_sel, label='Dispositivo') }}
+          </div>
+        </div>
+        <div class="switch-stack mt4">
+          {{ toggle('keep_original', 'Manter o arquivo original', checked=keep,
+                    hint='Desligado, o arquivo enviado é removido depois que a conversão termina.') }}
+        </div>
       </fieldset>
 
-      <button class="button lg" type="submit">Importar e converter</button>
+      <button class="button lg" type="submit">{{ icon('import', 16) }} Importar{{ ' e converter' if conv }}</button>
+      <p class="form-note">{{ icon('alert', 14) }} Arquivos grandes podem demorar: não feche a aba até ver o resultado abaixo.</p>
     </form>
   </div>
 
@@ -76,28 +100,35 @@
       </div>
       <fieldset>
         <legend>Conversão</legend>
-        <label class="check mb3">
-          <input type="checkbox" name="convert" checked> converter automaticamente
-        </label>
-        <div class="field-row">
-          <div class="field mb0">
-            <label for="url-format">Converter para</label>
-            <select id="url-format" name="target_format">
-              {% for fmt in output_formats %}
-                <option value="{{ fmt }}">{{ 'Automático (melhor por arquivo)' if fmt == 'auto' else format_label(fmt) }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          {{ device_select(profiles, id='url-profile', selected=device_profile, label='Dispositivo') }}
+        <div class="switch-stack mb3">
+          {{ toggle('convert', 'Converter automaticamente', checked=conv,
+                    hint='Sem conversão, o arquivo ou página fica só na biblioteca.',
+                    attrs='data-toggle-target="#url-targets"') }}
         </div>
-        <label class="check mt4"><input type="checkbox" name="keep_original" checked> manter o arquivo original</label>
+        <div id="url-targets">
+          <div class="field-row">
+            <div class="field mb0">
+              <label for="url-format">Converter para</label>
+              <select id="url-format" name="target_format">
+                {% for fmt in output_formats %}
+                  <option value="{{ fmt }}" {{ 'selected' if fmt == fmt_sel }}>{{ 'Automático (melhor por arquivo)' if fmt == 'auto' else format_label(fmt) }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            {{ device_select(profiles, id='url-profile', selected=prof_sel, label='Dispositivo') }}
+          </div>
+        </div>
+        <div class="switch-stack mt4">
+          {{ toggle('keep_original', 'Manter o arquivo original', checked=keep,
+                    hint='Desligado, o download bruto é removido depois da conversão.') }}
+        </div>
       </fieldset>
-      <button class="button" type="submit">Baixar e importar</button>
+      <button class="button" type="submit">{{ icon('download', 15) }} Baixar e importar</button>
     </form>
   </details>
 
   <details class="card" data-collapse-sm open>
-    <summary>{{ icon('library', 17) }} Importar pasta do servidor <span class="muted small">(avançado)</span></summary>
+    <summary>{{ icon('folder', 17) }} Importar pasta do servidor <span class="muted small">(avançado)</span></summary>
     <p class="hint">Para quando os arquivos já estão no computador que roda o servidor.</p>
     <form method="post" action="/import/scan">
       <div class="field">
@@ -109,22 +140,29 @@
         <input id="scan-category" name="category" list="category-list" required
                placeholder="escolha uma existente ou digite uma nova">
       </div>
-      <label class="check"><input type="checkbox" name="recursive" checked> incluir subpastas</label>
-      <label class="check my3"><input type="checkbox" name="move"> mover em vez de copiar</label>
-      <label class="check mb3"><input type="checkbox" name="convert" checked> converter automaticamente</label>
-      <div class="field-row">
-        <div class="field mb0">
-          <label for="scan-format">Converter para</label>
-          <select id="scan-format" name="target_format">
-            {% for fmt in output_formats %}
-              <option value="{{ fmt }}">{{ 'Automático (melhor por arquivo)' if fmt == 'auto' else format_label(fmt) }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        {{ device_select(profiles, id='scan-profile', selected=device_profile, label='Dispositivo') }}
+      <div class="switch-stack my3">
+        {{ toggle('recursive', 'Incluir subpastas', checked=true) }}
+        {{ toggle('move', 'Mover em vez de copiar', hint='O original sai da pasta escolhida.') }}
+        {{ toggle('convert', 'Converter automaticamente', checked=conv,
+                  attrs='data-toggle-target="#scan-targets"') }}
       </div>
-      <label class="check mt4 mb3"><input type="checkbox" name="keep_original" checked> manter o original</label>
-      <button class="button" type="submit">Escanear e converter</button>
+      <div id="scan-targets">
+        <div class="field-row">
+          <div class="field mb0">
+            <label for="scan-format">Converter para</label>
+            <select id="scan-format" name="target_format">
+              {% for fmt in output_formats %}
+                <option value="{{ fmt }}" {{ 'selected' if fmt == fmt_sel }}>{{ 'Automático (melhor por arquivo)' if fmt == 'auto' else format_label(fmt) }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          {{ device_select(profiles, id='scan-profile', selected=prof_sel, label='Dispositivo') }}
+        </div>
+      </div>
+      <div class="switch-stack mt4 mb3">
+        {{ toggle('keep_original', 'Manter o original', checked=keep) }}
+      </div>
+      <button class="button" type="submit">{{ icon('folder', 15) }} Escanear e importar</button>
     </form>
     <p class="hint mt4">
       Pastas grandes podem levar alguns minutos: esta página só responde quando a
