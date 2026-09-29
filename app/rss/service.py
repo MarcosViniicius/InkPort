@@ -125,7 +125,7 @@ def reset_feed(session: Session, feed: Feed, *, remove_books: bool = False) -> d
     return {"items": removed_items, "books": removed_books}
 
 
-def process_feed_by_id(feed_id: int) -> FeedReport | None:
+def process_feed_by_id(feed_id: int, *, force_backfill: bool = False) -> FeedReport | None:
     """Process a feed using its own session.
 
     Safe to call from a worker thread: a SQLAlchemy Session belongs to the
@@ -137,12 +137,18 @@ def process_feed_by_id(feed_id: int) -> FeedReport | None:
             return None
         _RUNNING.add(feed_id)
         try:
-            return process_feed(session, feed)
+            return process_feed(session, feed, force_backfill=force_backfill)
         finally:
             _RUNNING.discard(feed_id)
 
 
-def process_feed(session: Session, feed: Feed, downloader: Downloader | None = None) -> FeedReport:
+def process_feed(
+    session: Session,
+    feed: Feed,
+    downloader: Downloader | None = None,
+    *,
+    force_backfill: bool = False,
+) -> FeedReport:
     report = FeedReport(feed_id=feed.id, feed_name=feed.name)
     own_downloader = downloader is None
     downloader = downloader or Downloader()
@@ -197,14 +203,15 @@ def process_feed(session: Session, feed: Feed, downloader: Downloader | None = N
 
         session.commit()  # persist the RSS work before the archive pass
 
-        # Retroactive pull (sitemap): only while there is something left in the
-        # configured window. Runs a bounded batch per call so a huge archive is
-        # consumed across runs instead of stalling one feed run for hours. Kept
-        # after the commit above so a backfill failure cannot discard the RSS work.
-        if feed.backfill_months and feed.backfill_done_at is None:
+        # Retroactive pull (sitemap): a bounded batch per feed pass, so the
+        # configured period is filled over time instead of all at once. It keeps
+        # running every pass (the sitemap read is throttled inside run_backfill),
+        # because the window rolls forward. Kept after the commit above so a
+        # backfill failure cannot discard the RSS work.
+        if feed.backfill_days_total:
             from app.rss.backfill import run_backfill
 
-            back = run_backfill(session, feed, downloader)
+            back = run_backfill(session, feed, downloader, force=force_backfill)
             report.backfilled = back.get("imported", 0)
             report.backfill_done = bool(back.get("done"))
             if back.get("error"):

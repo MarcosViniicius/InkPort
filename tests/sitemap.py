@@ -100,7 +100,7 @@ def main() -> int:
     print("\n[janela por meses (retroativos)]")
     from datetime import date
 
-    from app.rss.archive import posts_within, window_start
+    from app.rss.archive import posts_within, posts_within_days, window_start, window_start_days
 
     hoje = date(2026, 9, 29)
     check("window_start(-1) = sem limite", window_start(-1, hoje) is None)
@@ -109,6 +109,9 @@ def main() -> int:
     check("últimos 12 meses pegam tudo", len(posts_within(posts, 12, today=hoje)) == 3, str(len(posts_within(posts, 12, today=hoje))))
     check("último 1 mês pega só o recente", len(posts_within(posts, 1, today=hoje)) == 1, str(len(posts_within(posts, 1, today=hoje))))
     check("desligado (0) não pega nada", posts_within(posts, 0, today=hoje) == [])
+    check("window_start_days(7) = 7 dias atrás", window_start_days(7, hoje) == date(2026, 9, 22), str(window_start_days(7, hoje)))
+    check("posts_within_days(7) pega só o recente", len(posts_within_days(posts, 7, today=hoje)) == 1, str(len(posts_within_days(posts, 7, today=hoje))))
+    check("posts_within_days(365) pega tudo", len(posts_within_days(posts, 365, today=hoje)) == 3, str(len(posts_within_days(posts, 365, today=hoje))))
 
     def fetch(url: str) -> bytes:
         return URLSET if "pt/sitemap" in url else INDEX

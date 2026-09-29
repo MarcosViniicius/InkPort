@@ -7,7 +7,7 @@
     <p class="crumbs"><a href="/feeds">Feeds</a> / {{ feed.name }}</p>
     <h1>Buscar do passado</h1>
     <p class="lead">
-      Período: <strong>{{ backfill_label(feed.backfill_months) }}</strong>
+      Período: <strong>{{ backfill_label(feed.backfill_days_total) }}</strong>
       {% if preview.sitemap %} · sitemap: <code>{{ preview.sitemap }}</code>{% endif %}
     </p>
   </div>

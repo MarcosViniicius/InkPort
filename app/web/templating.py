@@ -12,6 +12,7 @@ from app.config import get_settings
 from app.storage.paths import human_size
 from app.web.labels import (
     backfill_label,
+    backfill_parts,
     content_label,
     converter_label,
     format_label,
@@ -110,6 +111,7 @@ templates.env.globals.update(
     format_relative=_format_relative,
     static_url=static_url,
     backfill_label=backfill_label,
+    backfill_parts=backfill_parts,
     content_label=content_label,
     converter_label=converter_label,
     format_label=format_label,

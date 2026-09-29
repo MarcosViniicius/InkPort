@@ -26,13 +26,13 @@
           <span class="badge info">{{ format_label(feed.output_format) }}</span>
           <span class="badge plain">{{ profile_label(feed.device_profile) }}</span>
           <span class="badge plain">{{ feed.max_items_per_run }} itens por busca</span>
-          {% if feed.backfill_months %}
-          {% if feed.backfill_done_at %}
-          <span class="badge ok">passado: {{ backfill_label(feed.backfill_months) }} · concluído</span>
-          {% elif feed.backfill_total %}
+          {% if feed.backfill_days_total %}
+          {% if feed.backfill_total and feed.backfill_imported < feed.backfill_total %}
           <span class="badge info">retroativos: {{ feed.backfill_imported }}/{{ feed.backfill_total }}</span>
+          {% elif feed.backfill_imported %}
+          <span class="badge ok">passado: {{ backfill_label(feed.backfill_days_total) }} · {{ feed.backfill_imported }} importado(s)</span>
           {% else %}
-          <span class="badge info">passado: {{ backfill_label(feed.backfill_months) }}</span>
+          <span class="badge info">passado: {{ backfill_label(feed.backfill_days_total) }}</span>
           {% endif %}
           {% endif %}
           {% if not feed.keep_original %}<span class="badge plain">não mantém o original</span>{% endif %}
@@ -51,10 +51,10 @@
     <p class="muted small mt4 mb0 text-danger">{{ feed.last_error[:200] }}</p>
     {% endif %}
 
-    {% if feed.backfill_months and not feed.backfill_done_at and feed.backfill_total %}
+    {% if feed.backfill_days_total and feed.backfill_total and feed.backfill_imported < feed.backfill_total %}
     <div class="mt4">
       <div class="spread">
-        <span class="muted small">Retroativos: {{ backfill_label(feed.backfill_months) }}</span>
+        <span class="muted small">Retroativos: {{ backfill_label(feed.backfill_days_total) }}</span>
         <span class="muted small num">{{ feed.backfill_imported }} de {{ feed.backfill_total }}</span>
       </div>
       <span class="progress mt2" role="progressbar" aria-valuemin="0" aria-valuemax="{{ feed.backfill_total }}"
@@ -70,7 +70,7 @@
           {{ icon('refresh', 14) }} {{ 'Buscando…' if feed.id in running_feeds else 'Buscar agora' }}
         </button>
       </form>
-      {% if feed.backfill_months %}
+      {% if feed.backfill_days_total %}
       <form method="post" action="/feeds/{{ feed.id }}/backfill/preview">
         <button class="button ghost small" type="submit"
                 title="Ver o que os retroativos importariam, sem baixar nada">

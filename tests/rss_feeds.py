@@ -489,7 +489,7 @@ def main() -> int:
             output_format="epub",
             device_profile="generic_epub",
             max_items_per_run=1,
-            backfill_months=12,
+            backfill_days=365,
         )
         session.add(retro)
         session.commit()
@@ -510,7 +510,7 @@ def main() -> int:
     check("preview: só leu o sitemap (nenhum download)", len(routes.calls) == 1, str(routes.calls))
 
     with session_scope() as session:
-        r1 = process_feed(session, session.get(Feed, retro_id), routes)
+        r1 = process_feed(session, session.get(Feed, retro_id), routes, force_backfill=True)
     check(
         "retroativos: 1ª rodada importa até o limite e continua",
         r1.backfilled == 1 and not r1.backfill_done,
@@ -522,8 +522,20 @@ def main() -> int:
     check("contador de progresso: total do período gravado", total == 2, str(total))
     check("contador de progresso: 1 de 2 importado", feito == 1, str(feito))
 
+    # Sem forçar, a leitura do sitemap é espaçada: um passo imediatamente depois
+    # não relê o site (o intervalo do feed já é o ritmo do retroativo).
+    sitemaps_antes = sum(1 for c in routes.calls if c.endswith("sitemap.xml"))
     with session_scope() as session:
-        r2 = process_feed(session, session.get(Feed, retro_id), routes)
+        r_seguida = process_feed(session, session.get(Feed, retro_id), routes)
+    sitemaps_depois = sum(1 for c in routes.calls if c.endswith("sitemap.xml"))
+    check(
+        "ritmo: passo seguinte não relê o sitemap (throttle)",
+        r_seguida.backfilled == 0 and sitemaps_depois == sitemaps_antes,
+        f"{r_seguida.backfilled} {sitemaps_antes}->{sitemaps_depois}",
+    )
+
+    with session_scope() as session:
+        r2 = process_feed(session, session.get(Feed, retro_id), routes, force_backfill=True)
     check(
         "retroativos: 2ª rodada importa o resto e conclui",
         r2.backfilled == 1 and r2.backfill_done,
@@ -531,9 +543,9 @@ def main() -> int:
     )
 
     with session_scope() as session:
-        r3 = process_feed(session, session.get(Feed, retro_id), routes)
+        r3 = process_feed(session, session.get(Feed, retro_id), routes, force_backfill=True)
     check(
-        "retroativos concluídos não são reprocessados",
+        "retroativos em dia não reimportam nada",
         r3.backfilled == 0,
         str(r3.backfilled),
     )

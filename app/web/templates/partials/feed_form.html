@@ -71,23 +71,30 @@
     </div>
   </div>
 
+  {% set bf = backfill_parts(feed.backfill_days_total if feed else 0) %}
   <div class="field-row">
     <div class="field">
-      <label for="backfill_months">Buscar do passado</label>
-      <select id="backfill_months" name="backfill_months">
-        {% set bf = feed.backfill_months if feed else 0 %}
-        <option value="0" {{ 'selected' if bf == 0 }}>Desligado</option>
-        <option value="6" {{ 'selected' if bf == 6 }}>Últimos 6 meses</option>
-        <option value="12" {{ 'selected' if bf == 12 }}>Último 1 ano</option>
-        <option value="24" {{ 'selected' if bf == 24 }}>Últimos 2 anos</option>
-        <option value="60" {{ 'selected' if bf == 60 }}>Últimos 5 anos</option>
-        <option value="-1" {{ 'selected' if bf == -1 }}>Todo o acervo do site</option>
-      </select>
+      <label for="backfill_value">Buscar do passado</label>
+      <div class="period">
+        <input id="backfill_value" name="backfill_value" type="number" inputmode="numeric"
+               min="1" max="10000" step="1" value="{{ bf.value }}"
+               aria-label="Quantidade do período retroativo">
+        <select id="backfill_unit" name="backfill_unit" aria-label="Unidade do período retroativo">
+          <option value="off" {{ 'selected' if bf.unit == 'off' }}>Desligado</option>
+          <option value="day" {{ 'selected' if bf.unit == 'day' }}>dia(s)</option>
+          <option value="week" {{ 'selected' if bf.unit == 'week' }}>semana(s)</option>
+          <option value="month" {{ 'selected' if bf.unit == 'month' }}>mês(es)</option>
+          <option value="year" {{ 'selected' if bf.unit == 'year' }}>ano(s)</option>
+          <option value="all" {{ 'selected' if bf.unit == 'all' }}>todo o acervo</option>
+        </select>
+      </div>
       <p class="hint">
-        O RSS normalmente só traz os posts recentes. Ligado, o servidor lê o
-        <code>sitemap.xml</code> do site e importa também os posts antigos desse
-        período (funciona em sites com a data na URL, tipo
-        <code>/2026/09/28/post/</code>).
+        O RSS só traz os posts recentes; ligado, o servidor lê o
+        <code>sitemap.xml</code> do site e vai importando os posts antigos
+        <strong>deste período</strong> a cada busca (ex.: <em>2 anos</em>,
+        <em>1 semana</em>, <em>7 dias</em>) — aos poucos, respeitando “Itens por
+        execução”. Funciona em sites com a data na URL, tipo
+        <code>/2026/09/28/post/</code>.
       </p>
     </div>
     <div class="field">

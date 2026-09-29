@@ -71,14 +71,8 @@ SOURCE_LABELS = {
     "download": "baixado da web",
 }
 
-BACKFILL_LABELS = {
-    0: "Desligado",
-    6: "Últimos 6 meses",
-    12: "Último 1 ano",
-    24: "Últimos 2 anos",
-    60: "Últimos 5 anos",
-    -1: "Todo o acervo do site",
-}
+#: Days per unit used by the retroactive period field.
+BACKFILL_UNIT_DAYS = {"day": 1, "week": 7, "month": 30, "year": 365}
 
 STATUS_LABELS = {
     "pending": "na fila",
@@ -138,13 +132,43 @@ def source_label(source: str | None) -> str:
     return SOURCE_LABELS.get(source, source)
 
 
-def backfill_label(months) -> str:
-    """Human label for the per-feed retroactive period."""
+def backfill_parts(days) -> dict:
+    """Best ``(unit, value)`` for the period form, from a number of days.
+
+    ``unit`` is ``off``, ``day``, ``week``, ``month``, ``year`` or ``all``.
+    """
     try:
-        value = int(months)
+        total = int(days or 0)
     except (TypeError, ValueError):
-        value = 0
-    return BACKFILL_LABELS.get(value, f"{value} meses")
+        total = 0
+    if total < 0:
+        return {"unit": "all", "value": 1}
+    if total == 0:
+        return {"unit": "off", "value": 1}
+    for unit in ("year", "month", "week"):
+        factor = BACKFILL_UNIT_DAYS[unit]
+        if total % factor == 0:
+            return {"unit": unit, "value": total // factor}
+    return {"unit": "day", "value": total}
+
+
+def backfill_label(days) -> str:
+    """Human label for the per-feed retroactive period."""
+    parts = backfill_parts(days)
+    unit, value = parts["unit"], parts["value"]
+    if unit == "off":
+        return "Desligado"
+    if unit == "all":
+        return "Todo o acervo do site"
+    plural = {"day": "dias", "week": "semanas", "month": "meses", "year": "anos"}[unit]
+    if value == 1:
+        return {
+            "day": "Último 1 dia",
+            "week": "Última 1 semana",
+            "month": "Último 1 mês",
+            "year": "Último 1 ano",
+        }[unit]
+    return f"Últimos {value} {plural}"
 
 
 def profile_label(slug: str | None) -> str:

@@ -26,8 +26,8 @@ router = APIRouter(prefix="/feeds", dependencies=[Depends(require_panel)], tags=
 #: Formatos que o formulário oferece — e os únicos que o salvamento aceita.
 OUTPUT_FORMATS = ("epub", "cbz", "pdf", "mobi", "azw3", "kepub")
 
-#: Períodos aceitos em "Buscar do passado" (0 = desligado, -1 = todo o acervo).
-BACKFILL_MONTHS = (-1, 0, 6, 12, 24, 60)
+#: Unidades do período retroativo -> dias. 0 = desligado, -1 = todo o acervo.
+BACKFILL_UNIT_DAYS = {"day": 1, "week": 7, "month": 30, "year": 365}
 
 
 @router.get("")
@@ -100,7 +100,8 @@ async def save_feed(
     device_profile: str = Form("generic_epub"),
     destination_folder: str = Form(""),
     max_items_per_run: str = Form(""),
-    backfill_months: str = Form("0"),
+    backfill_value: str = Form("1"),
+    backfill_unit: str = Form("off"),
     sitemap_url: str = Form(""),
     active: str = Form(""),
     keep_original: str = Form(""),
@@ -149,13 +150,16 @@ async def save_feed(
     feed.max_items_per_run = _as_int(
         max_items_per_run, default=feed.max_items_per_run or 20, minimum=1
     )
-    # Retroativos: mudar o período invalida o "arquivo já percorrido", então a
-    # próxima busca volta a varrer o sitemap.
-    anterior = feed.backfill_months or 0
-    feed.backfill_months = _backfill_months(backfill_months, default=anterior)
+    # Retroativos: mudar o período reinicia a contagem e a próxima busca volta a
+    # varrer o sitemap. Dias é o formato canônico; o campo antigo (meses) some.
+    anterior = feed.backfill_days_total
+    feed.backfill_days = _backfill_days(backfill_unit, backfill_value, default=anterior)
+    # O formulário é a fonte da verdade: o campo antigo (meses) é aposentado.
+    feed.backfill_months = 0
     feed.sitemap_url = _sitemap_url(sitemap_url)
-    if feed.backfill_months != anterior:
+    if feed.backfill_days != anterior:
         feed.backfill_done_at = None
+        feed.backfill_checked_at = None
         feed.backfill_imported = 0
         feed.backfill_total = 0
     feed.active = bool(active)
@@ -167,13 +171,13 @@ async def save_feed(
     session.commit()
 
     # "Automático ao salvar": começa a puxar o acervo antigo em segundo plano.
-    if feed.backfill_months and feed.backfill_done_at is None:
+    if feed.backfill_days_total:
         asyncio.create_task(asyncio.to_thread(_backfill_in_background, feed.id))
 
     verb = "atualizado" if feed_id.strip() else "criado"
     extra = (
         " Buscando os posts antigos em segundo plano."
-        if feed.backfill_months and feed.backfill_done_at is None
+        if feed.backfill_days_total
         else ""
     )
     return RedirectResponse(
@@ -207,13 +211,21 @@ def _device_profile(raw: str, session: Session, *, default: str) -> str:
     return slug if slug in all_profiles(session) else default
 
 
-def _backfill_months(raw: str, *, default: int) -> int:
-    """Só aceita os presets oferecidos; qualquer outra coisa mantém o atual."""
+def _backfill_days(unit: str, raw: str, *, default: int) -> int:
+    """Period from the quantity + unit fields: 0 = off, -1 = all, else days."""
+    unit = (unit or "").strip().lower()
+    if unit == "off":
+        return 0
+    if unit == "all":
+        return -1
+    factor = BACKFILL_UNIT_DAYS.get(unit)
+    if factor is None:
+        return default
     try:
         value = int(str(raw).strip())
     except (TypeError, ValueError):
         return default
-    return value if value in BACKFILL_MONTHS else default
+    return max(1, value) * factor
 
 
 def _sitemap_url(raw: str) -> str:
@@ -337,7 +349,7 @@ async def backfill_feed(feed_id: int, session: Session = Depends(get_session)):
     feed = session.get(Feed, feed_id)
     if feed is None:
         raise HTTPException(status_code=404, detail="Feed não encontrado")
-    if not feed.backfill_months:
+    if not feed.backfill_days_total:
         return _back(
             "/feeds",
             "Ligue «Buscar do passado» no feed e salve para importar os posts antigos.",
@@ -361,7 +373,7 @@ def backfill_preview(feed_id: int, request: Request, session: Session = Depends(
     feed = session.get(Feed, feed_id)
     if feed is None:
         return _back("/feeds", "Feed não encontrado.")
-    if not feed.backfill_months:
+    if not feed.backfill_days_total:
         return _back(
             "/feeds",
             "Ligue «Buscar do passado» no feed e salve para importar os posts antigos.",
@@ -379,23 +391,11 @@ def backfill_preview(feed_id: int, request: Request, session: Session = Depends(
 
 
 def _backfill_in_background(feed_id: int) -> None:
-    """Clear the "archive finished" mark and run the normal (RSS + archive) pass."""
-    from app.database import session_scope
-
+    """Force a retroactive pass now (RSS + archive), bypassing the read throttle."""
     if feed_id in feeds_in_progress():
         return
     try:
-        with session_scope() as session:
-            feed = session.get(Feed, feed_id)
-            if feed is None or not feed.backfill_months:
-                return
-            if feed.backfill_done_at is not None:
-                # Forcing after "concluído" restarts the window: reset the counter.
-                feed.backfill_imported = 0
-                feed.backfill_total = 0
-            feed.backfill_done_at = None
-            session.commit()
-        report = process_feed_by_id(feed_id)
+        report = process_feed_by_id(feed_id, force_backfill=True)
     except Exception:  # noqa: BLE001 - background task: never crash the loop
         logger.exception("background feed backfill failed", extra={"feed_id": feed_id})
         return

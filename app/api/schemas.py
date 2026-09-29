@@ -54,7 +54,9 @@ class FeedPayload(BaseModel):
     destination_folder: str = ""
     keep_original: bool = False
     max_items_per_run: int = Field(default=20, ge=1, le=200)
-    #: Retroactive pull in months (0 = off, -1 = whole archive).
+    #: Retroactive pull in days (0 = off, -1 = whole archive). Canonical field.
+    backfill_days: int = 0
+    #: Legacy: months. Still accepted; ``backfill_days`` wins when set.
     backfill_months: int = 0
     sitemap_url: str = ""
 

@@ -42,14 +42,19 @@ class Feed(Base):
     keep_original: Mapped[bool] = mapped_column(Boolean, default=False)
     max_items_per_run: Mapped[int] = mapped_column(Integer, default=20)
 
-    #: Retroactive pull: how many months back from today to import
-    #: (0 = off, -1 = the whole archive). RSS only carries the latest posts;
-    #: the older ones come from the site's sitemap.
+    #: Retroactive pull, in days back from today (0 = off, -1 = the whole
+    #: archive). The form lets the user pick a quantity + unit; days is the
+    #: canonical storage because it covers "1 dia" as well as "2 anos".
+    backfill_days: Mapped[int] = mapped_column(Integer, default=0)
+    #: Legacy column from the first version (months). Kept so an existing
+    #: database keeps working; see ``backfill_days_total``.
     backfill_months: Mapped[int] = mapped_column(Integer, default=0)
     #: Optional sitemap URL; when empty it is derived from ``url``.
     sitemap_url: Mapped[str] = mapped_column(String(2048), default="")
-    #: Set once the archive walk had nothing left to import.
+    #: When the archive walk last had nothing left to import (informational).
     backfill_done_at: Mapped[datetime | None] = mapped_column(DateTime)
+    #: When the sitemap was last read, so a short feed interval does not hammer it.
+    backfill_checked_at: Mapped[datetime | None] = mapped_column(DateTime)
     #: Progress of the current window: how many posts the pull will import and
     #: how many it already did (shown as a counter/bar in the feed list).
     backfill_imported: Mapped[int] = mapped_column(Integer, default=0)
@@ -75,6 +80,16 @@ class Feed(Base):
         if last.tzinfo is None:
             last = last.replace(tzinfo=UTC)
         return (now - last).total_seconds() >= self.interval_minutes * 60
+
+    @property
+    def backfill_days_total(self) -> int:
+        """Effective window in days (0 = off, -1 = all), including the legacy field."""
+        if self.backfill_days:
+            return self.backfill_days
+        months = self.backfill_months or 0
+        if months < 0:
+            return -1
+        return months * 30
 
     @property
     def backfill_percent(self) -> int:

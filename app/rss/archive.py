@@ -8,7 +8,7 @@ conversion pipeline, so the logic lives here once.
 from __future__ import annotations
 
 import logging
-from datetime import date
+from datetime import date, timedelta
 from urllib.parse import urlparse
 
 from app.database.models import Book, SourceKind
@@ -82,9 +82,26 @@ def posts_within(
     posts: list[SitemapPost], months: int, *, today: date | None = None
 ) -> list[SitemapPost]:
     """Posts published in the last ``months`` (0 = none, -1 = everything)."""
-    if months == 0:
+    return posts_within_days(posts, months * 30, today=today)
+
+
+def window_start_days(days: int, today: date | None = None) -> date | None:
+    """First day included for ``days``; ``-1`` (whole archive) -> ``None``."""
+    if days < 0:
+        return None
+    today = today or date.today()
+    if days == 0:
+        return today
+    return today - timedelta(days=days)
+
+
+def posts_within_days(
+    posts: list[SitemapPost], days: int, *, today: date | None = None
+) -> list[SitemapPost]:
+    """Posts published in the last ``days`` (0 = none, -1 = everything)."""
+    if days == 0:
         return []
-    start = window_start(months, today)
+    start = window_start_days(days, today)
     if start is None:
         return list(posts)
     return [post for post in posts if post_date(post) >= start]

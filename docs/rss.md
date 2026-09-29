@@ -86,10 +86,10 @@ python -m app.tools.import_site https://site/sitemap.xml --all-years `
 ## Puxar posts antigos (retroativos)
 
 O RSS só traz os posts recentes que o site publica. Para trazer o histórico de
-**um feed específico**, o formulário do feed tem o campo **Buscar do passado**
-com presets: *Desligado*, *últimos 6 meses*, *último 1 ano*, *últimos 2 anos*,
-*últimos 5 anos* e *todo o acervo do site*. Há também **Sitemap (opcional)**
-para quando o sitemap não está em `/sitemap.xml`.
+**um feed específico**, o formulário do feed tem o campo **Buscar do passado**:
+uma **quantidade + unidade** (*dia(s)*, *semana(s)*, *mês(es)*, *ano(s)*) ou
+*Desligado* / *todo o acervo*. Ex.: `2 anos`, `1 semana`, `7 dias`. Há também
+**Sitemap (opcional)** para quando o sitemap não está em `/sitemap.xml`.
 
 Como funciona:
 
@@ -101,19 +101,19 @@ Como funciona:
 - Os posts entram com a **categoria, o formato e o perfil** do feed, e são
   marcados no histórico do feed (aparecem em *Itens recentes*).
 - **Não duplica**: URLs já na biblioteca ou já vistas pelo feed são puladas.
-- É **automático**: começa ao salvar e continua a cada busca do feed enquanto
-  sobrar algo, sempre em blocos de até **Itens por execução** (um acervo grande
-  é consumido em várias rodadas, sem travar). O botão **Buscar retroativos**
-  força outra passada; quando o período é percorrido por completo, o feed mostra
-  `passado: … (concluído)`.
+- É **contínuo**: a cada busca do feed o servidor importa um bloco (até
+  **Itens por execução**) dos posts antigos dentro do período e vai preenchendo
+  aos poucos, rodada a rodada — **não de uma vez**. Como o período é uma janela
+  que anda com o tempo, ele **continua verificando periodicamente** (a leitura do
+  sitemap é espaçada em 1 h para não martelar o site). O botão **Buscar
+  retroativos** força uma passada na hora; **Pré-visualizar** mostra o que falta.
 - **Pré-visualizar** (botão no feed, ou `GET /api/feeds/{id}/backfill/preview`)
   mostra o que seria importado — quantos no sitemap, quantos no período, quantos
   já existem e uma amostra dos posts — **sem baixar nada**, para conferir antes
   de disparar.
-- A lista de feeds mostra o **progresso** enquanto o período não termina:
-  `retroativos: N de M` com uma barra. `N` são os posts já importados e `M` o
-  tamanho do período (definido na primeira passada). Ao concluir, vira
-  `passado: … · concluído`.
+- A lista de feeds mostra o **progresso**: `retroativos: N/M` com uma barra
+  enquanto há posts pendentes no período; quando fica em dia, vira
+  `passado: … · N importado(s)`.
 - Se o site não estiver com o sitemap acessível, a busca retroativa tenta de
   novo na próxima rodada (não marca "concluído").
 - Mudar o período reinicia a varredura do zero.

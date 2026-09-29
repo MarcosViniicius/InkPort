@@ -297,6 +297,11 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 
 .field-row { display: grid; gap: var(--s4); grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
 
+/* Number + unit side by side (e.g. the retroactive period "2 anos"). */
+.period { display: flex; gap: var(--s2); align-items: center; }
+.period > input { flex: 1 1 6rem; min-width: 0; }
+.period > select { flex: 0 0 auto; width: auto; min-width: 8.5rem; }
+
 /* Field with a button attached (e.g. "Testar feed"). */
 .input-with-action { display: flex; gap: var(--s2); align-items: center; }
 .input-with-action > input { flex: 1 1 auto; min-width: 0; }
