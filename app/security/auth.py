@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
+import logging
 import secrets
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from sqlalchemy.orm import Session
 
-from app.config import get_settings
+from app.config import get_base_settings, get_settings
 from app.database.base import get_session
-from app.security import passwords, settings_store
+from app.security import passwords, runtime, settings_store
+
+logger = logging.getLogger(__name__)
 
 ADMIN_USER_KEY = "admin_username"
 ADMIN_HASH_KEY = "admin_password_hash"
@@ -24,15 +27,28 @@ class NotAuthenticated(Exception):
 
 
 # --- credential storage ---------------------------------------------------
-def ensure_admin(session: Session) -> None:
-    """Create the initial admin account from ``.env`` on first start."""
-    settings = get_settings()
-    if settings_store.get(session, ADMIN_HASH_KEY) is None:
-        settings_store.set_value(session, ADMIN_USER_KEY, settings.admin_username)
-        settings_store.set_value(
-            session, ADMIN_HASH_KEY, passwords.hash_password(settings.admin_password)
-        )
-        session.commit()
+def ensure_admin(session: Session) -> bool:
+    """Create the admin from the configuration only when a password was set.
+
+    A password is "set" when it comes from the environment or ``.env`` (even the
+    old default ``admin``): that is a deliberate choice and is respected. With
+    nothing configured, the panel stays in wizard mode and the user creates the
+    credentials in ``/setup`` -- so the ``.env`` is optional.
+    Returns True when an admin exists afterwards.
+    """
+    if settings_store.get(session, ADMIN_HASH_KEY) is not None:
+        return True
+    settings = get_base_settings()
+    explicit = "admin_password" in settings.model_fields_set
+    password = (settings.admin_password or "").strip()
+    if not password or not explicit:
+        logger.info("sem senha configurada: o assistente de primeiro acesso vai rodar")
+        return False
+    settings_store.set_value(session, ADMIN_USER_KEY, settings.admin_username or "admin")
+    settings_store.set_value(session, ADMIN_HASH_KEY, passwords.hash_password(password))
+    session.commit()
+    logger.info("admin criado a partir da configuração (senha definida por você)")
+    return True
 
 
 def verify_credentials(session: Session, username: str, password: str) -> bool:
@@ -53,7 +69,10 @@ def change_password(session: Session, password: str, *, username: str | None = N
 
 
 def admin_username(session: Session) -> str:
-    return settings_store.get(session, ADMIN_USER_KEY, get_settings().admin_username) or "admin"
+    stored = settings_store.get(session, ADMIN_USER_KEY)
+    if stored:
+        return stored
+    return runtime.get("admin_username") or get_settings().admin_username or "admin"
 
 
 # --- panel (cookie session) ----------------------------------------------
@@ -70,8 +89,7 @@ def current_user(request: Request) -> str | None:
 
 
 def require_panel(request: Request) -> str:
-    settings = get_settings()
-    if not settings.require_auth_panel:
+    if not runtime.get("require_auth_panel"):
         return "guest"
     user = current_user(request)
     if not user:
@@ -83,20 +101,30 @@ PanelUser = Depends(require_panel)
 
 
 # --- OPDS (HTTP Basic) ----------------------------------------------------
+def _unauthorized() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Credenciais OPDS inválidas",
+        headers={"WWW-Authenticate": 'Basic realm="OPDS"'},
+    )
+
+
 def require_opds_auth(
     credentials: HTTPBasicCredentials | None = Depends(_basic),
     session: Session = Depends(get_session),
 ) -> None:
-    settings = get_settings()
-    if not settings.opds_username:
+    username = runtime.get("opds_username") or ""
+    if not username:
         return  # OPDS is open
 
-    if credentials is None or not (
-        secrets.compare_digest(credentials.username, settings.opds_username)
-        and secrets.compare_digest(credentials.password, settings.opds_password)
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Credenciais OPDS inválidas",
-            headers={"WWW-Authenticate": 'Basic realm="OPDS"'},
-        )
+    if credentials is None or not secrets.compare_digest(credentials.username, username):
+        raise _unauthorized()
+
+    # No banco a senha é guardada como hash; no .env antigo, em texto puro.
+    stored_hash = runtime.get("opds_password")
+    if stored_hash:
+        allowed = passwords.verify_password(credentials.password, stored_hash)
+    else:
+        allowed = secrets.compare_digest(credentials.password, get_settings().opds_password)
+    if not allowed:
+        raise _unauthorized()

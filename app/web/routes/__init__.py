@@ -11,10 +11,12 @@ from app.web.routes.imports import router as imports_router
 from app.web.routes.library import router as library_router
 from app.web.routes.reader import router as reader_router
 from app.web.routes.settings_routes import router as settings_router
+from app.web.routes.setup import router as setup_router
 
 
 def build_web_router() -> APIRouter:
     router = APIRouter()
+    router.include_router(setup_router)
     router.include_router(auth_router)
     router.include_router(dashboard_router)
     router.include_router(library_router)

@@ -199,10 +199,14 @@ def _opds_root_checks(client) -> None:
     check("browse não traz livros", browse_books == 0, str(browse_books))
     check("browse traz as seções como entradas", browse_entries >= 5, str(browse_entries))
 
-    settings = get_settings()
-    original = settings.opds_root_mode
+    # O modo agora vive no banco: salvar de verdade exercita o caminho real.
+    from app.database.base import session_scope
+    from app.security import runtime
+
+    original = runtime.get("opds_root_mode")
     try:
-        settings.opds_root_mode = "navigation"
+        with session_scope() as session:
+            runtime.save(session, {"opds_root_mode": "navigation"})
         navigation = client.get("/opds", headers={"Accept": "application/atom+xml"})
         nav_books = len(re.findall(r'rel="http://opds-spec.org/acquisition"', navigation.text))
         nav_entries = len(re.findall(r"<entry>", navigation.text))
@@ -210,7 +214,8 @@ def _opds_root_checks(client) -> None:
         check("modo navigation: raiz com as seções", nav_entries >= 5, str(nav_entries))
         check("modo navigation: sem paginação", 'rel="next"' not in navigation.text)
     finally:
-        settings.opds_root_mode = original
+        with session_scope() as session:
+            runtime.save(session, {"opds_root_mode": original})
 
 
 def _opds_author_checks(client) -> None:

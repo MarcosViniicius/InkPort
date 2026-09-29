@@ -1,4 +1,4 @@
-"""Conversões nativas: os formatos que antes exigiam o Calibre.
+﻿"""Conversões nativas: os formatos que antes exigiam o Calibre.
 
 EPUB -> KEPUB / TXT / FB2 / DOCX / AZW3 / MOBI e a volta para EPUB, tudo com
 pacotes Python. O teste monta o próprio EPUB (não depende do acervo do usuário).
@@ -24,6 +24,7 @@ sys.path.insert(0, str(ROOT))
 WORKDIR = Path(tempfile.mkdtemp(prefix="opds_native_"))
 os.environ["DATA_DIR"] = str(WORKDIR)
 os.environ["SECRET_KEY"] = "test-secret-key"
+os.environ.setdefault("ADMIN_PASSWORD", "test-password")  # senha explicita: pula o assistente
 
 PASSED: list[str] = []
 FAILED: list[str] = []

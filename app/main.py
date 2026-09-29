@@ -6,7 +6,7 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -18,6 +18,8 @@ from app.devices.registry import seed_builtin_profiles
 from app.library.repairs import run_repairs
 from app.logging_conf import configure_logging
 from app.opds import v1_router, v2_router
+from app.security import runtime
+from app.security import setup as setup_state
 from app.security.auth import NotAuthenticated, ensure_admin
 from app.web import STATIC_DIR
 from app.web.errors import register_error_handlers
@@ -35,9 +37,15 @@ async def lifespan(app: FastAPI):
 
     init_db()
     with session_scope() as session:
+        # Configuração salva no painel entra em vigor antes de tudo.
+        runtime.load(session)
         ensure_admin(session)
+        configured = setup_state.refresh(session)
         seed_builtin_profiles(session)
         run_repairs(session)
+
+    if not configured:
+        logger.info("primeiro acesso pendente: o painel abre em /setup")
 
     _log_access(settings)
 
@@ -51,6 +59,15 @@ async def lifespan(app: FastAPI):
     finally:
         await manager.stop()
         logger.info("application stopped")
+
+
+def _setup_bypass(path: str) -> bool:
+    """Rotas que continuam acessíveis antes da configuração inicial.
+
+    O OPDS fica de fora de propósito: apontar um leitor para o servidor não pode
+    esbarrar no assistente (numa instalação nova o acervo ainda está vazio).
+    """
+    return path.startswith(("/setup", "/static", "/health", "/opds", "/favicon.ico"))
 
 
 def _log_access(settings) -> None:
@@ -102,6 +119,20 @@ def create_app() -> FastAPI:
             return await call_next(request)
         finally:
             reset_base_url(token)
+
+    @app.middleware("http")
+    async def _require_first_setup(request: Request, call_next):
+        """Sem senha no banco, o painel inteiro vive no assistente (/setup)."""
+        if setup_state.cached() or _setup_bypass(request.url.path):
+            return await call_next(request)
+        if request.url.path.startswith("/api"):
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "detail": "Configuração inicial pendente: abra o painel em /setup."
+                },
+            )
+        return RedirectResponse("/setup", status_code=303)
 
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 

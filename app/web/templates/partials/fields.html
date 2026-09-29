@@ -1,0 +1,37 @@
+{#- Campos de configuração gerados do registro (app/security/runtime.py).
+
+    Usado pelo assistente de primeiro acesso e pela tela de Configurações: uma
+    descrição só, sem duplicar rótulo, ajuda ou validação.
+    Uso: {% from "partials/fields.html" import render_field %}
+-#}
+{% macro render_field(field) -%}
+  {%- if field.kind == 'bool' -%}
+    <div class="field">
+      <label class="check">
+        <input type="checkbox" name="{{ field.name }}" value="on" {{ 'checked' if field.value }}>
+        <span>{{ field.label }}</span>
+      </label>
+      {% if field.help %}<p class="hint">{{ field.help }}</p>{% endif %}
+    </div>
+  {%- elif field.kind == 'choice' -%}
+    <div class="field">
+      <label for="f-{{ field.name }}">{{ field.label }}</label>
+      <select id="f-{{ field.name }}" name="{{ field.name }}">
+        {% for value, rotulo in field.choices %}
+        <option value="{{ value }}" {{ 'selected' if field.value == value }}>{{ rotulo }}</option>
+        {% endfor %}
+      </select>
+      {% if field.help %}<p class="hint">{{ field.help }}</p>{% endif %}
+    </div>
+  {%- else -%}
+    <div class="field">
+      <label for="f-{{ field.name }}">{{ field.label }}</label>
+      <input id="f-{{ field.name }}" name="{{ field.name }}"
+             type="{% if field.kind == 'password' %}password{% elif field.kind in ('int', 'float') %}number{% else %}text{% endif %}"
+             {%- if field.kind in ('int', 'float') %} step="{{ 1 if field.kind == 'int' else '0.1' }}"{% if field.minimum is not none %} min="{{ field.minimum }}"{% endif %}{% if field.maximum is not none %} max="{{ field.maximum }}"{% endif %}{% endif %}
+             {%- if field.secret %} autocomplete="new-password" placeholder="(manter a atual)"{% endif %}
+             value="{{ '' if field.secret else field.value }}">
+      {% if field.help %}<p class="hint">{{ field.help }}</p>{% endif %}
+    </div>
+  {%- endif -%}
+{%- endmacro %}

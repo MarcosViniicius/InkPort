@@ -42,6 +42,26 @@
   </div>
 </div>
 
+<div class="card mt4">
+  <div class="card-head"><h2>{{ icon('settings', 17) }} Aplicação e catálogo</h2></div>
+  <p class="hint">
+    Guardado no banco cifrado desta instalação — vale na hora. Conversões
+    simultâneas e busca automática de feeds entram em vigor ao reiniciar o servidor.
+  </p>
+  {% from "partials/fields.html" import render_field %}
+  <form method="post" action="/settings/app">
+    {% for group, rotulo in groups %}
+    <h3 class="mt4">{{ rotulo }}</h3>
+    <div class="field-row">
+      {% for field in fields if field.group == group %}{{ render_field(field) }}{% endfor %}
+    </div>
+    {% endfor %}
+    <div class="button-row mt4">
+      <button class="button" type="submit">Salvar configuração</button>
+    </div>
+  </form>
+</div>
+
 <div class="grid two mt4">
   <div class="card">
     <div class="card-head"><h2>{{ icon('library', 17) }} Armazenamento</h2></div>

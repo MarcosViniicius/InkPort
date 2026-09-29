@@ -38,10 +38,14 @@ def _use(data_dir: Path, *, encryption: str) -> None:
     os.environ["DB_ENCRYPTION"] = encryption
     os.environ.setdefault("SECRET_KEY", "test-secret-key")
 
-    from app.config import get_settings
+    from app.config import get_base_settings, get_settings
     from app.database import base
+    from app.security import runtime, setup
 
     get_settings.cache_clear()
+    get_base_settings.cache_clear()
+    runtime.reset()
+    setup.reset()
     base._engine = None
     base._SessionLocal = None
     base._db_key = None

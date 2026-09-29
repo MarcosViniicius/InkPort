@@ -1,4 +1,4 @@
-"""Arquivos compactados: tudo em Python, nada instalado no sistema.
+﻿"""Arquivos compactados: tudo em Python, nada instalado no sistema.
 
 Cobre o que antes exigia `unrar`/`7z` na máquina:
 ZIP/CBZ, TAR/CBT, 7z/CB7 (py7zr) e RAR/CBR (a unrar.dll que acompanha o projeto).
@@ -23,6 +23,7 @@ sys.path.insert(0, str(ROOT))
 WORKDIR = Path(tempfile.mkdtemp(prefix="opds_arch_"))
 os.environ["DATA_DIR"] = str(WORKDIR)
 os.environ["SECRET_KEY"] = "test-secret-key"
+os.environ.setdefault("ADMIN_PASSWORD", "test-password")  # senha explicita: pula o assistente
 
 FIXTURES = ROOT / "tests" / "fixtures"
 

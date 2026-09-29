@@ -489,6 +489,7 @@ td .sub { display: block; font-size: .76rem; color: var(--muted); }
     var(--paper);
 }
 .auth .panel { width: min(400px, 100%); }
+.auth .panel.wide { width: min(760px, 100%); }
 .auth .mark { width: 46px; height: 46px; border-radius: 13px; background: var(--accent); color: var(--accent-contrast); display: grid; place-items: center; font-family: var(--serif); font-size: 1.3rem; margin-bottom: var(--s4); }
 
 /* --- utilities ---------------------------------------------------------- */

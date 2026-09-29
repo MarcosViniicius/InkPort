@@ -1,4 +1,4 @@
-"""Importação de acervo por sitemap (o que o RSS não carrega).
+﻿"""Importação de acervo por sitemap (o que o RSS não carrega).
 
 Cobre: leitura de sitemap index e urlset, filtro por ano, ordem cronológica,
 título a partir do slug, herança das configurações do feed do mesmo site e
@@ -21,6 +21,7 @@ sys.path.insert(0, str(ROOT))
 WORKDIR = Path(tempfile.mkdtemp(prefix="opds_sitemap_"))
 os.environ["DATA_DIR"] = str(WORKDIR)
 os.environ["SECRET_KEY"] = "test-secret-key"
+os.environ.setdefault("ADMIN_PASSWORD", "test-password")  # senha explicita: pula o assistente
 
 PASSED: list[str] = []
 FAILED: list[str] = []

@@ -18,7 +18,29 @@ tarefas comuns. O login usa as credenciais do `.env` (`ADMIN_USERNAME` /
 | `/devices` | Dispositivos | perfis (tela/formatos/qualidade) |
 | `/feeds` | Feeds | cadastro e acompanhamento de RSS/Atom |
 | `/settings` | Configurações | acesso, senha, manutenção, ferramentas |
+| `/setup` | Primeiro acesso | cria a senha e configura o essencial (só em instalação nova) |
 | `/login` `/logout` | Sessão | entrar/sair |
+
+---
+
+## Primeiro acesso (`/setup`)
+
+Numa instalação nova (sem senha no banco) **todo o painel** vai para o
+assistente, inclusive a API. Ali você:
+
+1. cria **usuário e senha** do painel (mínimo de 8 caracteres);
+2. ajusta o essencial: nome da aplicação, raiz do OPDS, autenticação do OPDS,
+   endereço base, conversões simultâneas, limite de upload, teto de
+   armazenamento e busca automática de feeds;
+3. conclui — e já entra logado no painel.
+
+Tudo isso é gravado no **banco cifrado** e vale na hora; não é preciso editar
+`.env`. O catálogo OPDS continua acessível durante o assistente (um leitor já
+configurado não esbarra nele). Depois, os mesmos campos ficam em
+**Configurações → Aplicação e catálogo**.
+
+Para rodar o assistente de novo, apague a linha `admin_password_hash` da tabela
+`settings` — ou troque só a senha em **Configurações → Segurança**.
 
 ---
 

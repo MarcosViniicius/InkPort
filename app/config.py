@@ -8,9 +8,13 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+if TYPE_CHECKING:
+    from app.security.effective import EffectiveSettings
 
 
 class Settings(BaseSettings):
@@ -164,7 +168,20 @@ class Settings(BaseSettings):
 
 
 @lru_cache
-def get_settings() -> Settings:
+def get_base_settings() -> Settings:
+    """Valores do ``.env`` (bootstrap: caminhos, host, porta, log, cifragem)."""
     settings = Settings()
     settings.ensure_dirs()
     return settings
+
+
+@lru_cache
+def get_settings() -> EffectiveSettings:
+    """Configuração efetiva: o que está no banco por cima do ``.env``.
+
+    Todo o app lê daqui. O ``.env`` continua servindo de bootstrap e de padrão
+    para o que ainda não foi configurado no painel (``security/runtime.py``).
+    """
+    from app.security.effective import EffectiveSettings
+
+    return EffectiveSettings(get_base_settings())

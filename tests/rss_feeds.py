@@ -1,4 +1,4 @@
-"""RSS ingestion across feed flavours (no network).
+﻿"""RSS ingestion across feed flavours (no network).
 
 Covers the cases a real feed mix throws at the worker:
 
@@ -28,6 +28,7 @@ sys.path.insert(0, str(ROOT))
 WORKDIR = Path(tempfile.mkdtemp(prefix="opds_rss_"))
 os.environ["DATA_DIR"] = str(WORKDIR)
 os.environ["SECRET_KEY"] = "rss-test"
+os.environ.setdefault("ADMIN_PASSWORD", "test-password")  # senha explicita: pula o assistente
 os.environ["BASE_URL"] = "http://testserver"
 os.environ["RSS_WORKER_ENABLED"] = "false"
 os.environ["REQUIRE_AUTH_PANEL"] = "false"

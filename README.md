@@ -235,7 +235,10 @@ Nada precisa ser reconfigurado ao trocar de rede. Para **pinar** um endereço
 
 ## Primeiro uso
 
-1. **Entre no painel** (`http://SEU-IP:8080/`) com as credenciais do `.env`.
+1. **Entre no painel** (`http://SEU-IP:8080/`). Numa instalação nova ele abre o
+   **assistente de primeiro acesso**: você cria usuário e senha e já ajusta o
+   essencial (nome, raiz do OPDS, autenticação, limites, conversão, RSS). Nada
+   disso vai para arquivo: fica no **banco cifrado** e vale na hora.
 2. **Importe** livros em `/import` — envie arquivos ou aponte uma pasta. Toda
    importação exige uma **categoria** (ver abaixo).
 3. **Organize** em `/library`: busque, filtre por categoria/autor/formato, edite
@@ -372,6 +375,17 @@ O painel usa as rotas web (`/library`, `/import`, …); a API fica para automaç
 
 ## Configuração (`.env`)
 
+O `.env` é só **bootstrap**: onde ficam os dados, em que interface escutar, log
+e a cifragem do banco. Tudo que é *configurável pelo usuário* — nome da
+aplicação, raiz do OPDS, autenticação, endereço base, limites, concorrência e
+RSS — vive no **banco SQLite cifrado** e é editado no **assistente de primeiro
+acesso** ou em **Configurações**. A tabela abaixo traz as variáveis de bootstrap
+e o valor padrão usado enquanto o banco não tem valor próprio.
+
+Para rodar o assistente de novo (por exemplo, para trocar tudo de uma vez),
+apague a linha `admin_password_hash` da tabela `settings` — ou use
+**Configurações → Segurança** para trocar só a senha.
+
 Todas as variáveis também podem vir do ambiente. As principais:
 
 | Variável | Padrão | Para que serve |
@@ -440,6 +454,9 @@ python tests/sitemap.py           # importador de site
 python tests/archives.py          # ZIP/TAR/7z/RAR
 python tests/frontend.py          # HTML/JS do painel
 python tests/cancellation.py      # cancelamento cooperativo de jobs
+python tests/encryption.py        # banco cifrado: chave, migração e backup
+python tests/onboarding.py        # assistente de primeiro acesso e configuração
+python tests/artwork.py           # geração da arte (banner, badges, diagrama)
 ```
 
 Lint:

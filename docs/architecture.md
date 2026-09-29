@@ -128,6 +128,11 @@ queue.finish()  -> status=done, output_book_id
   a chave de `DATA_DIR/secret.key` (0600): metadados, credenciais e filas ficam
   ilegíveis sem ela. Um banco em texto puro é migrado no primeiro boot via
   `sqlcipher_export`, guardando `opds.db.plain.bak`.
+- **Configuração no banco, `.env` só como bootstrap.** O que o usuário ajusta
+  (nome, OPDS, rede, limites, conversão, RSS) vive na tabela `settings` e é
+  exposto por `security/runtime.py`; `get_settings()` entrega uma visão com o
+  banco por cima do `.env`. Sem senha no banco, o painel abre o assistente
+  `/setup` e o usuário configura tudo sem editar arquivo.
 
 ## Modelo de dados (resumo)
 

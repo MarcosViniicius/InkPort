@@ -186,6 +186,22 @@ tools/
   texto puro é migrado no boot via `sqlcipher_export` (com
   `opds.db.plain.bak`); `PRAGMA rekey` não funciona nesse sentido. Nunca
   versione a `secret.key` nem quebre a ordem "chave primeiro".
+- **Configuração vive no banco, não no `.env`.** `security/runtime.py` descreve
+  cada ajuste (`FIELDS`: rótulo, tipo, limites) e mantém um cache; o assistente
+  (`/setup`) e a tela de Configurações são gerados do mesmo registro — não
+  duplique rótulo ou validação em template. `get_settings()` devolve um
+  **overlay** (`security/effective.py`) com o banco por cima do `.env`, então
+  todo o app já respeita o banco sem mudar call sites; para ler o valor cru do
+  `.env` use `get_base_settings()`. Ao salvar um formulário que renderiza todos
+  os campos, use `runtime.save(..., complete=True)`: caixa desmarcada não vem no
+  payload e precisa virar `False` (sem `complete`, campos ausentes são
+  preservados).
+- **Assistente de primeiro acesso**: sem senha no banco, o middleware em
+  `main.py` manda o painel para `/setup` (a API responde 503; `/opds`, `/health`
+  e `/static` continuam acessíveis). A senha do OPDS é guardada como **hash** e
+  verificada em `auth.require_opds_auth`. Senha definida no `.env`
+  (`ADMIN_PASSWORD`) é respeitada e pula o assistente — só o `.env` de exemplo
+  não traz mais essa variável.
 
 ## 5. Onde mexer
 

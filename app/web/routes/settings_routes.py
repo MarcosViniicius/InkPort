@@ -11,7 +11,7 @@ from app.converters.tools import detect_toolchain
 from app.database.base import get_session
 from app.library.repairs import run_repairs
 from app.library.service import mark_missing
-from app.security import auth
+from app.security import auth, runtime
 from app.security.auth import require_panel
 from app.storage.temp import clean_temp_dir
 from app.storage.usage import library_usage
@@ -36,7 +36,29 @@ def settings_page(request: Request, session: Session = Depends(get_session)):
             "queue": queue.counts_by_status(session),
             "network_urls": settings.access_urls,
             "on_network": settings.on_network,
+            "groups": runtime.groups_for(onboarding=False),
+            "fields": runtime.describe(),
         },
+    )
+
+
+@router.post("/app")
+async def save_app_settings(request: Request, session: Session = Depends(get_session)):
+    """Grava a configuração da aplicação (a mesma do assistente de primeiro acesso)."""
+    from urllib.parse import quote
+
+    form = await request.form()
+    warnings = runtime.save(
+        session,
+        {name: form.get(name) for name in runtime.BY_NAME},
+        complete=True,
+    )
+    if warnings:
+        return RedirectResponse(
+            f"/settings?err={quote(' '.join(warnings))}", status_code=303
+        )
+    return RedirectResponse(
+        f"/settings?ok={quote('Configuração salva.')}", status_code=303
     )
 
 
