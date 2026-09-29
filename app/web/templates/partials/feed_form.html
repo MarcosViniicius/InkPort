@@ -1,0 +1,83 @@
+{#- Formulário de feed, usado em dois lugares: criar (em ``/feeds``) e editar
+    (em ``/feeds/<id>/edit``). Com ``feed=None`` ele vem vazio.
+
+    Um formulário só descreve os campos: rótulo, valor e validação de servidor
+    não são duplicados entre as duas telas. O ``category_id`` fica de fora de
+    propósito — a categoria é derivada de ``rss/<subcategoria ou nome>``
+    (``app/rss/naming.py``), então não há o que escolher aqui.
+
+    Uso: {% from "partials/feed_form.html" import feed_form %}
+-#}
+{% from "partials/device_select.html" import device_select %}
+{% macro feed_form(feed, profiles, output_formats, destination="") -%}
+<form method="post" action="/feeds/save">
+  <input type="hidden" name="feed_id" value="{{ feed.id if feed else '' }}">
+  <div class="field-row">
+    <div class="field">
+      <label for="name">Nome</label>
+      <input id="name" name="name" required maxlength="300" value="{{ feed.name if feed else '' }}"
+             placeholder="ex.: Blog do autor">
+    </div>
+    <div class="field field--wide">
+      <label for="url">URL do feed</label>
+      <div class="input-with-action">
+        <input id="url" name="url" type="url" required maxlength="2048" value="{{ feed.url if feed else '' }}"
+               placeholder="https://exemplo.com/feed.xml">
+        <button class="button ghost" type="button" id="feed-test-button">Testar</button>
+      </div>
+      <p class="hint">Aceita RSS 2.0, Atom e JSON Feed. O teste só lê o feed — nada é baixado nem importado.</p>
+    </div>
+  </div>
+  <div class="card soft result-box" id="feed-test-result" hidden aria-live="polite"></div>
+
+  <div class="field-row">
+    <div class="field">
+      <label for="interval_minutes">Frequência (minutos)</label>
+      <input id="interval_minutes" name="interval_minutes" type="number" inputmode="numeric" min="5"
+             value="{{ feed.interval_minutes if feed else 360 }}">
+      <p class="hint">De quanto em quanto tempo o servidor pode buscar este feed.</p>
+    </div>
+    <div class="field">
+      <label for="output_format">Formato de saída</label>
+      <select id="output_format" name="output_format">
+        {% for fmt in output_formats %}
+        <option value="{{ fmt }}" {{ 'selected' if feed and feed.output_format == fmt }}>{{ format_label(fmt) }}</option>
+        {% endfor %}
+      </select>
+      <p class="hint">Vale para os itens importados a partir de agora.</p>
+    </div>
+    {{ device_select(profiles, selected=(feed.device_profile if feed else 'xteink_x4_pro'), label='Perfil de dispositivo') }}
+  </div>
+
+  <div class="field-row">
+    <div class="field">
+      <label for="destination_folder">Subcategoria (opcional)</label>
+      <input id="destination_folder" name="destination_folder" maxlength="300"
+             value="{{ feed.destination_folder if feed else '' }}" placeholder="padrão: o nome do feed">
+      <p class="hint">
+        {% if destination %}
+        Os itens novos vão para <code>{{ destination }}</code>.
+        {% else %}
+        Os itens vão para <code>rss/&lt;subcategoria ou nome do feed&gt;</code>.
+        {% endif %}
+      </p>
+    </div>
+    <div class="field">
+      <label for="max_items_per_run">Itens por execução</label>
+      <input id="max_items_per_run" name="max_items_per_run" type="number" inputmode="numeric" min="1"
+             value="{{ feed.max_items_per_run if feed else 20 }}">
+      <p class="hint">Teto por busca, para um feed grande não encher o disco de uma vez.</p>
+    </div>
+  </div>
+
+  <div class="check-stack">
+    <label class="check"><input type="checkbox" name="active" {{ 'checked' if not feed or feed.active }}> ativo</label>
+    <label class="check"><input type="checkbox" name="keep_original" {{ 'checked' if feed and feed.keep_original }}> manter o original baixado</label>
+  </div>
+
+  <div class="button-row">
+    <button class="button" type="submit">{{ 'Salvar alterações' if feed else 'Salvar feed' }}</button>
+    {% if feed %}<a class="button ghost" href="/feeds">Cancelar</a>{% endif %}
+  </div>
+</form>
+{%- endmacro %}

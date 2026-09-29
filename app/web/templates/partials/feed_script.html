@@ -1,0 +1,79 @@
+{#- Comportamento do formulário de feed, idêntico em criar e editar: o botão
+    "Testar" (lê o feed sem importar nada) e a recarga enquanto uma busca está
+    rolando, para os selos de status não ficarem mentindo.
+
+    Uso: {% from "partials/feed_script.html" import feed_script %}
+         {% block scripts %}{{ feed_script(running_feeds) }}{% endblock %}
+-#}
+{% macro feed_script(running=false) -%}
+<script>
+(function () {
+  "use strict";
+
+  // --- "Testar feed": lê o feed e mostra o que seria importado --------------
+  var button = document.getElementById("feed-test-button");
+  var urlField = document.getElementById("url");
+  var box = document.getElementById("feed-test-result");
+  var kindLabels = {
+    article: "Página (vira EPUB)", ebook: "Livro (EPUB/AZW)", pdf: "PDF",
+    comic: "Quadrinho (CBZ/ZIP)", image: "Imagem", file: "Arquivo", podcast: "Podcast (ignorado)"
+  };
+
+  function escapeHtml(value) {
+    return String(value == null ? "" : value).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  function render(data) {
+    if (!box) return;
+    box.hidden = false;
+    if (!data.ok) {
+      box.innerHTML = '<p class="text-danger mb0"><strong>Não deu para ler o feed.</strong> ' +
+        escapeHtml(data.error || "") + "</p>";
+      return;
+    }
+    var parts = Object.keys(data.kinds).map(function (kind) {
+      return data.kinds[kind] + " " + (kindLabels[kind] || kind);
+    });
+    var html = "<p class=\"mb2\"><strong>" + escapeHtml(data.title || "Feed sem título") +
+      "</strong> — " + data.total + " item(ns): " + parts.join(" · ") + "</p>";
+    if (data.sample && data.sample.length) {
+      html += '<ul class="tight small muted">' + data.sample.slice(0, 6).map(function (item) {
+        return "<li>" + escapeHtml(item.title) + " <em>(" + (kindLabels[item.kind] || item.kind) + ")</em></li>";
+      }).join("") + "</ul>";
+    }
+    box.innerHTML = html;
+  }
+
+  if (button && urlField && box) {
+    button.addEventListener("click", async function () {
+      var url = urlField.value.trim();
+      if (!url) { urlField.focus(); return; }
+      button.disabled = true;
+      button.textContent = "Lendo…";
+      box.hidden = false;
+      box.innerHTML = '<p class="muted mb0">Lendo o feed…</p>';
+      try {
+        var body = new URLSearchParams({ url: url });
+        var response = await fetch("/feeds/test", {
+          method: "POST", body: body,
+          headers: { "Content-Type": "application/x-www-form-urlencoded" }
+        });
+        render(await response.json());
+      } catch (e) {
+        render({ ok: false, error: "falha de conexão" });
+      } finally {
+        button.disabled = false;
+        button.textContent = "Testar";
+      }
+    });
+  }
+
+  // --- Recarrega enquanto uma busca roda, para os selos ficarem verdadeiros --
+  if ({{ 'true' if running else 'false' }}) {
+    setTimeout(function () { window.location.reload(); }, 6000);
+  }
+})();
+</script>
+{%- endmacro %}

@@ -151,10 +151,16 @@ slug. Ver [`device-formats.md`](device-formats.md).
 ## Feeds (`/feeds`)
 
 Cadastro de fontes RSS/Atom com frequência de busca, formato de saída, perfil de
-dispositivo e pasta/categoria de destino. Ações por feed: **testar**,
-**atualizar agora**, **reconstruir** (reprocessar o histórico), **resetar**
-(permitir reimportar itens) e **excluir**. O worker roda em background
-(`RSS_WORKER_ENABLED`). Detalhes em [`rss.md`](rss.md).
+dispositivo e pasta/categoria de destino. Cada feed mostra o estado atual
+(*buscando…*, *inativo*, *N falha(s)*, *ativo*) e o resultado da última busca.
+
+Ações na lista: **Buscar agora** (roda em segundo plano), **Editar**, **Ver na
+biblioteca**, **Excluir** e, atrás de *Opções avançadas*, **Refazer feed**
+(reimporta tudo com as configurações de agora) e **Limpar histórico** (esquece os
+itens vistos, sem apagar livros). Em **Editar** (`/feeds/<id>/edit`) o mesmo
+formulário da criação aparece preenchido, com a situação do feed ao lado —
+itens descobertos, livros importados, destino e último erro. O worker roda em
+background (`RSS_WORKER_ENABLED`). Detalhes em [`rss.md`](rss.md).
 
 ## Configurações (`/settings`)
 

@@ -79,6 +79,29 @@ python -m app.tools.import_site https://site/sitemap.xml --all-years `
 - A conversão é feita pelo worker do servidor, então deixe o app rodando: os
   livros aparecem na biblioteca conforme ficam prontos.
 
+## Editar um feed
+
+Cada feed tem um botão **Editar** (na lista e implícito no nome), que abre
+`/feeds/<id>/edit` com o mesmo formulário da criação já preenchido: nome, URL,
+frequência, formato de saída, perfil de dispositivo, subcategoria, itens por
+execução e as caixas *ativo* / *manter o original*.
+
+O que muda vale para os itens **importados a partir de agora**:
+
+- formato e perfil de dispositivo são lidos no momento em que o item é convertido;
+- a subcategoria (ou o nome) define a categoria `rss/<subcategoria ou nome>`; os
+  livros já importados são reposicionados na próxima manutenção (o boot roda uma,
+  e há o botão em *Configurações → Manutenção*);
+- para reaplicar as configurações novas aos itens antigos, use **Refazer feed** —
+  ele apaga os livros deste feed e reimporta tudo.
+
+Mudar a URL não apaga nada: o feed passa a apontar para o endereço novo e os
+itens já vistos daquela lista continuam marcados (use *Limpar histórico* se
+quiser reimportá-los). O endereço é único: tentar cadastrar duas vezes a mesma
+URL mostra um aviso e não cria um feed repetido.
+
+Via API, o equivalente é `PATCH /api/feeds/<id>`.
+
 ## Regenerar depois de melhorar o conversor
 
 O painel tem o botão **Limpar histórico** em cada feed: ele esquece os itens já

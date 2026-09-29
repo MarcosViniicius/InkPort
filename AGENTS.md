@@ -155,6 +155,13 @@ tools/
 - **Categoria é obrigatória na importação** (upload/varredura no painel): o
   formulário marca `required` e a rota valida no servidor. Feeds criam
   `rss/<nome do feed>` automaticamente.
+- **Feed tem um formulário só.** `partials/feed_form.html` desenha os campos e é
+  usado por criar (`/feeds`) e editar (`/feeds/<id>/edit`); o `POST /feeds/save`
+  cria ou atualiza conforme o `feed_id` — não duplique os campos num template
+  novo. `Feed.url` é única: o save checa antes (o commit estouraria um
+  `IntegrityError`), e números de formulário são lidos como texto (`_as_int`)
+  para campo vazio não virar 422. Mudar nome/subcategoria só afeta os itens
+  novos; os livros antigos são reposicionados por `apply_feed_categories`.
 - **Um formato por arquivo = um `Book`.** Conversão gera um novo `Book` ligado ao
   origem por `origin_book_id`; o OPDS agrupa como variantes do mesmo título.
 - **Imagens de EPUB convertido** apontam para `../images/` (ver

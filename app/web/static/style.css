@@ -494,6 +494,9 @@ td .sub { display: block; font-size: .76rem; color: var(--muted); }
 
 /* --- utilities ---------------------------------------------------------- */
 .muted { color: var(--muted); }
+/* Fora de um .field (hints soltos em cartões e seções) o .hint também precisa
+   parecer secundário; dentro de .field a regra mais específica continua valendo. */
+.hint { font-size: .78rem; color: var(--muted); }
 .small { font-size: .82rem; }
 .mono { font-family: var(--mono); }
 .nowrap { white-space: nowrap; }

@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
+{% from "partials/feed_form.html" import feed_form %}
+{% block title %}Editar feed · {{ app_name }}{% endblock %}
+{% block content %}
+<p class="crumbs"><a href="/feeds">Feeds</a> / Editar</p>
+<div class="page-head">
+  <div>
+    <h1>Editar feed</h1>
+    <p class="lead">Mude o endereço, o nome ou o que o servidor faz com os itens novos. O que já foi importado continua na biblioteca.</p>
+  </div>
+  <div class="button-row">
+    <a class="button ghost" href="/feeds">{{ icon('back', 15) }} Voltar para feeds</a>
+  </div>
+</div>
+
+<div class="grid two">
+  <div class="card">
+    <div class="card-head">
+      <h2>{{ icon('feeds', 17) }} {{ feed.name }}</h2>
+      {% if feed.id in running_feeds %}<span class="badge info">buscando…</span>
+      {% elif not feed.active %}<span class="badge">inativo</span>
+      {% elif feed.consecutive_failures %}<span class="badge err">{{ feed.consecutive_failures }} falha(s)</span>
+      {% else %}<span class="badge ok">ativo</span>{% endif %}
+    </div>
+    <p class="copy-line">
+      <code>{{ feed.url }}</code>
+      <button class="button ghost small" type="button" data-copy="{{ feed.url }}">{{ icon('copy', 14) }} Copiar</button>
+    </p>
+    {{ feed_form(feed, profiles, output_formats, destination) }}
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="card-head"><h2>{{ icon('activity', 17) }} Situação</h2></div>
+      <dl class="kv">
+        <dt>Última busca</dt><dd>{{ feed.last_checked_at|relative }}</dd>
+        <dt>Última bem-sucedida</dt><dd>{{ feed.last_success_at|relative }}</dd>
+        <dt>Itens descobertos</dt><dd class="num">{{ items_count }}</dd>
+        <dt>Livros importados</dt><dd class="num">{{ books_count }}</dd>
+        <dt>Destino dos livros</dt><dd><code>{{ destination }}</code></dd>
+      </dl>
+      {% if feed.last_error %}
+      <p class="hint text-danger mt4 mb0">Último erro: {{ feed.last_error[:300] }}</p>
+      {% endif %}
+      <p class="hint mt4 mb0">
+        Um item já visto não é importado de novo. Para reaplicar as configurações
+        novas aos itens antigos, use <strong>Refazer feed</strong>.
+      </p>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>{{ icon('refresh', 17) }} Ações</h2></div>
+      <div class="button-row">
+        <form method="post" action="/feeds/{{ feed.id }}/refresh">
+          <button class="button" type="submit" {% if feed.id in running_feeds %}disabled{% endif %}>
+            {{ icon('refresh', 14) }} {{ 'Buscando…' if feed.id in running_feeds else 'Buscar agora' }}
+          </button>
+        </form>
+        <a class="button ghost" href="/library?q={{ feed.name }}">Ver na biblioteca</a>
+      </div>
+      <hr>
+      <div class="button-row">
+        <form method="post" action="/feeds/{{ feed.id }}/rebuild"
+              data-confirm="Refazer «{{ feed.name }}»?"
+              data-confirm-msg="O feed será reimportado do zero com as configurações atuais."
+              data-confirm-detail="Todos os livros que este feed importou e as conversões deles serão apagados do disco. Isto não pode ser desfeito."
+              data-confirm-ok="Apagar e reimportar"
+              data-confirm-danger
+              onsubmit="return confirm('Apagar os livros deste feed e reimportar tudo?')">
+          <button class="button ghost small" type="submit">Refazer feed</button>
+        </form>
+        <form method="post" action="/feeds/{{ feed.id }}/reset"
+              data-confirm="Esquecer os itens já processados de «{{ feed.name }}»?"
+              data-confirm-msg="Nada é apagado da biblioteca."
+              data-confirm-detail="O próximo «Buscar agora» vai importar os itens de novo (podendo criar cópias dos que já existem)."
+              data-confirm-ok="Esquecer itens"
+              onsubmit="return confirm('Esquecer os itens já processados (sem apagar livros)?')">
+          <button class="button ghost small" type="submit">Limpar histórico</button>
+        </form>
+      </div>
+      <hr>
+      <form method="post" action="/feeds/{{ feed.id }}/delete" class="button-row"
+            data-confirm="Remover o feed «{{ feed.name }}»?"
+            data-confirm-msg="Os livros já importados continuam na biblioteca."
+            data-confirm-ok="Remover"
+            data-confirm-danger
+            onsubmit="return confirm('Remover este feed?')">
+        <button class="button ghost danger small" type="submit">{{ icon('trash', 14) }} Excluir feed</button>
+        <span class="hint mb0">Some só o feed; a biblioteca fica.</span>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% from "partials/feed_script.html" import feed_script %}
+{{ feed_script(running_feeds) }}
+{% endblock %}

@@ -4,16 +4,17 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.database.base import get_session
 from app.database.models import Feed, FeedItem
 from app.devices.registry import all_profiles
-from app.library import repository
+from app.rss.naming import feed_category_name
 from app.rss.service import feeds_in_progress, preview_feed, process_feed_by_id
 from app.security.auth import require_panel
 from app.web.templating import render
@@ -21,6 +22,9 @@ from app.web.templating import render
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/feeds", dependencies=[Depends(require_panel)], tags=["painel"])
+
+#: Formatos que o formulário oferece — e os únicos que o salvamento aceita.
+OUTPUT_FORMATS = ("epub", "cbz", "pdf", "mobi", "azw3", "kepub")
 
 
 @router.get("")
@@ -36,9 +40,38 @@ def feeds_page(request: Request, session: Session = Depends(get_session)):
             "active": "feeds",
             "feeds": feeds,
             "recent_items": recent_items,
-            "categories": repository.categories(session),
             "profiles": all_profiles(session),
-            "output_formats": ["epub", "cbz", "pdf", "mobi", "azw3", "kepub"],
+            "output_formats": list(OUTPUT_FORMATS),
+            "running_feeds": feeds_in_progress(),
+        },
+    )
+
+
+@router.get("/{feed_id}/edit")
+def edit_feed_page(feed_id: int, request: Request, session: Session = Depends(get_session)):
+    """Editar um feed: o mesmo formulário da criação, já preenchido."""
+    feed = session.get(Feed, feed_id)
+    if feed is None:
+        return _back("/feeds", "Feed não encontrado.")
+    itens = session.scalar(
+        select(func.count(FeedItem.id)).where(FeedItem.feed_id == feed.id)
+    )
+    livros = session.scalar(
+        select(func.count(FeedItem.id)).where(
+            FeedItem.feed_id == feed.id, FeedItem.book_id.is_not(None)
+        )
+    )
+    return render(
+        request,
+        "feed_edit.html",
+        {
+            "active": "feeds",
+            "feed": feed,
+            "destination": feed_category_name(feed),
+            "items_count": int(itens or 0),
+            "books_count": int(livros or 0),
+            "profiles": all_profiles(session),
+            "output_formats": list(OUTPUT_FORMATS),
             "running_feeds": feeds_in_progress(),
         },
     )
@@ -56,49 +89,102 @@ def test_feed(url: str = Form("")):
 @router.post("/save")
 def save_feed(
     feed_id: str = Form(""),
-    name: str = Form(...),
-    url: str = Form(...),
+    name: str = Form(""),
+    url: str = Form(""),
     category_id: str = Form(""),
-    interval_minutes: int = Form(360),
+    interval_minutes: str = Form(""),
     output_format: str = Form("epub"),
     device_profile: str = Form("generic_epub"),
     destination_folder: str = Form(""),
-    max_items_per_run: int = Form(20),
+    max_items_per_run: str = Form(""),
     active: str = Form(""),
     keep_original: str = Form(""),
     session: Session = Depends(get_session),
 ):
+    """Cria ou atualiza um feed — o mesmo formulário serve para os dois casos.
+
+    Os números chegam como texto de propósito: campo vazio ou fora do padrão vira
+    o valor anterior (ou o padrão), em vez de um 422 na cara do usuário.
+    """
+    feed: Feed | None = None
     if feed_id.strip():
-        feed = session.get(Feed, int(feed_id))
+        identificador = _as_int(feed_id, default=None)
+        feed = session.get(Feed, identificador) if identificador is not None else None
         if feed is None:
-            raise HTTPException(status_code=404, detail="Feed não encontrado")
+            return _back("/feeds", "Feed não encontrado.")
+        destino = f"/feeds/{feed.id}/edit"
     else:
-        feed = Feed(url=url.strip())
+        # ``novo=1`` reabre a seção do formulário quando o salvamento falha.
+        destino = "/feeds?novo=1"
+
+    nome = name.strip()
+    endereco = url.strip()
+    if not nome or not endereco:
+        return _back(destino, "Informe o nome e a URL do feed.")
+
+    # A URL é única no banco: avise antes de o commit estourar um IntegrityError.
+    repetido = session.scalar(select(Feed).where(Feed.url == endereco))
+    if repetido is not None and (feed is None or repetido.id != feed.id):
+        return _back(destino, f"Já existe um feed com esta URL: «{repetido.name}».")
+
+    if feed is None:
+        feed = Feed(name=nome, url=endereco)
         session.add(feed)
 
-    feed.name = name.strip()
-    feed.url = url.strip()
-    feed.category_id = int(category_id) if category_id.strip() else None
-    feed.interval_minutes = max(5, int(interval_minutes))
-    feed.output_format = output_format.strip()
-    feed.device_profile = device_profile.strip()
+    feed.name = nome
+    feed.url = endereco
+    feed.interval_minutes = _as_int(
+        interval_minutes, default=feed.interval_minutes or 360, minimum=5
+    )
+    feed.output_format = _output_format(output_format, default=feed.output_format or "epub")
+    feed.device_profile = _device_profile(
+        device_profile, session, default=feed.device_profile or "generic_epub"
+    )
     feed.destination_folder = destination_folder.strip()
-    feed.max_items_per_run = max(1, int(max_items_per_run))
+    feed.max_items_per_run = _as_int(
+        max_items_per_run, default=feed.max_items_per_run or 20, minimum=1
+    )
     feed.active = bool(active)
     feed.keep_original = bool(keep_original)
-    session.commit()
-    from urllib.parse import quote
+    # Só mexe se o formulário trouxe algo: a API pode ter definido uma categoria.
+    if category_id.strip():
+        feed.category_id = _as_int(category_id, default=None)
 
+    session.commit()
     verb = "atualizado" if feed_id.strip() else "criado"
     return RedirectResponse(
         f"/feeds?ok={quote(f'Feed {verb}: {feed.name}.')}", status_code=303
     )
 
 
+def _back(destino: str, mensagem: str) -> RedirectResponse:
+    """Volta para a tela anterior com um aviso legível (nunca um 500)."""
+    separador = "&" if "?" in destino else "?"
+    return RedirectResponse(f"{destino}{separador}err={quote(mensagem)}", status_code=303)
+
+
+def _as_int(raw: str, *, default: int | None, minimum: int | None = None) -> int | None:
+    """Int tolerante: texto vazio ou inválido mantém ``default``."""
+    try:
+        valor = int(str(raw).strip())
+    except (TypeError, ValueError):
+        return default
+    return max(minimum, valor) if minimum is not None else valor
+
+
+def _output_format(raw: str, *, default: str) -> str:
+    valor = (raw or "").strip().lower()
+    return valor if valor in OUTPUT_FORMATS else default
+
+
+def _device_profile(raw: str, session: Session, *, default: str) -> str:
+    """Perfil que existe nesta instalação; qualquer outra coisa mantém o atual."""
+    slug = (raw or "").strip()
+    return slug if slug in all_profiles(session) else default
+
+
 @router.post("/{feed_id}/delete")
 def delete_feed(feed_id: int, session: Session = Depends(get_session)):
-    from urllib.parse import quote
-
     feed = session.get(Feed, feed_id)
     if feed is None:
         return RedirectResponse(
@@ -122,8 +208,6 @@ async def rebuild_feed(feed_id: int, session: Session = Depends(get_session)):
     handler must stay ``async``: ``asyncio.create_task`` needs a running loop,
     and FastAPI runs a plain ``def`` handler in a worker thread without one.
     """
-    from urllib.parse import quote
-
     feed = session.get(Feed, feed_id)
     if feed is None:
         raise HTTPException(status_code=404, detail="Feed não encontrado")
@@ -162,8 +246,6 @@ def _reset(feed_id: int, remove_books: bool) -> None:
 @router.post("/{feed_id}/reset")
 def reset_feed_items(feed_id: int, session: Session = Depends(get_session)):
     """Forget processed items only (keeps the imported books)."""
-    from urllib.parse import quote
-
     from app.rss.service import reset_feed
 
     feed = session.get(Feed, feed_id)
@@ -182,8 +264,6 @@ async def refresh_feed(feed_id: int, session: Session = Depends(get_session)):
     Blocking the request would make the panel look frozen, so we hand it to a
     worker thread and tell the user where to watch the progress.
     """
-    from urllib.parse import quote
-
     feed = session.get(Feed, feed_id)
     if feed is None:
         raise HTTPException(status_code=404, detail="Feed não encontrado")

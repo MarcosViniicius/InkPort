@@ -62,6 +62,7 @@ def main() -> int:
         _filter_checks(client)
         _import_category_checks(client)
         _background_feed_actions(client)
+        _feed_edit_checks(client)
         _devices_checks(client)
         _opds_checks(client)
         _network_checks()
@@ -172,6 +173,158 @@ def _background_feed_actions(client) -> None:
         "feed de teste removido",
         response.status_code == 200 and "Feed removido" in response.text,
         str(response.status_code),
+    )
+
+
+def _feed_edit_checks(client) -> None:
+    """Editar um feed pelo painel: nome, URL e o resto das configurações.
+
+    O formulário de criação e o de edição são o mesmo; aqui interessa que o
+    ``feed_id`` chegue no POST, que os valores sejam gravados e que uma URL
+    repetida (ou um número inválido) vire aviso em vez de erro 500.
+    """
+    from sqlalchemy import select
+
+    from app.database.base import session_scope
+    from app.database.models import Feed
+    from app.rss.naming import feed_category_name
+
+    print("\n[editar um feed]")
+
+    def salvar(nome: str, url: str, **extra) -> None:
+        dados = {
+            "feed_id": "", "name": nome, "url": url, "interval_minutes": "360",
+            "output_format": "epub", "device_profile": "generic_epub",
+            "max_items_per_run": "20", "active": "on", "keep_original": "on",
+        }
+        dados.update(extra)
+        client.post("/feeds/save", data=dados)
+
+    def por_url(url: str) -> int:
+        with session_scope() as session:
+            return int(session.scalar(select(Feed).where(Feed.url == url)).id)
+
+    marca = os.getpid()
+    original = f"http://127.0.0.1:9/editavel-{marca}.xml"
+    outro = f"http://127.0.0.1:9/vizinho-{marca}.xml"
+    salvar("Feed editável", original)
+    feed_id = por_url(original)
+
+    pagina = client.get(f"/feeds/{feed_id}/edit")
+    check("tela de edição abre", pagina.status_code == 200 and "Editar feed" in pagina.text, str(pagina.status_code))
+    check(
+        "formulário já vem preenchido",
+        'value="Feed editável"' in pagina.text and f'value="{original}"' in pagina.text,
+    )
+    check("a tela manda o id do feed", f'name="feed_id" value="{feed_id}"' in pagina.text)
+    check("tela de edição é ligada ao feed certo", f"/feeds/{feed_id}/rebuild" in pagina.text)
+
+    editado = original.replace("editavel-", "editado-")
+    salvo = client.post(
+        "/feeds/save",
+        data={
+            "feed_id": str(feed_id), "name": "Feed renomeado", "url": editado,
+            "interval_minutes": "45", "output_format": "pdf",
+            "device_profile": "generic_epub", "destination_folder": "Revisados",
+            "max_items_per_run": "3", "active": "", "keep_original": "",
+        },
+        follow_redirects=False,
+    )
+    check(
+        "salvar a edição responde com aviso de sucesso",
+        salvo.status_code == 303 and "ok=" in salvo.headers.get("location", ""),
+        salvo.headers.get("location", ""),
+    )
+
+    with session_scope() as session:
+        feed = session.get(Feed, feed_id)
+        check("nome atualizado", feed.name == "Feed renomeado", str(feed.name))
+        check("URL atualizada", feed.url == editado, str(feed.url))
+        check("frequência atualizada", feed.interval_minutes == 45, str(feed.interval_minutes))
+        check("formato de saída atualizado", feed.output_format == "pdf", str(feed.output_format))
+        check("subcategoria atualizada", feed.destination_folder == "Revisados", str(feed.destination_folder))
+        check("itens por execução atualizados", feed.max_items_per_run == 3, str(feed.max_items_per_run))
+        check("caixa desmarcada desliga o feed", feed.active is False, str(feed.active))
+        check(
+            "categoria dos livros passa a ser a nova",
+            feed_category_name(feed) == "rss/Revisados",
+            feed_category_name(feed),
+        )
+
+    relido = client.get(f"/feeds/{feed_id}/edit").text
+    check("a tela recarrega com os valores novos", 'value="Feed renomeado"' in relido and "rss/Revisados" in relido)
+
+    salvar("Feed vizinho", outro)
+    outro_id = por_url(outro)
+    colisao = client.post(
+        "/feeds/save",
+        data={"feed_id": "", "name": "Cópia", "url": editado},
+        follow_redirects=False,
+    )
+    check(
+        "criar com URL repetida avisa em vez de estourar",
+        colisao.status_code == 303 and "err=" in colisao.headers.get("location", ""),
+        colisao.headers.get("location", ""),
+    )
+    check(
+        "o aviso devolve o usuário ao formulário aberto",
+        "novo=1" in colisao.headers.get("location", ""),
+        colisao.headers.get("location", ""),
+    )
+    check(
+        "?novo=1 abre a seção do formulário",
+        "data-sect=\"novo-feed\" open" in client.get("/feeds?novo=1").text,
+    )
+    with session_scope() as session:
+        quantos = len(session.scalars(select(Feed).where(Feed.url == editado)).all())
+    check("nenhum feed duplicado foi criado", quantos == 1, str(quantos))
+
+    troca = client.post(
+        "/feeds/save",
+        data={"feed_id": str(outro_id), "name": "Feed vizinho", "url": editado},
+        follow_redirects=False,
+    )
+    check(
+        "editar para uma URL em uso também avisa",
+        troca.status_code == 303 and "err=" in troca.headers.get("location", ""),
+        troca.headers.get("location", ""),
+    )
+
+    estranho = client.post(
+        "/feeds/save",
+        data={
+            "feed_id": str(feed_id), "name": "Feed renomeado", "url": editado,
+            "interval_minutes": "abc", "max_items_per_run": "",
+            "output_format": "formato-que-nao-existe", "device_profile": "perfil-que-nao-existe",
+        },
+        follow_redirects=False,
+    )
+    check(
+        "valor fora do padrão não vira erro",
+        estranho.status_code == 303 and "ok=" in estranho.headers.get("location", ""),
+        estranho.headers.get("location", ""),
+    )
+    with session_scope() as session:
+        feed = session.get(Feed, feed_id)
+        check("frequência inválida mantém a anterior", feed.interval_minutes == 45, str(feed.interval_minutes))
+        check("formato inexistente mantém o anterior", feed.output_format == "pdf", str(feed.output_format))
+        check("perfil inexistente mantém o anterior", feed.device_profile == "generic_epub", str(feed.device_profile))
+
+    sumiu = client.get("/feeds/999999/edit", follow_redirects=False)
+    check(
+        "editar feed inexistente avisa em vez de 500",
+        sumiu.status_code == 303 and "err=" in sumiu.headers.get("location", ""),
+        str(sumiu.status_code),
+    )
+
+    for alvo in (feed_id, outro_id):
+        client.post(f"/feeds/{alvo}/delete")
+    with session_scope() as session:
+        restou = {feed.name for feed in session.scalars(select(Feed)).all()}
+    check(
+        "feeds de teste removidos",
+        "Feed renomeado" not in restou and "Feed vizinho" not in restou,
+        str(restou),
     )
 
 
