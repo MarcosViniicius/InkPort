@@ -210,6 +210,7 @@ def repair_epub_image_paths(session: Session) -> int:
 
 _REF_RE = re.compile(r'(?P<attr>\b(?:src|href)=")(?P<value>[^"]+)(?P<quote>")')
 _HTML_SUFFIX_RE = re.compile(r"\.x?html?$", re.IGNORECASE)
+_ANCHOR_RE = re.compile(rb'(?:id|name)="([^"]+)"')
 _EXTERNAL_PREFIXES = ("http://", "https://", "data:", "mailto:", "#", "javascript:")
 
 
@@ -223,6 +224,7 @@ def _fix_epub_image_paths(path: Path) -> bool:
         opf_dir = _opf_dir(source, names)
         if opf_dir is None:
             return False
+        anchors = _anchor_index(source, names)
         for name in names:
             if not _HTML_SUFFIX_RE.search(name):
                 continue
@@ -230,7 +232,7 @@ def _fix_epub_image_paths(path: Path) -> bool:
                 text = source.read(name).decode("utf-8")
             except (KeyError, UnicodeDecodeError):
                 continue
-            fixed = _rewrite_refs(text, name, names, opf_dir)
+            fixed = _rewrite_refs(text, name, names, opf_dir, anchors)
             if fixed != text:
                 payloads[name] = fixed.encode("utf-8")
         if not payloads:
@@ -262,7 +264,28 @@ def _opf_dir(source: zipfile.ZipFile, names: set[str]) -> str | None:
     return posixpath.dirname(opf)
 
 
-def _rewrite_refs(text: str, entry: str, names: set[str], opf_dir: str) -> str:
+def _anchor_index(source: zipfile.ZipFile, names: set[str]) -> dict[str, str]:
+    """Map anchor id -> the XHTML entry that declares it.
+
+    Used to rescue internal links whose target file was merged away (the
+    anchor usually survives in another chapter of the same book).
+    """
+    index: dict[str, str] = {}
+    for name in names:
+        if not _HTML_SUFFIX_RE.search(name):
+            continue
+        try:
+            raw = source.read(name)
+        except KeyError:
+            continue
+        for match in _ANCHOR_RE.finditer(raw):
+            index.setdefault(match.group(1).decode("utf-8", "replace"), name)
+    return index
+
+
+def _rewrite_refs(
+    text: str, entry: str, names: set[str], opf_dir: str, anchors: dict[str, str]
+) -> str:
     entry_dir = posixpath.dirname(entry)
 
     def repl(match: re.Match[str]) -> str:
@@ -275,6 +298,15 @@ def _rewrite_refs(text: str, entry: str, names: set[str], opf_dir: str) -> str:
         target = path.lstrip("/")
         if posixpath.normpath(posixpath.join(entry_dir, target)) in names:
             return match.group(0)
+        # Internal cross-reference whose file was merged away: point it at the
+        # chapter that really holds the anchor (#anchor when it is here).
+        if fragment:
+            owner = anchors.get(fragment)
+            if owner == entry:
+                return f'{match.group("attr")}#{fragment}{match.group("quote")}'
+            if owner:
+                relative = posixpath.relpath(owner, entry_dir)
+                return f'{match.group("attr")}{relative}#{fragment}{match.group("quote")}'
         # "squash" leading "../" away: the reference was written as if the file
         # lived one folder deeper (a common generator slip).
         squashed = target

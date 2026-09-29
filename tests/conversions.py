@@ -466,6 +466,32 @@ def _chapter_consolidation_test() -> None:
     check("consolidação: artigo longo vira poucos capítulos",
           2 <= len(result) <= 8, str([t for t, _ in result]))
 
+    print("\n[Links internos depois da fusão de capítulos]")
+    from app.converters.webpage.links import remap_chapter_links
+
+    fundidos = [
+        ("Um", '<p id="alvo">texto</p><p><a href="chapter_0009.xhtml#alvo">voltar</a></p>'),
+        ("Dois", '<p><a href="chapter_0009.xhtml#sumiu">ir</a></p>'),
+    ]
+    corrigidos = remap_chapter_links(fundidos)
+    corpo = " ".join(body for _titulo, body in corrigidos)
+    check("links: capítulo fundido vira âncora no próprio arquivo",
+          'href="#alvo"' in corpo, corpo[:180])
+    check("links: âncora que não existe desfaz o link",
+          "chapter_0009.xhtml" not in corpo and 'href="#sumiu"' not in corpo, corpo[:180])
+
+    cruzado = [
+        ("Um", '<p><a href="chapter_0005.xhtml#depois">ir</a></p>'),
+        ("Dois", '<p id="depois">fim</p>'),
+    ]
+    cruzados = remap_chapter_links(cruzado)
+    check("links: âncora em outro capítulo aponta para o arquivo certo",
+          'href="chapter_0002.xhtml#depois"' in cruzados[0][1], cruzados[0][1][:160])
+
+    simples = [("Um", "<p>só texto, sem links</p>")]
+    check("links: capítulo sem links de capítulo passa intacto",
+          remap_chapter_links(simples) == simples)
+
 
 def _spreads_test() -> None:
     """Wide pages follow KCC: split in two, or rotated when very wide."""

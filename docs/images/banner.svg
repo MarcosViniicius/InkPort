@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="300" viewBox="0 0 1280 300" role="img" aria-label="OPDS Server: servidor OPDS 1.2 e 2.0 para leitores e-ink, com painel, biblioteca e conversão nativa">
+  <title>OPDS Server — para leitores e-ink</title>
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#63b39d" stop-opacity="0.20"/>
+      <stop offset="100%" stop-color="#63b39d" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#63b39d" stop-opacity="0.10"/>
+      <stop offset="60%" stop-color="#63b39d" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1280" height="300" fill="#14161a"/>
+  <rect width="1280" height="300" fill="url(#sheen)"/>
+  <circle cx="1050" cy="150" r="330" fill="url(#glow)"/>
+  <rect x="0.5" y="0.5" width="1279" height="299" rx="14" fill="none" stroke="#262a31"/>
+
+  <!-- marca -->
+  <rect x="80" y="94" width="74" height="74" rx="18" fill="#63b39d"/>
+  <path d="M117 116c-7-5-15-5-21-1v30c6-4 14-4 21 2z" fill="#14161a"/>
+  <path d="M117 116c7-5 15-5 21-1v30c-6-4-14-4-21 2z" fill="#14161a"/>
+
+  <!-- titulo e assinatura -->
+  <text x="182" y="140" font-family="Georgia, 'Times New Roman', serif" font-size="54" font-weight="600" fill="#ecebe7">OPDS Server</text>
+  <text x="184" y="174" font-family="Verdana, Geneva, sans-serif" font-size="19" fill="#918e87">Servidor OPDS 1.2 / 2.0 para leitores e-ink — painel, biblioteca e conversão</text>
+
+  <!-- etiquetas -->
+  <g font-family="Verdana, Geneva, sans-serif" font-size="14">
+    <rect x="184" y="198" width="136" height="32" rx="16" fill="#1b1e23" stroke="#63b39d" stroke-opacity="0.55"/>
+    <text x="200" y="219" fill="#cbebda">OPDS 1.2 · 2.0</text>
+
+    <rect x="330" y="198" width="196" height="32" rx="16" fill="#1b1e23" stroke="#63b39d" stroke-opacity="0.55"/>
+    <text x="346" y="219" fill="#cbebda">Conversão 100% Python</text>
+
+    <rect x="536" y="198" width="162" height="32" rx="16" fill="#1b1e23" stroke="#63b39d" stroke-opacity="0.55"/>
+    <text x="552" y="219" fill="#cbebda">Sem CDN · offline</text>
+
+    <rect x="708" y="198" width="150" height="32" rx="16" fill="#1b1e23" stroke="#63b39d" stroke-opacity="0.55"/>
+    <text x="724" y="219" fill="#cbebda">RSS + sitemap</text>
+  </g>
+
+  <!-- leitor e-ink -->
+  <rect x="1006" y="46" width="196" height="208" rx="18" fill="#1b1e23" stroke="#262a31"/>
+  <rect x="1022" y="62" width="164" height="176" rx="8" fill="#101317"/>
+  <g fill="#2b3430">
+    <rect x="1040" y="84" width="128" height="7" rx="3.5"/>
+    <rect x="1040" y="102" width="104" height="7" rx="3.5"/>
+    <rect x="1040" y="120" width="118" height="7" rx="3.5"/>
+    <rect x="1040" y="138" width="88" height="7" rx="3.5"/>
+    <rect x="1040" y="156" width="112" height="7" rx="3.5"/>
+    <rect x="1040" y="190" width="128" height="7" rx="3.5"/>
+    <rect x="1040" y="208" width="72" height="7" rx="3.5"/>
+  </g>
+  <rect x="1040" y="84" width="46" height="7" rx="3.5" fill="#63b39d"/>
+  <rect x="1040" y="174" width="128" height="1" fill="#2b3430"/>
+
+  <!-- rodape -->
+  <text x="1200" y="278" text-anchor="end" font-family="Consolas, 'Courier New', monospace" font-size="13" fill="#918e87">github.com/MarcosViniicius/eink-opds-server</text>
+</svg>

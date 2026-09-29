@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from app.converters.webpage.clean import clean_document
 from app.converters.webpage.dom import inner_xhtml, parse
 from app.converters.webpage.images import ImageResource, load_images, prepare_lazy_images
-from app.converters.webpage.links import fix_links
+from app.converters.webpage.links import fix_links, remap_chapter_links
 from app.converters.webpage.main_content import get_main_content
 from app.converters.webpage.metadata import PageMetadata, get_metadata
 from app.converters.webpage.replace import replace_elements
@@ -87,6 +87,9 @@ def convert_webpage(
         for title, element in parts
     ]
     chapters = consolidate_chapters(chapters)
+    # The split assigned chapter numbers; merging may have removed some of
+    # those files, so retarget the links before serialising.
+    chapters = remap_chapter_links(chapters)
     if not chapters:
         chapters = [(metadata.title or "Artigo", "<p></p>")]
 

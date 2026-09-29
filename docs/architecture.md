@@ -1,5 +1,7 @@
 # Arquitetura
 
+![Diagrama de arquitetura](images/architecture.svg)
+
 O projeto é um monólito modular: um único processo FastAPI com workers
 assíncronos leves. Não há microserviços, fila externa nem banco externo — tudo
 roda bem em um VPS barato.

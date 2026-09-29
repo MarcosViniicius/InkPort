@@ -1,5 +1,7 @@
 # OPDS Server
 
+![OPDS Server: servidor OPDS 1.2 / 2.0 para leitores e-ink](docs/images/banner.svg)
+
 Servidor **OPDS 1.2 (Atom) / 2.0 (JSON)** para leitores e-ink em geral — Kindle,
 Kobo, PocketBook, Boox, Tolino, reMarkable, Xteink e outros — com **painel web**,
 biblioteca centralizada, fila de conversão e ingestão automática por RSS/Atom.
@@ -389,6 +391,8 @@ Todas as variáveis também podem vir do ambiente. As principais:
 A lista comentada está em [`.env.example`](.env.example).
 
 ## Estrutura do projeto
+
+![Arquitetura: clientes, servidor FastAPI, núcleo e DATA_DIR](docs/images/architecture.svg)
 
 Resumo (detalhes em [`docs/architecture.md`](docs/architecture.md)):
 

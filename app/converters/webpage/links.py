@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import re
 from urllib.parse import urldefrag, urljoin
 
 from lxml import etree
 
-from app.converters.webpage.dom import create, replace_keeping_children
+from app.converters.webpage.dom import create, inner_xhtml, replace_keeping_children
 
 
 def fix_links(chapters: list[tuple[str, etree._Element]], page_url: str) -> None:
@@ -68,3 +69,64 @@ def _escape(value: str) -> str:
 def _links(elements: list[etree._Element]):
     for element in elements:
         yield from element.xpath(".//a[@href]")
+
+
+#: Internal reference written by ``_remove_broken_anchor_links``.
+_CHAPTER_REF_RE = re.compile(r"^chapter_\d{4}\.xhtml(?:#(?P<anchor>[^#]+))?$")
+
+
+def remap_chapter_links(chapters: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    """Retarget internal chapter links once the chapters are consolidated.
+
+    ``fix_links`` runs while the split is still one-file-per-section, so it may
+    write ``chapter_0010.xhtml#anchor``. ``consolidate_chapters`` can then merge
+    those files away, leaving the link pointing at a chapter that no longer
+    exists. Rewrite every reference to the chapter that really owns the anchor:
+    a same-file ``#anchor`` when it merged into this one, the other chapter
+    otherwise, and drop the href when the anchor is gone altogether.
+    """
+    if not chapters or not any("chapter_" in body for _title, body in chapters):
+        return chapters
+
+    parser = etree.XMLParser(recover=True, resolve_entities=False)
+    wrappers: list[etree._Element | None] = []
+    for _title, body in chapters:
+        try:
+            wrappers.append(etree.fromstring(f"<div>{body}</div>".encode(), parser))
+        except (etree.XMLSyntaxError, ValueError):
+            wrappers.append(None)
+
+    owners: dict[str, int] = {}
+    for index, wrapper in enumerate(wrappers):
+        if wrapper is None:
+            continue
+        for element in wrapper.iter():
+            for attribute in ("id", "name"):
+                value = element.get(attribute)
+                if value and value not in owners:
+                    owners[value] = index
+
+    remapped: list[tuple[str, str]] = []
+    for index, (title, body) in enumerate(chapters):
+        wrapper = wrappers[index]
+        if wrapper is None:
+            remapped.append((title, body))
+            continue
+        touched = False
+        for link in list(wrapper.xpath(".//a[@href]")):
+            match = _CHAPTER_REF_RE.match(link.get("href") or "")
+            if not match:
+                continue
+            anchor = match.group("anchor") or ""
+            owner = owners.get(anchor) if anchor else None
+            if owner is None:
+                span = create("span")
+                replace_keeping_children(link, span)
+                span.attrib.pop("href", None)
+            elif owner == index:
+                link.set("href", f"#{anchor}")
+            else:
+                link.set("href", f"chapter_{owner + 1:04d}.xhtml#{anchor}")
+            touched = True
+        remapped.append((title, inner_xhtml(wrapper)) if touched else (title, body))
+    return remapped
