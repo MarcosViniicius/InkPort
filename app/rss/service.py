@@ -51,6 +51,8 @@ class FeedReport:
     queued: int = 0
     skipped: int = 0
     articles: int = 0
+    backfilled: int = 0
+    backfill_done: bool = False
     errors: list[str] = field(default_factory=list)
 
     @property
@@ -67,6 +69,8 @@ class FeedReport:
             "queued": self.queued,
             "skipped": self.skipped,
             "articles": self.articles,
+            "backfilled": self.backfilled,
+            "backfill_done": self.backfill_done,
             "errors": self.errors,
         }
 
@@ -191,7 +195,24 @@ def process_feed(session: Session, feed: Feed, downloader: Downloader | None = N
             _process_entry(session, feed, entry, downloader, category_name, report)
             processed += 1
 
-        session.commit()
+        session.commit()  # persist the RSS work before the archive pass
+
+        # Retroactive pull (sitemap): only while there is something left in the
+        # configured window. Runs a bounded batch per call so a huge archive is
+        # consumed across runs instead of stalling one feed run for hours. Kept
+        # after the commit above so a backfill failure cannot discard the RSS work.
+        if feed.backfill_months and feed.backfill_done_at is None:
+            from app.rss.backfill import run_backfill
+
+            back = run_backfill(session, feed, downloader)
+            report.backfilled = back.get("imported", 0)
+            report.backfill_done = bool(back.get("done"))
+            if back.get("error"):
+                logger.info(
+                    "feed backfill could not run",
+                    extra={"feed_id": feed.id, "error": back["error"]},
+                )
+            session.commit()
     except StaleDataError:
         # The feed was deleted while this run was in flight (the panel and the
         # worker share the database, and feed searches can take minutes).

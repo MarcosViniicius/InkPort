@@ -42,6 +42,15 @@ class Feed(Base):
     keep_original: Mapped[bool] = mapped_column(Boolean, default=False)
     max_items_per_run: Mapped[int] = mapped_column(Integer, default=20)
 
+    #: Retroactive pull: how many months back from today to import
+    #: (0 = off, -1 = the whole archive). RSS only carries the latest posts;
+    #: the older ones come from the site's sitemap.
+    backfill_months: Mapped[int] = mapped_column(Integer, default=0)
+    #: Optional sitemap URL; when empty it is derived from ``url``.
+    sitemap_url: Mapped[str] = mapped_column(String(2048), default="")
+    #: Set once the archive walk had nothing left to import.
+    backfill_done_at: Mapped[datetime | None] = mapped_column(DateTime)
+
     last_checked_at: Mapped[datetime | None] = mapped_column(DateTime)
     last_success_at: Mapped[datetime | None] = mapped_column(DateTime)
     last_error: Mapped[str | None] = mapped_column(Text)

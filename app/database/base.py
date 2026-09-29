@@ -126,7 +126,11 @@ def session_scope() -> Iterator[Session]:
 
 
 def init_db() -> None:
-    """Create every table. Called on startup (idempotent)."""
+    """Create every table (and add missing columns). Called on startup."""
     from app.database import models  # noqa: F401  (register the metadata)
+    from app.database.schema import ensure_schema
 
-    Base.metadata.create_all(bind=get_engine())
+    engine = get_engine()
+    Base.metadata.create_all(bind=engine)
+    # New columns on an existing table: create_all does not do this.
+    ensure_schema(engine)

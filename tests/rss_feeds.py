@@ -414,6 +414,127 @@ def main() -> int:
     body = source.path.read_text(encoding="utf-8", errors="replace") if source else ""
     check("sem figura na página, mantém o conteúdo do feed", "texto do feed" in body, body[:60])
 
+    # Retroativos: o RSS só traz o recente, então o feed lê o sitemap do site e
+    # importa os posts antigos dentro da janela, em blocos respeitando o limite.
+    print("\n[retroativos via sitemap]")
+    from datetime import date
+
+    def _months_ago(months: int, day: int = 15) -> tuple[int, int, int]:
+        today = date.today()
+        total = today.year * 12 + (today.month - 1) - months
+        year, month0 = divmod(total, 12)
+        return year, month0 + 1, min(day, 28)
+
+    def sitemap() -> str:
+        rows = []
+        for index, months in enumerate((2, 3), start=1):
+            y, m, d = _months_ago(months)
+            rows.append(
+                f"<url><loc>https://exemplo.com/{y:04d}/{m:02d}/{d:02d}/post-{index}/</loc></url>"
+            )
+        y, m, d = _months_ago(36, 10)  # fora da janela de 12 meses
+        rows.append(f"<url><loc>https://exemplo.com/{y:04d}/{m:02d}/{d:02d}/antigo/</loc></url>")
+        return (
+            '<?xml version="1.0" encoding="UTF-8"?>'
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+            + "".join(rows)
+            + "</urlset>"
+        )
+
+    EMPTY_FEED = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        "<rss version=\"2.0\"><channel><title>Retro</title>"
+        "<link>https://exemplo.com/</link></channel></rss>"
+    )
+
+    class RouteDownloader:
+        """Feed + sitemap + one distinct article per post URL."""
+
+        def __init__(self) -> None:
+            from app.library.hashing import sha256_file
+
+            self.calls: list[str] = []
+            self._hash = sha256_file
+
+        def fetch(self, url: str) -> bytes:
+            self.calls.append(url)
+            if url.endswith("sitemap.xml"):
+                return sitemap().encode("utf-8")
+            return EMPTY_FEED.encode("utf-8")
+
+        def download(self, url: str, dest_dir: Path, *, filename: str | None = None):
+            from app.rss.downloader import Downloaded
+
+            self.calls.append(url)
+            dest_dir.mkdir(parents=True, exist_ok=True)
+            slug = url.rstrip("/").rsplit("/", 1)[-1]
+            path = dest_dir / "post.html"
+            path.write_text(
+                f"<html><body><main><article><h1>{slug}</h1>"
+                f"<p>{'conteudo ' * 400} {url}</p></article></main></body></html>",
+                encoding="utf-8",
+            )
+            return Downloaded(path=path, content_type="text/html")
+
+        def hash(self, path: Path) -> str:
+            return self._hash(path)
+
+        def close(self) -> None:
+            pass
+
+    with session_scope() as session:
+        retro = Feed(
+            name="Retro",
+            url="https://exemplo.com/retro.xml",
+            output_format="epub",
+            device_profile="generic_epub",
+            max_items_per_run=1,
+            backfill_months=12,
+        )
+        session.add(retro)
+        session.commit()
+        retro_id = retro.id
+
+    routes = RouteDownloader()
+    with session_scope() as session:
+        r1 = process_feed(session, session.get(Feed, retro_id), routes)
+    check(
+        "retroativos: 1ª rodada importa até o limite e continua",
+        r1.backfilled == 1 and not r1.backfill_done,
+        f"{r1.backfilled}/{r1.backfill_done}",
+    )
+
+    with session_scope() as session:
+        r2 = process_feed(session, session.get(Feed, retro_id), routes)
+    check(
+        "retroativos: 2ª rodada importa o resto e conclui",
+        r2.backfilled == 1 and r2.backfill_done,
+        f"{r2.backfilled}/{r2.backfill_done}",
+    )
+
+    with session_scope() as session:
+        r3 = process_feed(session, session.get(Feed, retro_id), routes)
+    check(
+        "retroativos concluídos não são reprocessados",
+        r3.backfilled == 0,
+        str(r3.backfilled),
+    )
+
+    with session_scope() as session:
+        retro_books = sorted(
+            book.title for book in session.query(Book).where(Book.source == "rss").all()
+            if book.source_id and "/20" in (book.source_id or "")
+        )
+        done_at = session.get(Feed, retro_id).backfill_done_at
+    print(f"  livros retroativos: {retro_books}")
+    check("dois posts antigos na biblioteca", len(retro_books) == 2, str(retro_books))
+    check(
+        "post fora da janela (3 anos) não foi importado",
+        not any("antigo" in url for url in routes.calls),
+        str([c for c in routes.calls if "antigo" in c]),
+    )
+    check("marca de concluído gravada", done_at is not None)
+
     shutil.rmtree(WORKDIR, ignore_errors=True)
     print(f"\n{len(PASSED)} passed, {len(FAILED)} failed")
     for failure in FAILED:

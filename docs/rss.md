@@ -79,6 +79,37 @@ python -m app.tools.import_site https://site/sitemap.xml --all-years `
 - A conversão é feita pelo worker do servidor, então deixe o app rodando: os
   livros aparecem na biblioteca conforme ficam prontos.
 
+## Puxar posts antigos (retroativos)
+
+O RSS só traz os posts recentes que o site publica. Para trazer o histórico de
+**um feed específico**, o formulário do feed tem o campo **Buscar do passado**
+com presets: *Desligado*, *últimos 6 meses*, *último 1 ano*, *últimos 2 anos*,
+*últimos 5 anos* e *todo o acervo do site*. Há também **Sitemap (opcional)**
+para quando o sitemap não está em `/sitemap.xml`.
+
+Como funciona:
+
+- Ligado, o worker lê o `sitemap.xml` do site (o mesmo caminho do
+  `import_site`) e importa os posts cuja **data na URL** cai dentro do período.
+- A data sai da própria URL (`/2026/09/28/slug/`), então funciona em sites com
+  esse padrão (Hugo, WordPress, Jekyll…). Sem data na URL não há como datar o
+  post e nada é importado — nesse caso use o `import_site`.
+- Os posts entram com a **categoria, o formato e o perfil** do feed, e são
+  marcados no histórico do feed (aparecem em *Itens recentes*).
+- **Não duplica**: URLs já na biblioteca ou já vistas pelo feed são puladas.
+- É **automático**: começa ao salvar e continua a cada busca do feed enquanto
+  sobrar algo, sempre em blocos de até **Itens por execução** (um acervo grande
+  é consumido em várias rodadas, sem travar). O botão **Buscar retroativos**
+  força outra passada; quando o período é percorrido por completo, o feed mostra
+  `passado: … (concluído)`.
+- Se o site não estiver com o sitemap acessível, a busca retroativa tenta de
+  novo na próxima rodada (não marca "concluído").
+- Mudar o período reinicia a varredura do zero.
+
+Via API, os campos são `backfill_months` (`0` = desligado, `-1` = todo o
+acervo) e `sitemap_url`; o `POST /api/feeds/{id}/refresh` já executa a busca
+retroativa pendente.
+
 ## Editar um feed
 
 Cada feed tem um botão **Editar** (na lista e implícito no nome), que abre

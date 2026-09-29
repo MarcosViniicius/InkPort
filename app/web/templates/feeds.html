@@ -26,6 +26,12 @@
           <span class="badge info">{{ format_label(feed.output_format) }}</span>
           <span class="badge plain">{{ profile_label(feed.device_profile) }}</span>
           <span class="badge plain">{{ feed.max_items_per_run }} itens por busca</span>
+          {% set bf = {6:'6 meses', 12:'1 ano', 24:'2 anos', 60:'5 anos', -1:'acervo todo'}.get(feed.backfill_months) %}
+          {% if bf %}
+          <span class="badge {{ 'ok' if feed.backfill_done_at else 'info' }}">
+            passado: {{ bf }}{{ ' (concluído)' if feed.backfill_done_at }}
+          </span>
+          {% endif %}
           {% if not feed.keep_original %}<span class="badge plain">não mantém o original</span>{% endif %}
         </div>
       </div>
@@ -48,6 +54,14 @@
           {{ icon('refresh', 14) }} {{ 'Buscando…' if feed.id in running_feeds else 'Buscar agora' }}
         </button>
       </form>
+      {% if feed.backfill_months %}
+      <form method="post" action="/feeds/{{ feed.id }}/backfill">
+        <button class="button ghost small" type="submit" {% if feed.id in running_feeds %}disabled{% endif %}
+                title="Voltar a ler o sitemap e importar os posts antigos do período configurado">
+          {{ icon('download', 14) }} Buscar retroativos
+        </button>
+      </form>
+      {% endif %}
       <a class="button ghost small" href="/feeds/{{ feed.id }}/edit">{{ icon('edit', 14) }} Editar</a>
       <a class="button ghost small" href="/library?q={{ feed.name }}">Ver na biblioteca</a>
       <form method="post" action="/feeds/{{ feed.id }}/delete"

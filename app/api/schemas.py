@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class BookUpdate(BaseModel):
@@ -54,6 +54,14 @@ class FeedPayload(BaseModel):
     destination_folder: str = ""
     keep_original: bool = False
     max_items_per_run: int = Field(default=20, ge=1, le=200)
+    #: Retroactive pull in months (0 = off, -1 = whole archive).
+    backfill_months: int = 0
+    sitemap_url: str = ""
+
+    @field_validator("backfill_months")
+    @classmethod
+    def _known_period(cls, value: int) -> int:
+        return value if value in {-1, 0, 6, 12, 24, 60} else 0
 
 
 class PasswordChange(BaseModel):

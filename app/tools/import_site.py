@@ -29,41 +29,13 @@ import sys
 from urllib.parse import urlparse
 
 from app.database import session_scope
-from app.database.models import Book, Feed, SourceKind
-from app.library.conversions import enqueue_conversion
-from app.library.importer import import_file
-from app.rss.downloader import Downloader, DownloadError
+from app.database.models import Feed
+from app.rss.archive import import_posts, known_urls, normalise_url
+from app.rss.downloader import Downloader
 from app.rss.naming import feed_category_name
 from app.rss.sitemap import SitemapPost, collect_posts, current_year
-from app.storage.temp import temp_workdir
 
 logger = logging.getLogger(__name__)
-
-
-def known_urls(session) -> set[str]:
-    """URLs the library already holds, by source URL or source id.
-
-    Only *books* count: a feed item whose file was deleted (or whose conversion
-    replaced it) must not block a re-import, otherwise the archive could never be
-    pulled again.
-    """
-    from sqlalchemy import select
-
-    urls: set[str] = set()
-    for column in (Book.source_url, Book.source_id):
-        for value in session.scalars(select(column).where(column.is_not(None))):
-            urls.add(_normalise(value))
-    urls.discard("")
-    return urls
-
-
-def _normalise(url: str | None) -> str:
-    if not url:
-        return ""
-    parsed = urlparse(url)
-    host = (parsed.netloc or "").lower().removeprefix("www.")
-    path = (parsed.path or "/").rstrip("/")
-    return f"{host}{path}"
 
 
 def feed_defaults(session, sitemap_url: str) -> dict:
@@ -88,84 +60,6 @@ def feed_defaults(session, sitemap_url: str) -> dict:
         "keep_original": False,
         "feed_name": host or "sitemap",
     }
-
-
-def import_posts(
-    posts: list[SitemapPost],
-    *,
-    category: str,
-    output_format: str,
-    device_profile: str,
-    keep_original: bool,
-    limit: int = 0,
-    dry_run: bool = False,
-    on_progress=None,
-) -> dict:
-    """Download, import and queue the conversion of each post."""
-    stats = {"considered": len(posts), "imported": 0, "queued": 0, "skipped": 0, "errors": 0}
-
-    with session_scope() as session:
-        known = known_urls(session)
-
-    todo = [post for post in posts if _normalise(post.url) not in known]
-    stats["skipped"] = len(posts) - len(todo)
-    if limit:
-        todo = todo[:limit]
-    stats["todo"] = len(todo)
-    if dry_run:
-        return stats
-
-    downloader = Downloader()
-    try:
-        for index, post in enumerate(todo, start=1):
-            if on_progress:
-                on_progress(index, len(todo), post)
-            try:
-                with temp_workdir("sitemap_") as workdir:
-                    downloaded = downloader.download(post.url, workdir)
-                    with session_scope() as session:
-                        outcome = import_file(
-                            session,
-                            downloaded.path,
-                            category=category,
-                            source=SourceKind.IMPORT.value,
-                            source_url=post.url,
-                            source_id=post.url,
-                            move=True,
-                            title_override=post.title,
-                        )
-                        if outcome.status != "imported" or outcome.book is None:
-                            stats["errors"] += 1
-                            logger.info(
-                                "sitemap post not imported",
-                                extra={"url": post.url, "status": outcome.status},
-                            )
-                            continue
-                        book = outcome.book
-                        book.published = post.published
-                        if output_format:
-                            enqueue_conversion(
-                                session,
-                                book,
-                                target_format=output_format,
-                                device_profile=device_profile,
-                                keep_original=keep_original,
-                            )
-                            stats["queued"] += 1
-                        stats["imported"] += 1
-                        logger.info(
-                            "sitemap post imported",
-                            extra={"url": post.url, "title": book.title, "year": post.year},
-                        )
-            except DownloadError as exc:
-                stats["errors"] += 1
-                logger.warning("sitemap download failed", extra={"url": post.url, "error": str(exc)})
-            except Exception:  # noqa: BLE001 - one post must not stop the archive
-                stats["errors"] += 1
-                logger.exception("sitemap post failed", extra={"url": post.url})
-    finally:
-        downloader.close()
-    return stats
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -195,7 +89,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.list:
         with session_scope() as session:
             known = known_urls(session)
-        novos = [post for post in posts if _normalise(post.url) not in known]
+        novos = [post for post in posts if normalise_url(post.url) not in known]
         print(f"já na biblioteca: {len(posts) - len(novos)} | novos: {len(novos)}")
         for post in novos[:40]:
             print(f"  {post.published}  {post.title[:60]}")
@@ -210,16 +104,18 @@ def main(argv: list[str] | None = None) -> int:
     def progress(index: int, total: int, post: SitemapPost) -> None:
         print(f"  [{index}/{total}] {post.published} {post.title[:52]}")
 
-    stats = import_posts(
-        posts,
-        category=category,
-        output_format=args.format or defaults["output_format"],
-        device_profile=args.profile or defaults["device_profile"],
-        keep_original=args.keep_original or defaults["keep_original"],
-        limit=args.limit,
-        dry_run=False,
-        on_progress=progress,
-    )
+    with Downloader() as downloader:
+        stats = import_posts(
+            posts,
+            downloader=downloader,
+            category=category,
+            output_format=args.format or defaults["output_format"],
+            device_profile=args.profile or defaults["device_profile"],
+            keep_original=args.keep_original or defaults["keep_original"],
+            limit=args.limit,
+            dry_run=False,
+            on_progress=progress,
+        )
     print(
         f"\ncategoria: {category} | importados: {stats['imported']} | na fila: {stats['queued']}"
         f" | já existiam: {stats['skipped']} | erros: {stats['errors']}"

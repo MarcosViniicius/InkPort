@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse
@@ -25,6 +25,9 @@ router = APIRouter(prefix="/feeds", dependencies=[Depends(require_panel)], tags=
 
 #: Formatos que o formulário oferece — e os únicos que o salvamento aceita.
 OUTPUT_FORMATS = ("epub", "cbz", "pdf", "mobi", "azw3", "kepub")
+
+#: Períodos aceitos em "Buscar do passado" (0 = desligado, -1 = todo o acervo).
+BACKFILL_MONTHS = (-1, 0, 6, 12, 24, 60)
 
 
 @router.get("")
@@ -87,7 +90,7 @@ def test_feed(url: str = Form("")):
 
 
 @router.post("/save")
-def save_feed(
+async def save_feed(
     feed_id: str = Form(""),
     name: str = Form(""),
     url: str = Form(""),
@@ -97,6 +100,8 @@ def save_feed(
     device_profile: str = Form("generic_epub"),
     destination_folder: str = Form(""),
     max_items_per_run: str = Form(""),
+    backfill_months: str = Form("0"),
+    sitemap_url: str = Form(""),
     active: str = Form(""),
     keep_original: str = Form(""),
     session: Session = Depends(get_session),
@@ -144,6 +149,13 @@ def save_feed(
     feed.max_items_per_run = _as_int(
         max_items_per_run, default=feed.max_items_per_run or 20, minimum=1
     )
+    # Retroativos: mudar o período invalida o "arquivo já percorrido", então a
+    # próxima busca volta a varrer o sitemap.
+    anterior = feed.backfill_months or 0
+    feed.backfill_months = _backfill_months(backfill_months, default=anterior)
+    feed.sitemap_url = _sitemap_url(sitemap_url)
+    if feed.backfill_months != anterior:
+        feed.backfill_done_at = None
     feed.active = bool(active)
     feed.keep_original = bool(keep_original)
     # Só mexe se o formulário trouxe algo: a API pode ter definido uma categoria.
@@ -151,9 +163,19 @@ def save_feed(
         feed.category_id = _as_int(category_id, default=None)
 
     session.commit()
+
+    # "Automático ao salvar": começa a puxar o acervo antigo em segundo plano.
+    if feed.backfill_months and feed.backfill_done_at is None:
+        asyncio.create_task(asyncio.to_thread(_backfill_in_background, feed.id))
+
     verb = "atualizado" if feed_id.strip() else "criado"
+    extra = (
+        " Buscando os posts antigos em segundo plano."
+        if feed.backfill_months and feed.backfill_done_at is None
+        else ""
+    )
     return RedirectResponse(
-        f"/feeds?ok={quote(f'Feed {verb}: {feed.name}.')}", status_code=303
+        f"/feeds?ok={quote(f'Feed {verb}: {feed.name}.{extra}')}", status_code=303
     )
 
 
@@ -181,6 +203,24 @@ def _device_profile(raw: str, session: Session, *, default: str) -> str:
     """Perfil que existe nesta instalação; qualquer outra coisa mantém o atual."""
     slug = (raw or "").strip()
     return slug if slug in all_profiles(session) else default
+
+
+def _backfill_months(raw: str, *, default: int) -> int:
+    """Só aceita os presets oferecidos; qualquer outra coisa mantém o atual."""
+    try:
+        value = int(str(raw).strip())
+    except (TypeError, ValueError):
+        return default
+    return value if value in BACKFILL_MONTHS else default
+
+
+def _sitemap_url(raw: str) -> str:
+    """Empty, or a real http(s) URL (anything else is ignored)."""
+    value = (raw or "").strip()
+    if not value:
+        return ""
+    parsed = urlparse(value)
+    return value if parsed.scheme in {"http", "https"} and parsed.netloc else ""
 
 
 @router.post("/{feed_id}/delete")
@@ -287,3 +327,44 @@ def _refresh_in_background(feed_id: int) -> None:
         return
     if report is not None:
         logger.info("manual feed refresh finished", extra=report.as_dict())
+
+
+@router.post("/{feed_id}/backfill")
+async def backfill_feed(feed_id: int, session: Session = Depends(get_session)):
+    """Force another walk of the site archive in the background."""
+    feed = session.get(Feed, feed_id)
+    if feed is None:
+        raise HTTPException(status_code=404, detail="Feed não encontrado")
+    if not feed.backfill_months:
+        return _back(
+            "/feeds",
+            "Ligue «Buscar do passado» no feed e salve para importar os posts antigos.",
+        )
+    if feed_id in feeds_in_progress():
+        return _back("/feeds", "Este feed já está sendo processado agora.")
+    asyncio.create_task(asyncio.to_thread(_backfill_in_background, feed_id))
+    return RedirectResponse(
+        f"/feeds?ok={quote('Busca retroativa iniciada — os posts antigos entram conforme ficam prontos.')}",
+        status_code=303,
+    )
+
+
+def _backfill_in_background(feed_id: int) -> None:
+    """Clear the "archive finished" mark and run the normal (RSS + archive) pass."""
+    from app.database import session_scope
+
+    if feed_id in feeds_in_progress():
+        return
+    try:
+        with session_scope() as session:
+            feed = session.get(Feed, feed_id)
+            if feed is None or not feed.backfill_months:
+                return
+            feed.backfill_done_at = None
+            session.commit()
+        report = process_feed_by_id(feed_id)
+    except Exception:  # noqa: BLE001 - background task: never crash the loop
+        logger.exception("background feed backfill failed", extra={"feed_id": feed_id})
+        return
+    if report is not None:
+        logger.info("manual feed backfill finished", extra=report.as_dict())

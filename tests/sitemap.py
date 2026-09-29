@@ -58,6 +58,7 @@ def check(name: str, condition: bool, detail: str = "") -> None:
 def main() -> int:
     from app.database import init_db, session_scope
     from app.database.models import Book, Feed
+    from app.rss.archive import import_posts, known_urls, normalise_url
     from app.rss.sitemap import (
         collect_posts,
         current_year,
@@ -65,7 +66,7 @@ def main() -> int:
         post_from_url,
         posts_for_year,
     )
-    from app.tools.import_site import _normalise, feed_defaults, import_posts, known_urls
+    from app.tools.import_site import feed_defaults
 
     print("[leitura do sitemap]")
     posts, children = parse_sitemap(INDEX)
@@ -122,8 +123,8 @@ def main() -> int:
     print("\n[dedup por URL e herança do feed]")
     check(
         "www e barra final não criam duplicata",
-        _normalise("https://www.exemplo.com/2026/09/28/post-novo/")
-        == _normalise("https://exemplo.com/2026/09/28/post-novo"),
+        normalise_url("https://www.exemplo.com/2026/09/28/post-novo/")
+        == normalise_url("https://exemplo.com/2026/09/28/post-novo"),
     )
 
     init_db()
@@ -163,6 +164,7 @@ def main() -> int:
         known = known_urls(session)
         stats = import_posts(
             coletados,
+            downloader=None,  # dry-run não baixa nada
             category="rss/exemplo",
             output_format="",
             device_profile="eink_generic",
@@ -171,7 +173,7 @@ def main() -> int:
         )
         livros = session.query(Book).count()
 
-    check("URL já importada entra em 'known'", _normalise("https://www.exemplo.com/2026/09/28/post-novo") in known)
+    check("URL já importada entra em 'known'", normalise_url("https://www.exemplo.com/2026/09/28/post-novo") in known)
     check("dry-run não cria livro", livros == 1, str(livros))
     check(
         "dry-run conta o que faria (1 novo de 2)",
