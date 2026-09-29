@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-label="OPDS Server — marca">
+  <title>OPDS Server — marca</title>
+  <desc>Marca gerada por tools/artwork.</desc>
+  <rect x="4" y="4" width="120" height="120" fill="#63b39d" rx="28.8"/>
+  <svg x="29.2" y="29.2" width="69.6" height="69.6" viewBox="0 0 24 24" fill="none" stroke="#0f1c18" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M8 3v15"/></svg>
+</svg>

@@ -33,8 +33,13 @@ Regras de ouro do projeto:
 .\.venv\Scripts\python.exe -m app          # Windows
 python -m app                               # Linux/macOS
 
-# lint
-.\.venv\Scripts\ruff.exe check app tests
+# lint (inclui as ferramentas de desenvolvimento)
+.\.venv\Scripts\ruff.exe check app tests tools
+
+# ferramentas de desenvolvimento
+.\.venv\Scripts\python.exe tools\devops\container_report.py   # mede containers (imagem, camadas, RAM)
+.\.venv\Scripts\python.exe -m tools.artwork.generate          # regenera a arte (banner, badges, diagrama)
+.\.venv\Scripts\python.exe -m tools.artwork.generate --check  # falha se a arte estiver desatualizada
 
 # testes (cada arquivo é um script independente; usa DATA_DIR temporário)
 python tests/smoke.py
@@ -123,6 +128,15 @@ app/
     ├── routes/        auth, dashboard, library, imports, conversions,
     │                  devices, feeds, reader, settings  <-- nova página aqui
     └── templates/ + static/  (base.html, style.css, app.js, reader.*)
+
+Fora do pacote da aplicação (ferramentas e configuração de agentes):
+
+.opencode/
+├── agents/            container-optimizer.md   (DevOps: otimiza containers)
+└── commands/          container-audit.md       (/container-audit)
+tools/
+├── artwork/           banner, cartão social, badges e diagrama (SVG declarativo)
+└── devops/            container_report.py      (mede imagem, camadas e RAM)
 ```
 
 ## 4. Invariantes (não quebre sem entender)
@@ -170,6 +184,8 @@ app/
 | Novo endpoint do leitor | `reader/registry.py` + handler em `reader/` |
 | Reparo/migração leve | `library/repairs.py` (idempotente, roda no boot) |
 | CLI interna | `app/tools/` |
+| Otimizar containers | `.opencode/agents/container-optimizer.md` + `tools/devops/container_report.py` (ver `docs/devops/containers.md`) |
+| Arte/documentação visual (banner, badges, diagrama) | `tools/artwork/` — edite `artwork.toml` e rode `python -m tools.artwork.generate` |
 
 ## 6. Convenções de código
 
@@ -207,3 +223,5 @@ app/
   [`docs/device-formats.md`](docs/device-formats.md)
 - Feeds: [`docs/rss.md`](docs/rss.md)
 - Fluxo de dev (adicionar conversor/dispositivo/rota): [`docs/development.md`](docs/development.md)
+- Containers (auditoria de RAM e disco, agente DevOps): [`docs/devops/containers.md`](docs/devops/containers.md)
+- Arte do projeto (banner, badges, diagrama): [`tools/artwork/README.md`](tools/artwork/README.md)

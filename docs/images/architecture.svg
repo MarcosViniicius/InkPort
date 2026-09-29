@@ -1,124 +1,78 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="780" viewBox="0 0 1200 780" role="img" aria-label="Diagrama: clientes OPDS e navegador acessam o servidor FastAPI (OPDS 1.2 e 2.0, painel web e leitor web), que usa a biblioteca, os conversores, a fila de workers e a ingestão RSS, tudo sob DATA_DIR">
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="798" viewBox="0 0 1200 798" role="img" aria-label="Arquitetura do eink-opds-server">
   <title>Arquitetura do eink-opds-server</title>
+  <desc>Diagrama gerado por tools/artwork a partir de artwork.toml.</desc>
   <defs>
-    <marker id="arw" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M0 0 L10 5 L0 10 z" fill="#63b39d"/>
-    </marker>
+    <marker id="arrowhead" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#63b39d"/></marker>
   </defs>
-
-  <rect width="1200" height="780" fill="#14161a"/>
-
-  <g font-family="Verdana, Geneva, sans-serif">
-    <!-- CLIENTES -->
-    <text x="60" y="42" font-size="12" letter-spacing="1.6" fill="#63b39d">CLIENTES</text>
-
-    <g>
-      <rect x="60" y="54" width="340" height="84" rx="12" fill="#1b1e23" stroke="#262a31"/>
-      <text x="80" y="86" font-size="17" font-weight="600" fill="#ecebe7">Leitor e-ink</text>
-      <text x="80" y="112" font-size="13" fill="#918e87">OPDS 1.2 · CrossPoint, Kindle, Kobo…</text>
-    </g>
-    <g>
-      <rect x="430" y="54" width="340" height="84" rx="12" fill="#1b1e23" stroke="#262a31"/>
-      <text x="450" y="86" font-size="17" font-weight="600" fill="#ecebe7">Celular / app de leitura</text>
-      <text x="450" y="112" font-size="13" fill="#918e87">qualquer cliente OPDS</text>
-    </g>
-    <g>
-      <rect x="800" y="54" width="340" height="84" rx="12" fill="#1b1e23" stroke="#262a31"/>
-      <text x="820" y="86" font-size="17" font-weight="600" fill="#ecebe7">Navegador</text>
-      <text x="820" y="112" font-size="13" fill="#918e87">painel de controle e leitor web</text>
-    </g>
-
-    <!-- seta clientes -> servidor -->
-    <line x1="600" y1="140" x2="600" y2="178" stroke="#63b39d" stroke-width="2" marker-end="url(#arw)"/>
-    <text x="616" y="166" font-size="12" fill="#918e87">HTTP · OPDS · Basic auth</text>
-
-    <!-- SERVIDOR -->
-    <text x="60" y="200" font-size="12" letter-spacing="1.6" fill="#63b39d">SERVIDOR — UM PROCESSO (FASTAPI)</text>
-    <rect x="60" y="212" width="1080" height="150" rx="16" fill="#171a1f" stroke="#262a31"/>
-
-    <g>
-      <rect x="80" y="236" width="336" height="102" rx="10" fill="#1b1e23" stroke="#2c3a37"/>
-      <text x="98" y="268" font-size="16" font-weight="600" fill="#ecebe7">OPDS 1.2 / 2.0</text>
-      <text x="98" y="294" font-family="Consolas, 'Courier New', monospace" font-size="13" fill="#cbebda">/opds · /opds/v2</text>
-      <text x="98" y="318" font-size="12" fill="#918e87">categorias, autores, séries, tags</text>
-    </g>
-    <g>
-      <rect x="432" y="236" width="336" height="102" rx="10" fill="#1b1e23" stroke="#2c3a37"/>
-      <text x="450" y="268" font-size="16" font-weight="600" fill="#ecebe7">Painel web</text>
-      <text x="450" y="294" font-family="Consolas, 'Courier New', monospace" font-size="13" fill="#cbebda">importar · biblioteca · converter</text>
-      <text x="450" y="318" font-size="12" fill="#918e87">Jinja2, estáticos locais (sem CDN)</text>
-    </g>
-    <g>
-      <rect x="784" y="236" width="336" height="102" rx="10" fill="#1b1e23" stroke="#2c3a37"/>
-      <text x="802" y="268" font-size="16" font-weight="600" fill="#ecebe7">Leitor web</text>
-      <text x="802" y="294" font-family="Consolas, 'Courier New', monospace" font-size="13" fill="#cbebda">/reader/{id}</text>
-      <text x="802" y="318" font-size="12" fill="#918e87">EPUB, PDF, CBZ, TXT, FB2</text>
-    </g>
-
-    <!-- seta servidor -> nucleo -->
-    <line x1="600" y1="362" x2="600" y2="400" stroke="#63b39d" stroke-width="2" marker-end="url(#arw)"/>
-    <text x="616" y="388" font-size="12" fill="#918e87">a mesma biblioteca e o mesmo arquivo</text>
-
-    <!-- NUCLEO -->
-    <text x="60" y="422" font-size="12" letter-spacing="1.6" fill="#63b39d">NÚCLEO</text>
-    <g>
-      <rect x="60" y="434" width="247" height="140" rx="12" fill="#1b1e23" stroke="#262a31"/>
-      <text x="78" y="466" font-size="16" font-weight="600" fill="#ecebe7">Biblioteca</text>
-      <text x="78" y="492" font-size="12" fill="#918e87">importação e metadados</text>
-      <text x="78" y="512" font-size="12" fill="#918e87">categorias e tags</text>
-      <text x="78" y="532" font-size="12" fill="#918e87">busca e filtros</text>
-      <text x="78" y="558" font-size="12" fill="#63b39d">detecção real do conteúdo</text>
-    </g>
-    <g>
-      <rect x="337" y="434" width="247" height="140" rx="12" fill="#1b1e23" stroke="#262a31"/>
-      <text x="355" y="466" font-size="16" font-weight="600" fill="#ecebe7">Conversores</text>
-      <text x="355" y="492" font-size="12" fill="#918e87">EPUB · KEPUB · PDF</text>
-      <text x="355" y="512" font-size="12" fill="#918e87">MOBI · DOCX · CBZ</text>
-      <text x="355" y="532" font-size="12" fill="#918e87">FB2 · TXT · HTML</text>
-      <text x="355" y="558" font-size="12" fill="#63b39d">100% Python, sem binários</text>
-    </g>
-    <g>
-      <rect x="614" y="434" width="247" height="140" rx="12" fill="#1b1e23" stroke="#262a31"/>
-      <text x="632" y="466" font-size="16" font-weight="600" fill="#ecebe7">Fila + workers</text>
-      <text x="632" y="492" font-size="12" fill="#918e87">fila no banco</text>
-      <text x="632" y="512" font-size="12" fill="#918e87">progresso ao vivo</text>
-      <text x="632" y="532" font-size="12" fill="#918e87">cancelar e retomar</text>
-      <text x="632" y="558" font-size="12" fill="#63b39d">não trava web nem OPDS</text>
-    </g>
-    <g>
-      <rect x="891" y="434" width="249" height="140" rx="12" fill="#1b1e23" stroke="#262a31"/>
-      <text x="909" y="466" font-size="16" font-weight="600" fill="#ecebe7">RSS / sitemap</text>
-      <text x="909" y="492" font-size="12" fill="#918e87">busca periódica</text>
-      <text x="909" y="512" font-size="12" fill="#918e87">dedup por GUID/hash</text>
-      <text x="909" y="532" font-size="12" fill="#918e87">importação de site</text>
-      <text x="909" y="558" font-size="12" fill="#63b39d">converte e adiciona</text>
-    </g>
-
-    <!-- seta nucleo -> armazenamento -->
-    <line x1="600" y1="588" x2="600" y2="626" stroke="#63b39d" stroke-width="2" marker-end="url(#arw)"/>
-    <text x="616" y="614" font-size="12" fill="#918e87">um arquivo por formato, caminho relativo</text>
-
-    <!-- ARMAZENAMENTO -->
-    <text x="60" y="648" font-size="12" letter-spacing="1.6" fill="#63b39d">DATA_DIR — BACKUP É COPIAR ESTA PASTA</text>
-    <rect x="60" y="660" width="1080" height="100" rx="16" fill="#171a1f" stroke="#262a31"/>
-    <g font-family="Consolas, 'Courier New', monospace" font-size="14" fill="#cbebda">
-      <rect x="78" y="682" width="332" height="34" rx="8" fill="#1b1e23" stroke="#262a31"/>
-      <text x="96" y="705">opds.db  (SQLite, WAL)</text>
-
-      <rect x="426" y="682" width="332" height="34" rx="8" fill="#1b1e23" stroke="#262a31"/>
-      <text x="444" y="705">library/  (por categoria)</text>
-
-      <rect x="774" y="682" width="348" height="34" rx="8" fill="#1b1e23" stroke="#262a31"/>
-      <text x="792" y="705">covers/  (capas geradas)</text>
-
-      <rect x="78" y="722" width="332" height="34" rx="8" fill="#1b1e23" stroke="#262a31"/>
-      <text x="96" y="745">inbox/  (uploads)</text>
-
-      <rect x="426" y="722" width="332" height="34" rx="8" fill="#1b1e23" stroke="#262a31"/>
-      <text x="444" y="745">temp/  (trabalho, limpo sozinho)</text>
-
-      <rect x="774" y="722" width="348" height="34" rx="8" fill="#1b1e23" stroke="#262a31"/>
-      <text x="792" y="745">logs/</text>
-    </g>
-  </g>
+  <rect x="0" y="0" width="1200" height="798" fill="#14161a"/>
+  <text x="60" y="38" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#63b39d" letter-spacing="1.6">CLIENTES</text>
+  <rect x="60" y="48" width="340" height="80" fill="#1b1e23" rx="12" stroke="#2c3138"/>
+  <text x="78" y="80" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="16" fill="#ecebe7" font-weight="600">Leitor e-ink</text>
+  <text x="78" y="106" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#9a978f">OPDS 1.2 · CrossPoint, Kindle, Kobo…</text>
+  <rect x="430" y="48" width="340" height="80" fill="#1b1e23" rx="12" stroke="#2c3138"/>
+  <text x="448" y="80" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="16" fill="#ecebe7" font-weight="600">Celular / app de leitura</text>
+  <text x="448" y="106" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#9a978f">qualquer cliente OPDS</text>
+  <rect x="800" y="48" width="340" height="80" fill="#1b1e23" rx="12" stroke="#2c3138"/>
+  <text x="818" y="80" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="16" fill="#ecebe7" font-weight="600">Navegador</text>
+  <text x="818" y="106" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#9a978f">painel de controle e leitor web</text>
+  <line x1="600" y1="138" x2="600" y2="174" stroke="#63b39d" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <text x="616" y="160" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#9a978f">HTTP · OPDS · Basic auth</text>
+  <text x="60" y="196" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#63b39d" letter-spacing="1.6">SERVIDOR — UM PROCESSO (FASTAPI)</text>
+  <rect x="60" y="206" width="1080" height="144" fill="#171a1e" rx="16" stroke="#2c3138"/>
+  <rect x="82" y="228" width="325.33" height="100" fill="#1b1e23" rx="12" stroke="#2c3138"/>
+  <text x="100" y="260" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="16" fill="#ecebe7" font-weight="600">OPDS 1.2 / 2.0</text>
+  <text x="100" y="286" font-family="ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, Consolas, monospace" font-size="12" fill="#8fd0be">/opds · /opds/v2</text>
+  <text x="100" y="306" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#9a978f">categorias, autores, séries, tags</text>
+  <rect x="437.33" y="228" width="325.33" height="100" fill="#1b1e23" rx="12" stroke="#2c3138"/>
+  <text x="455.33" y="260" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="16" fill="#ecebe7" font-weight="600">Painel web</text>
+  <text x="455.33" y="286" font-family="ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, Consolas, monospace" font-size="12" fill="#8fd0be">importar · biblioteca · converter</text>
+  <text x="455.33" y="306" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#9a978f">Jinja2, estáticos locais (sem CDN)</text>
+  <rect x="792.67" y="228" width="325.33" height="100" fill="#1b1e23" rx="12" stroke="#2c3138"/>
+  <text x="810.67" y="260" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="16" fill="#ecebe7" font-weight="600">Leitor web</text>
+  <text x="810.67" y="286" font-family="ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, Consolas, monospace" font-size="12" fill="#8fd0be">/reader/{id}</text>
+  <text x="810.67" y="306" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#9a978f">EPUB, PDF, CBZ, TXT, FB2</text>
+  <line x1="600" y1="360" x2="600" y2="396" stroke="#63b39d" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <text x="616" y="382" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#9a978f">a mesma biblioteca e o mesmo arquivo</text>
+  <text x="60" y="418" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#63b39d" letter-spacing="1.6">NÚCLEO</text>
+  <rect x="60" y="428" width="247.5" height="140" fill="#1b1e23" rx="12" stroke="#2c3138"/>
+  <text x="78" y="460" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="16" fill="#ecebe7" font-weight="600">Biblioteca</text>
+  <text x="78" y="486" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#9a978f">importação e metadados</text>
+  <text x="78" y="506" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#9a978f">categorias e tags</text>
+  <text x="78" y="526" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#9a978f">busca e filtros</text>
+  <text x="78" y="546" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#63b39d">detecção real do conteúdo</text>
+  <rect x="337.5" y="428" width="247.5" height="140" fill="#1b1e23" rx="12" stroke="#2c3138"/>
+  <text x="355.5" y="460" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="16" fill="#ecebe7" font-weight="600">Conversores</text>
+  <text x="355.5" y="486" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#9a978f">EPUB · KEPUB · PDF</text>
+  <text x="355.5" y="506" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#9a978f">MOBI · DOCX · CBZ</text>
+  <text x="355.5" y="526" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#9a978f">FB2 · TXT · HTML</text>
+  <text x="355.5" y="546" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#63b39d">100% Python, sem binários</text>
+  <rect x="615" y="428" width="247.5" height="140" fill="#1b1e23" rx="12" stroke="#2c3138"/>
+  <text x="633" y="460" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="16" fill="#ecebe7" font-weight="600">Fila + workers</text>
+  <text x="633" y="486" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#9a978f">fila no banco</text>
+  <text x="633" y="506" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#9a978f">progresso ao vivo</text>
+  <text x="633" y="526" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#9a978f">cancelar e retomar</text>
+  <text x="633" y="546" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#63b39d">não trava web nem OPDS</text>
+  <rect x="892.5" y="428" width="247.5" height="140" fill="#1b1e23" rx="12" stroke="#2c3138"/>
+  <text x="910.5" y="460" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="16" fill="#ecebe7" font-weight="600">RSS / sitemap</text>
+  <text x="910.5" y="486" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#9a978f">busca periódica</text>
+  <text x="910.5" y="506" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#9a978f">dedup por GUID/hash</text>
+  <text x="910.5" y="526" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#9a978f">importação de site</text>
+  <text x="910.5" y="546" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#63b39d">converte e adiciona</text>
+  <line x1="600" y1="578" x2="600" y2="614" stroke="#63b39d" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <text x="616" y="600" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#9a978f">um arquivo por formato, caminho relativo</text>
+  <text x="60" y="636" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#63b39d" letter-spacing="1.6">DATA_DIR — BACKUP É COPIAR ESTA PASTA</text>
+  <rect x="60" y="646" width="1080" height="126" fill="#171a1e" rx="16" stroke="#2c3138"/>
+  <rect x="82" y="668" width="336" height="34" fill="#1b1e23" rx="8" stroke="#63b39d" stroke-opacity="0.55"/>
+  <text x="98" y="690.04" font-family="ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, Consolas, monospace" font-size="14" fill="#8fd0be">opds.db  (SQLite, WAL)</text>
+  <rect x="432" y="668" width="336" height="34" fill="#1b1e23" rx="8" stroke="#63b39d" stroke-opacity="0.55"/>
+  <text x="448" y="690.04" font-family="ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, Consolas, monospace" font-size="14" fill="#8fd0be">library/  (por categoria)</text>
+  <rect x="782" y="668" width="336" height="34" fill="#1b1e23" rx="8" stroke="#63b39d" stroke-opacity="0.55"/>
+  <text x="798" y="690.04" font-family="ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, Consolas, monospace" font-size="14" fill="#8fd0be">covers/  (capas geradas)</text>
+  <rect x="82" y="716" width="336" height="34" fill="#1b1e23" rx="8" stroke="#63b39d" stroke-opacity="0.55"/>
+  <text x="98" y="738.04" font-family="ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, Consolas, monospace" font-size="14" fill="#8fd0be">inbox/  (uploads)</text>
+  <rect x="432" y="716" width="336" height="34" fill="#1b1e23" rx="8" stroke="#63b39d" stroke-opacity="0.55"/>
+  <text x="448" y="738.04" font-family="ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, Consolas, monospace" font-size="14" fill="#8fd0be">temp/  (limpo sozinho)</text>
+  <rect x="782" y="716" width="336" height="34" fill="#1b1e23" rx="8" stroke="#63b39d" stroke-opacity="0.55"/>
+  <text x="798" y="738.04" font-family="ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, Consolas, monospace" font-size="14" fill="#8fd0be">logs/</text>
 </svg>

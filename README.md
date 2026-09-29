@@ -2,6 +2,11 @@
 
 ![OPDS Server: servidor OPDS 1.2 / 2.0 para leitores e-ink](docs/images/banner.svg)
 
+![versão](docs/images/badges/version.svg)
+![python](docs/images/badges/python.svg)
+![opds](docs/images/badges/opds.svg)
+![docker](docs/images/badges/docker.svg)
+
 Servidor **OPDS 1.2 (Atom) / 2.0 (JSON)** para leitores e-ink em geral — Kindle,
 Kobo, PocketBook, Boox, Tolino, reMarkable, Xteink e outros — com **painel web**,
 biblioteca centralizada, fila de conversão e ingestão automática por RSS/Atom.
@@ -17,6 +22,7 @@ externo** (nada de Calibre, Ghostscript, poppler, ImageMagick ou FFmpeg).
 > Documentação: [Arquitetura](docs/architecture.md) ·
 > [Painel](docs/panel.md) · [OPDS](docs/opds.md) · [Conversão](docs/conversion.md) ·
 > [Dispositivos](docs/device-formats.md) · [RSS](docs/rss.md) ·
+> [Containers](docs/devops/containers.md) ·
 > [Desenvolvimento](docs/development.md) · [IA/agentes](AGENTS.md)
 
 ---
@@ -412,6 +418,9 @@ Resumo (detalhes em [`docs/architecture.md`](docs/architecture.md)):
 | `app/api` | API REST interna (`/api`) |
 | `app/tools` | utilitários de linha de comando (ex.: importar site) |
 | `app/web` | painel (Jinja2 + estáticos, sem CDN) |
+| `tools/artwork` | gerador da arte: banner, badges e diagrama em SVG |
+| `tools/devops` | medição de containers (imagem, camadas, RAM) |
+| `.opencode` | agente DevOps e o comando `/container-audit` |
 
 ## Testes
 

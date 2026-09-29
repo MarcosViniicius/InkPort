@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="OPDS Server — Servidor OPDS 1.2 / 2.0 para leitores e-ink — painel, biblioteca e conversão">
+  <title>OPDS Server — Servidor OPDS 1.2 / 2.0 para leitores e-ink — painel, biblioteca e conversão</title>
+  <desc>Cartão social gerado por tools/artwork.</desc>
+  <defs>
+    <radialGradient id="glow0" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#63b39d" stop-opacity="0.16"/><stop offset="100%" stop-color="#63b39d" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect x="0" y="0" width="1200" height="630" fill="#14161a"/>
+  <rect x="0.5" y="0.5" width="1199" height="629" fill="none" rx="16" stroke="#2c3138"/>
+  <circle cx="1010" cy="315" r="330" fill="url(#glow0)"/>
+  <rect x="80" y="72" width="84" height="84" fill="#63b39d" rx="20.16"/>
+  <svg x="95.96" y="87.96" width="52.08" height="52.08" viewBox="0 0 24 24" fill="none" stroke="#0f1c18" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M8 3v15"/></svg>
+  <text x="188" y="118" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="30" fill="#ecebe7" font-weight="600">OPDS Server</text>
+  <rect x="390.4" y="100" width="67" height="28" fill="#1b1e23" rx="8" stroke="#63b39d" stroke-opacity="0.55"/>
+  <text x="402.4" y="118.68" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" fill="#8fd0be">v0.1.0</text>
+  <text x="80" y="226" font-family="'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, ui-serif, serif" font-size="52" fill="#ecebe7" font-weight="600">Seu acervo no leitor,</text>
+  <text x="80" y="286" font-family="'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, ui-serif, serif" font-size="52" fill="#ecebe7" font-weight="600">sem depender da nuvem</text>
+  <circle cx="85" cy="345" r="4" fill="#63b39d"/>
+  <text x="104" y="350" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" fill="#9a978f">OPDS 1.2 / 2.0 com categorias, séries, autores e busca</text>
+  <circle cx="85" cy="377" r="4" fill="#63b39d"/>
+  <text x="104" y="382" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" fill="#9a978f">Conversão nativa: EPUB, KEPUB, MOBI, PDF, CBZ, DOCX, FB2, TXT</text>
+  <circle cx="85" cy="409" r="4" fill="#63b39d"/>
+  <text x="104" y="414" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" fill="#9a978f">Importação e conversão em massa, organizadas por categoria</text>
+  <circle cx="85" cy="441" r="4" fill="#63b39d"/>
+  <text x="104" y="446" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="17" fill="#9a978f">RSS/Atom automático, leitor web embutido e backup de uma pasta</text>
+  <rect x="80" y="528" width="67" height="34" fill="#1b1e23" rx="8" stroke="#63b39d" stroke-opacity="0.55"/>
+  <text x="96" y="550.04" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="14" fill="#8fd0be">EPUB</text>
+  <rect x="157" y="528" width="76" height="34" fill="#1b1e23" rx="8" stroke="#63b39d" stroke-opacity="0.55"/>
+  <text x="173" y="550.04" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="14" fill="#8fd0be">KEPUB</text>
+  <rect x="243" y="528" width="64" height="34" fill="#1b1e23" rx="8" stroke="#63b39d" stroke-opacity="0.55"/>
+  <text x="259" y="550.04" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="14" fill="#8fd0be">MOBI</text>
+  <rect x="317" y="528" width="67" height="34" fill="#1b1e23" rx="8" stroke="#63b39d" stroke-opacity="0.55"/>
+  <text x="333" y="550.04" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="14" fill="#8fd0be">AZW3</text>
+  <rect x="394" y="528" width="58" height="34" fill="#1b1e23" rx="8" stroke="#63b39d" stroke-opacity="0.55"/>
+  <text x="410" y="550.04" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="14" fill="#8fd0be">PDF</text>
+  <rect x="462" y="528" width="58" height="34" fill="#1b1e23" rx="8" stroke="#63b39d" stroke-opacity="0.55"/>
+  <text x="478" y="550.04" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="14" fill="#8fd0be">CBZ</text>
+  <rect x="530" y="528" width="67" height="34" fill="#1b1e23" rx="8" stroke="#63b39d" stroke-opacity="0.55"/>
+  <text x="546" y="550.04" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="14" fill="#8fd0be">DOCX</text>
+  <rect x="607" y="528" width="58" height="34" fill="#1b1e23" rx="8" stroke="#63b39d" stroke-opacity="0.55"/>
+  <text x="623" y="550.04" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="14" fill="#8fd0be">FB2</text>
+  <rect x="675" y="528" width="58" height="34" fill="#1b1e23" rx="8" stroke="#63b39d" stroke-opacity="0.55"/>
+  <text x="691" y="550.04" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="14" fill="#8fd0be">TXT</text>
+  <rect x="900" y="115" width="220" height="400" fill="#1b1e23" rx="18" stroke="#2c3138"/>
+  <rect x="917.6" y="132.6" width="184.8" height="364.8" fill="#0d0e11" rx="8"/>
+  <rect x="935.6" y="154.6" width="148.8" height="7" fill="#2d3239" rx="3.5"/>
+  <rect x="935.6" y="185" width="127.97" height="7" fill="#63b39d" rx="3.5"/>
+  <rect x="935.6" y="215.4" width="139.87" height="7" fill="#2d3239" rx="3.5"/>
+  <rect x="935.6" y="245.8" width="107.14" height="7" fill="#2d3239" rx="3.5"/>
+  <rect x="935.6" y="268.2" width="148.8" height="1" fill="#2d3239"/>
+  <rect x="935.6" y="288.2" width="133.92" height="7" fill="#2d3239" rx="3.5"/>
+  <rect x="935.6" y="318.6" width="119.04" height="7" fill="#2d3239" rx="3.5"/>
+  <rect x="935.6" y="349" width="89.28" height="7" fill="#2d3239" rx="3.5"/>
+  <rect x="935.6" y="379.4" width="148.8" height="7" fill="#2d3239" rx="3.5"/>
+  <rect x="935.6" y="409.8" width="127.97" height="7" fill="#2d3239" rx="3.5"/>
+  <text x="80" y="588" font-family="ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, Consolas, monospace" font-size="13" fill="#9a978f">github.com/MarcosViniicius/eink-opds-server</text>
+</svg>

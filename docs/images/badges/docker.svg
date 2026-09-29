@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="135" height="24" viewBox="0 0 135 24" role="img" aria-label="docker: compose">
+  <title>docker: compose</title>
+  <desc>Distintivo gerado por tools/artwork (sem CDN).</desc>
+  <rect x="0" y="0" width="135" height="24" fill="#1b1e23" rx="6" stroke="#2c3138"/>
+  <path d="M62 0 H129 Q135 0 135 6 V18 Q135 24 129 24 H62 Z" fill="#63b39d"/>
+  <text x="10" y="16" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#9a978f">docker</text>
+  <text x="72" y="16" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#0f1c18">compose</text>
+</svg>

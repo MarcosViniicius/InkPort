@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="124" height="24" viewBox="0 0 124 24" role="img" aria-label="opds: 1.2 / 2.0">
+  <title>opds: 1.2 / 2.0</title>
+  <desc>Distintivo gerado por tools/artwork (sem CDN).</desc>
+  <rect x="0" y="0" width="124" height="24" fill="#1b1e23" rx="6" stroke="#2c3138"/>
+  <path d="M50 0 H118 Q124 0 124 6 V18 Q124 24 118 24 H50 Z" fill="#63b39d"/>
+  <text x="10" y="16" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#9a978f">opds</text>
+  <text x="60" y="16" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" fill="#0f1c18">1.2 / 2.0</text>
+</svg>

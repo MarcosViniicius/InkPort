@@ -1,0 +1,139 @@
+# ---------------------------------------------------------------------------
+# Arte do projeto (banner, cartao social, badges e diagrama de arquitetura).
+#
+# Este e o UNICO arquivo que voce precisa editar. Depois rode:
+#     python -m tools.artwork.generate
+#
+# A versao, quando omitida, vem de app/__init__.py (__version__).
+# Cores e fontes vem de app/web/static/style.css -- nao se repetem aqui.
+# ---------------------------------------------------------------------------
+
+[project]
+name = "OPDS Server"
+tagline = "Servidor OPDS 1.2 / 2.0 para leitores e-ink — painel, biblioteca e conversão"
+repo = "MarcosViniicius/eink-opds-server"
+# version = "0.2.0"   # descomente para fixar; vazio = le de app/__init__.py
+
+[banner]
+# Etiquetas do banner. Cuidado com o comprimento: o gerador avisa quando a
+# linha passa do limite (o espaco ate o e-reader ilustrado).
+chips = [
+    "OPDS 1.2 · 2.0",
+    "Conversão 100% Python",
+    "Sem CDN · offline",
+    "RSS + sitemap",
+]
+
+[social]
+# Titulo do cartao social (1200x630). Duas linhas curtas funcionam melhor.
+headline = [
+    "Seu acervo no leitor,",
+    "sem depender da nuvem",
+]
+bullets = [
+    "OPDS 1.2 / 2.0 com categorias, séries, autores e busca",
+    "Conversão nativa: EPUB, KEPUB, MOBI, PDF, CBZ, DOCX, FB2, TXT",
+    "Importação e conversão em massa, organizadas por categoria",
+    "RSS/Atom automático, leitor web embutido e backup de uma pasta",
+]
+formats = ["EPUB", "KEPUB", "MOBI", "AZW3", "PDF", "CBZ", "DOCX", "FB2", "TXT"]
+
+[badges]
+# Um arquivo SVG por item em docs/images/badges/<label>.svg.
+# {version} e {name} sao substituidos automaticamente.
+[[badges.items]]
+label = "version"
+value = "v{version}"
+
+[[badges.items]]
+label = "python"
+value = "3.11+"
+
+[[badges.items]]
+label = "opds"
+value = "1.2 / 2.0"
+
+[[badges.items]]
+label = "docker"
+value = "compose"
+
+[diagram]
+title = "Arquitetura do eink-opds-server"
+width = 1200
+# Um rotulo por seta, na ordem: entre o tier 1->2, 2->3, 3->4...
+arrows = [
+    "HTTP · OPDS · Basic auth",
+    "a mesma biblioteca e o mesmo arquivo",
+    "um arquivo por formato, caminho relativo",
+]
+
+[[diagram.tier]]
+label = "Clientes"
+
+[[diagram.tier.cards]]
+title = "Leitor e-ink"
+lines = ["OPDS 1.2 · CrossPoint, Kindle, Kobo…"]
+
+[[diagram.tier.cards]]
+title = "Celular / app de leitura"
+lines = ["qualquer cliente OPDS"]
+
+[[diagram.tier.cards]]
+title = "Navegador"
+lines = ["painel de controle e leitor web"]
+
+[[diagram.tier]]
+label = "Servidor — um processo (FastAPI)"
+band = true
+
+[[diagram.tier.cards]]
+title = "OPDS 1.2 / 2.0"
+mono = "/opds · /opds/v2"
+lines = ["categorias, autores, séries, tags"]
+
+[[diagram.tier.cards]]
+title = "Painel web"
+mono = "importar · biblioteca · converter"
+lines = ["Jinja2, estáticos locais (sem CDN)"]
+
+[[diagram.tier.cards]]
+title = "Leitor web"
+mono = "/reader/{id}"
+lines = ["EPUB, PDF, CBZ, TXT, FB2"]
+
+[[diagram.tier]]
+label = "Núcleo"
+
+[[diagram.tier.cards]]
+title = "Biblioteca"
+lines = ["importação e metadados", "categorias e tags", "busca e filtros"]
+accent = "detecção real do conteúdo"
+
+[[diagram.tier.cards]]
+title = "Conversores"
+lines = ["EPUB · KEPUB · PDF", "MOBI · DOCX · CBZ", "FB2 · TXT · HTML"]
+accent = "100% Python, sem binários"
+
+[[diagram.tier.cards]]
+title = "Fila + workers"
+lines = ["fila no banco", "progresso ao vivo", "cancelar e retomar"]
+accent = "não trava web nem OPDS"
+
+[[diagram.tier.cards]]
+title = "RSS / sitemap"
+lines = ["busca periódica", "dedup por GUID/hash", "importação de site"]
+accent = "converte e adiciona"
+
+[[diagram.tier]]
+label = "DATA_DIR — backup é copiar esta pasta"
+band = true
+kind = "chips"
+
+chips = [
+    "opds.db  (SQLite, WAL)",
+    "library/  (por categoria)",
+    "covers/  (capas geradas)",
+    "inbox/  (uploads)",
+    "temp/  (limpo sozinho)",
+    "logs/",
+]

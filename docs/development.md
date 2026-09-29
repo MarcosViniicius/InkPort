@@ -146,8 +146,42 @@ entradas com link de download**.
 - Sem dependência nova que exija binário do sistema.
 - Rode `ruff check app tests` antes de encerrar.
 
+## Arte e imagens (banner, badges, diagrama)
+
+A identidade visual é **gerada**, não desenhada à mão:
+
+```bash
+# edite os textos/versão aqui
+$EDITOR tools/artwork/artwork.toml
+.\.venv\Scripts\python.exe -m tools.artwork.generate
+```
+
+- Cores e fontes vêm de `app/web/static/style.css`; os ícones, do partial do
+  painel; a versão, de `app/__init__.py`. Não duplique nenhum desses valores.
+- `--check` falha se a arte versionada estiver desatualizada, e
+  `python tests/artwork.py` valida XML, dimensões, autocontenção e deriva.
+- Avisos de "texto não cabe" são para **resolver** (encurtar/reduzir), nunca
+  ignorar. Detalhes e guia de extensão: [`tools/artwork/README.md`](../tools/artwork/README.md).
+- Capturas de tela do painel não são geradas: veja o processo em
+  [`docs/panel.md`](panel.md) (Chrome headless + instância temporária).
+
+## Containers (RAM e disco)
+
+Antes de mexer em `Dockerfile`/`docker-compose.yml`, **meça**:
+
+```bash
+python tools/devops/container_report.py                 # imagem + container do compose
+python tools/devops/container_report.py --json          # resumo para comparar antes/depois
+```
+
+O playbook (imagem, runtime e disco), os guardrails e a linha de base medida
+estão em [`docs/devops/containers.md`](devops/containers.md). Para uma auditoria
+completa, use o agente `container-optimizer` (`/container-audit`), que segue o
+método medir → diagnosticar → aplicar → verificar → relatar.
+
 ## Documentação
 
 Ao mudar comportamento visível, atualize o documento correspondente em `docs/`
 (`opds.md`, `conversion.md`, `device-formats.md`, `rss.md`, `panel.md`,
-`architecture.md`) e, se for uma regra estrutural, o `AGENTS.md`.
+`architecture.md`, `devops/containers.md`) e, se for uma regra estrutural, o
+`AGENTS.md`.
