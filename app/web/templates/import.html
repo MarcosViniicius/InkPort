@@ -6,7 +6,7 @@
 <div class="page-head">
   <div>
     <h1>Importar</h1>
-    <p class="lead">Envie arquivos ou aponte uma pasta. A conversão pode acontecer na mesma etapa.</p>
+    <p class="lead">Envie arquivos, baixe de uma URL ou aponte uma pasta. A conversão pode acontecer na mesma etapa.</p>
   </div>
 </div>
 
@@ -56,6 +56,47 @@
   </div>
 
   <details class="card" data-collapse-sm open>
+    <summary>{{ icon('globe', 17) }} Baixar de uma URL</summary>
+    <p class="hint">
+      O servidor baixa a página, guarda como livro HTML e converte com o
+      <strong>conversor de páginas</strong> (as imagens da página entram no EPUB).
+      Também aceita o endereço de um arquivo suportado (PDF, EPUB, imagem…).
+      Páginas que só montam o conteúdo com JavaScript podem vir incompletas.
+    </p>
+    <form method="post" action="/import/url">
+      <div class="field">
+        <label for="url">Endereço da página <span class="text-danger">*</span></label>
+        <input id="url" name="url" type="url" inputmode="url" required
+               value="{{ url or '' }}" placeholder="https://exemplo.com/artigo">
+      </div>
+      <div class="field">
+        <label for="url-category">Categoria / pasta de destino <span class="text-danger">*</span></label>
+        <input id="url-category" name="category" list="category-list" required
+               placeholder="escolha uma existente ou digite uma nova">
+      </div>
+      <fieldset>
+        <legend>Conversão</legend>
+        <label class="check mb3">
+          <input type="checkbox" name="convert" checked> converter automaticamente
+        </label>
+        <div class="field-row">
+          <div class="field mb0">
+            <label for="url-format">Converter para</label>
+            <select id="url-format" name="target_format">
+              {% for fmt in output_formats %}
+                <option value="{{ fmt }}">{{ 'Automático (melhor por arquivo)' if fmt == 'auto' else format_label(fmt) }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          {{ device_select(profiles, id='url-profile', selected=device_profile, label='Dispositivo') }}
+        </div>
+        <label class="check mt4"><input type="checkbox" name="keep_original" checked> manter o arquivo original</label>
+      </fieldset>
+      <button class="button" type="submit">Baixar e importar</button>
+    </form>
+  </details>
+
+  <details class="card" data-collapse-sm open>
     <summary>{{ icon('library', 17) }} Importar pasta do servidor <span class="muted small">(avançado)</span></summary>
     <p class="hint">Para quando os arquivos já estão no computador que roda o servidor.</p>
     <form method="post" action="/import/scan">
@@ -94,7 +135,7 @@
 </div>
 
 {% if results %}
-<h2 class="mt4">Resultado do envio</h2>
+<h2 class="mt4">Resultado da importação</h2>
 <div class="table-wrap">
   <table>
     <thead><tr><th>Arquivo</th><th>Status</th><th>Tipo</th><th>Conversão</th><th>Mensagem</th><th></th></tr></thead>

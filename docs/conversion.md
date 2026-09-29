@@ -99,7 +99,13 @@ Referência: KCC `--splitter` (`0: Split` é o padrão, `1: Rotate`, `2: Both`).
 
 ## Página web -> EPUB
 
-A conversão de páginas (usada pelo RSS) é um **port do
+Três caminhos usam este mesmo pipeline: um arquivo **HTML** importado no painel,
+uma **página baixada pela URL** (Importar → *Baixar de uma URL*) e cada **item de
+um feed RSS/Atom**. No caso da URL, o endereço fica guardado no livro
+(`source_url`, visível em *Origem*) — é isso que faz as imagens e os links
+relativos resolverem.
+
+A conversão de páginas é um **port do
 [html2epub](https://github.com/webpagetoepub/html2epub)** (MIT), a biblioteca do
 site [webpagetoepub.github.io](https://webpagetoepub.github.io/). O pipeline
 segue a mesma ordem de etapas:

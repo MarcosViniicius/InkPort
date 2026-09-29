@@ -10,7 +10,7 @@ tarefas comuns. O login usa as credenciais do `.env` (`ADMIN_USERNAME` /
 | Caminho | Página | Para quê |
 | --- | --- | --- |
 | `/` | Painel | resumo do acervo, espaço, ferramentas e acesso OPDS |
-| `/import` | Importar | enviar arquivos, varrer pasta, inspecionar |
+| `/import` | Importar | enviar arquivos, baixar de URL, varrer pasta, inspecionar |
 | `/library` | Biblioteca | buscar, filtrar, editar e agir em lote |
 | `/library/{id}` | Livro | ficha do livro: metadados, capa, conversão |
 | `/reader/{id}` | Leitor | ler no próprio navegador |
@@ -79,14 +79,20 @@ já traz um atalho para importar quando a biblioteca está vazia.
 
 ## Importar (`/import`)
 
-Três blocos:
+Quatro blocos:
 
 1. **Enviar arquivos** — selecione ou arraste **vários arquivos**. Aceita EPUB,
    PDF, CBZ/CBR, MOBI/AZW3, DOCX, FB2, TXT, imagens e compactados.
-2. **Varrer pasta do servidor** — informe um caminho do próprio servidor, marque
+2. **Baixar de uma URL** — o servidor baixa uma **página da web** e a importa
+   como livro HTML (com o endereço guardado em *origem*), já convertendo para
+   EPUB pelo conversor de páginas: o título e o autor saem da própria página e as
+   imagens entram no livro. Também aceita o endereço de um arquivo suportado
+   (PDF, EPUB, imagem…). Páginas que só montam o conteúdo com JavaScript podem
+   vir incompletas.
+3. **Varrer pasta do servidor** — informe um caminho do próprio servidor, marque
    *recursivo* se quiser subpastas e *mover* para tirar os arquivos do lugar de
    origem.
-3. **Inspecionar** — veja o que o servidor entende de um arquivo antes de
+4. **Inspecionar** — veja o que o servidor entende de um arquivo antes de
    importar.
 
 **A categoria é obrigatória.** Escolha uma categoria já existente na lista ou

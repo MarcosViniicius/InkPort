@@ -68,6 +68,7 @@ SOURCE_LABELS = {
     "upload": "envio manual",
     "import": "importação",
     "rss": "feed",
+    "download": "baixado da web",
 }
 
 STATUS_LABELS = {

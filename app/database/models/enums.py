@@ -34,3 +34,5 @@ class SourceKind(enum.StrEnum):
     UPLOAD = "upload"
     RSS = "rss"
     IMPORT = "import"
+    #: Página/arquivo baixado de um endereço pelo painel (Importar → URL).
+    DOWNLOAD = "download"

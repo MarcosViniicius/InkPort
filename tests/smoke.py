@@ -61,6 +61,7 @@ def main() -> int:
         _panel_checks(client)
         _filter_checks(client)
         _import_category_checks(client)
+        _url_import_checks(client)
         _background_feed_actions(client)
         _feed_edit_checks(client)
         _devices_checks(client)
@@ -115,6 +116,188 @@ def _panel_checks(client) -> None:
     ):
         response = client.get(path)
         check(f"GET {path}", response.status_code == 200 and marker in response.text, str(response.status_code))
+
+
+def _url_import_checks(client) -> None:
+    """Importar uma página por URL: baixa, guarda o endereço, converte.
+
+    Sobe um servidor HTTP local (sem internet) para exercitar o caminho real:
+    download -> detecção -> importação -> fila de conversão, e os avisos quando
+    o endereço não presta.
+    """
+    import http.server
+    import threading
+    import time
+
+    from sqlalchemy import select
+
+    from app.config import get_settings
+    from app.database.base import session_scope
+    from app.database.models import Book, ConversionJob
+
+    print("\n[importar uma página por URL]")
+
+    pagina = (
+        "<!doctype html><html lang='pt-br'><head><title>Artigo da URL</title>"
+        "<meta name='author' content='Autora'></head><body>"
+        "<nav>menu que deve ser ignorado</nav><h1>Introdução</h1>"
+        "<p>Primeiro parágrafo do artigo baixado.</p>"
+        "<h2>Segunda parte</h2><p>Fim do artigo.</p></body></html>"
+    )
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):  # noqa: N802 - nome exigido pela stdlib
+            if self.path == "/artigo":
+                corpo, tipo = pagina.encode("utf-8"), "text/html; charset=utf-8"
+            elif self.path == "/binario":
+                corpo, tipo = b"\x00\x01\x02binario", "application/octet-stream"
+            else:
+                self.send_error(404)
+                return
+            self.send_response(200)
+            self.send_header("Content-Type", tipo)
+            self.send_header("Content-Length", str(len(corpo)))
+            self.end_headers()
+            self.wfile.write(corpo)
+
+        def log_message(self, *args):  # silencia o log do servidor de teste
+            pass
+
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    porta = server.server_address[1]
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    endereco = f"http://127.0.0.1:{porta}/artigo"
+    inbox = get_settings().inbox_dir
+    antes = {p.name for p in inbox.glob("*")} if inbox.exists() else set()
+
+    try:
+        vazio = client.post("/import/url", data={"url": "", "category": "Páginas"})
+        check(
+            "URL vazia é recusada com aviso",
+            vazio.status_code == 400 and "Informe o endereço" in vazio.text,
+            str(vazio.status_code),
+        )
+        esquema = client.post("/import/url", data={"url": "ftp://exemplo.com/a", "category": "Páginas"})
+        check(
+            "endereço sem http(s) é recusado",
+            esquema.status_code == 400 and "http://" in esquema.text,
+            str(esquema.status_code),
+        )
+        sem_categoria = client.post("/import/url", data={"url": endereco, "category": ""})
+        check(
+            "categoria continua obrigatória",
+            sem_categoria.status_code == 400 and "categoria" in sem_categoria.text,
+            str(sem_categoria.status_code),
+        )
+        fora_do_ar = client.post(
+            "/import/url", data={"url": "http://127.0.0.1:9/nada.html", "category": "Páginas"}
+        )
+        check(
+            "endereço fora do ar vira aviso (não 500)",
+            fora_do_ar.status_code == 400 and "Falha ao baixar" in fora_do_ar.text,
+            str(fora_do_ar.status_code),
+        )
+        binario = client.post(
+            "/import/url",
+            data={"url": f"http://127.0.0.1:{porta}/binario", "category": "Páginas"},
+        )
+        check(
+            "conteúdo não suportado é recusado com aviso",
+            binario.status_code == 400 and "não sei importar" in binario.text,
+            str(binario.status_code),
+        )
+
+        resposta = client.post(
+            "/import/url",
+            data={
+                "url": endereco, "category": "Páginas baixadas", "convert": "on",
+                "target_format": "epub", "device_profile": "generic_epub",
+                "keep_original": "on",
+            },
+        )
+        check("página baixada e importada", resposta.status_code == 200, str(resposta.status_code))
+        check(
+            "o resultado mostra importado e a conversão na fila",
+            "importado" in resposta.text and "na fila" in resposta.text,
+        )
+
+        with session_scope() as session:
+            livro = session.scalar(
+                select(Book).where(Book.source_url == endereco, Book.format == "html")
+            )
+            check("livro guardado com o endereço de origem", livro is not None)
+            livro_id = livro.id if livro else 0
+            if livro is not None:
+                check("origem marcada como baixado da web", livro.source == "download", livro.source)
+                check(
+                    "categoria aplicada",
+                    livro.category_rel is not None and livro.category_rel.name == "Páginas baixadas",
+                    getattr(livro.category_rel, "name", None),
+                )
+                titulo = livro.title
+                autor = livro.author
+                job = session.scalar(
+                    select(ConversionJob).where(ConversionJob.book_id == livro.id)
+                )
+                check(
+                    "conversão para EPUB enfileirada",
+                    job is not None and job.target_format == "epub",
+                    str(job and job.target_format),
+                )
+            else:
+                titulo = autor = ""
+
+        check("o livro herdou o título da página", titulo == "Artigo da URL", titulo)
+        check("e o autor declarado pela página", autor == "Autora", autor)
+        detalhe = client.get(f"/library/{livro_id}")
+        check(
+            "o detalhe mostra a origem com link",
+            "baixado da web" in detalhe.text and endereco in detalhe.text,
+            str(detalhe.status_code),
+        )
+
+        # A conversão roda no worker (que está de pé no teste): esperar o EPUB
+        # prova o caminho página -> EPUB de ponta a ponta.
+        convertido = None
+        limite = time.time() + 60
+        while convertido is None and time.time() < limite:
+            with session_scope() as session:
+                convertido = session.scalar(
+                    select(Book).where(Book.source_url == endereco, Book.format == "epub")
+                )
+            if convertido is None:
+                time.sleep(0.4)
+        check("a página virou EPUB pelo worker", convertido is not None)
+
+        denovo = client.post(
+            "/import/url", data={"url": endereco, "category": "Páginas baixadas"}
+        )
+        check(
+            "baixar a mesma página de novo avisa que já existe",
+            denovo.status_code == 200 and "Já existe" in denovo.text,
+            str(denovo.status_code),
+        )
+
+        depois = {p.name for p in inbox.glob("*")} if inbox.exists() else set()
+        check("o download não deixa lixo no inbox", depois - antes == set(), str(depois - antes))
+
+        # Limpeza: os livros deste teste não podem sobrar para as checagens de
+        # OPDS que vêm depois (uma entrada com autor mudaria o feed).
+        with session_scope() as session:
+            sobrando = [
+                book.id
+                for book in session.scalars(
+                    select(Book).where(Book.source_url == endereco)
+                ).all()
+            ]
+        for alvo in sobrando:
+            client.post(f"/library/{alvo}/delete", data={"delete_files": "on"})
+        with session_scope() as session:
+            resto = session.scalar(select(Book).where(Book.source_url == endereco))
+        check("a importação de teste não deixa livros para trás", resto is None)
+    finally:
+        server.shutdown()
+        server.server_close()
 
 
 def _background_feed_actions(client) -> None:

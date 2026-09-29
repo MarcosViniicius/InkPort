@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from typing import TYPE_CHECKING
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import RedirectResponse
@@ -21,12 +23,16 @@ from app.database.models import SourceKind
 from app.devices.registry import all_profiles, get_profile
 from app.library import repository
 from app.library.conversions import compatible_targets, enqueue_conversion
-from app.library.detect import detect
-from app.library.importer import ImportOutcome, import_file
+from app.library.detect import detect, is_supported
+from app.library.importer import STATUS_IMPORTED, ImportOutcome, import_file
 from app.library.scanner import scan_directory
+from app.rss.downloader import Downloader, DownloadError
 from app.security.auth import require_panel
 from app.storage.paths import human_size, safe_filename
 from app.web.templating import render
+
+if TYPE_CHECKING:
+    from app.converters.webpage.metadata import PageMetadata
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/import", dependencies=[Depends(require_panel)], tags=["painel"])
@@ -111,6 +117,104 @@ async def upload(
     context.update({"results": results, "convert": bool(convert),
                     "target_format": target_format, "device_profile": device_profile,
                     "keep_original": bool(keep_original)})
+    return render(request, "import.html", context)
+
+
+@router.post("/url")
+def import_from_url(
+    request: Request,
+    url: str = Form(""),
+    category: str = Form(""),
+    convert: str = Form(""),
+    target_format: str = Form("auto"),
+    device_profile: str = Form("generic_epub"),
+    keep_original: str = Form("on"),
+    session: Session = Depends(get_session),
+):
+    """Baixa uma página da web e a importa como livro, já convertendo.
+
+    Guardar o endereço em ``source_url`` é o que faz o conversor de páginas
+    resolver imagens e links relativos; sem isso a página viraria um EPUB sem
+    imagens. Vale para qualquer endereço http(s) — é o mesmo limite de confiança
+    dos feeds, que também são buscados pelo servidor.
+    """
+    endereco = url.strip()
+    eco = {
+        "url": endereco,
+        "target_format": target_format,
+        "device_profile": device_profile,
+        "keep_original": bool(keep_original),
+        "convert": bool(convert),
+    }
+    if not endereco:
+        return _page_error(request, session, "Informe o endereço da página.", eco)
+
+    parsed = urlparse(endereco)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return _page_error(
+            request, session, "O endereço precisa começar com http:// ou https://", eco
+        )
+    if not category.strip():
+        return _page_error(
+            request,
+            session,
+            "Escolha uma categoria (ou digite uma nova) antes de importar.",
+            eco,
+        )
+
+    settings = get_settings()
+    settings.inbox_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        with Downloader() as downloader:
+            downloaded = downloader.download(endereco, settings.inbox_dir)
+    except DownloadError as exc:
+        return _page_error(request, session, str(exc), eco)
+    except Exception:  # noqa: BLE001 - a bad address must never answer 500
+        logger.exception("url import failed", extra={"url": endereco})
+        return _page_error(request, session, "Não foi possível baixar este endereço.", eco)
+
+    target = downloaded.path
+    if not is_supported(target):
+        target.unlink(missing_ok=True)
+        tipo = downloaded.content_type or "tipo desconhecido"
+        return _page_error(
+            request, session, f"O endereço devolveu algo que não sei importar ({tipo}).", eco
+        )
+
+    size = target.stat().st_size
+    detection = detect(target)
+    # O título da página vale mais que o nome do arquivo baixado ("artigo").
+    page = _read_page_metadata(target, endereco)
+    outcome = import_file(
+        session,
+        target,
+        category=category.strip(),
+        source=SourceKind.DOWNLOAD.value,
+        source_url=endereco,
+        move=True,
+        title_override=page.title or None,
+    )
+    if outcome.status != STATUS_IMPORTED:
+        # Nada importado: o que baixamos foi só uma cópia de trabalho.
+        target.unlink(missing_ok=True)
+    elif outcome.book is not None and page.author and not outcome.book.author:
+        outcome.book.author = page.author
+        session.commit()
+
+    item = _result(
+        session, target.name, outcome, detection, size,
+        convert, target_format, device_profile, keep_original,
+    )
+    context = _base_context(session)
+    context.update(
+        {
+            "results": [item],
+            "convert": bool(convert),
+            "target_format": target_format,
+            "device_profile": device_profile,
+            "keep_original": bool(keep_original),
+        }
+    )
     return render(request, "import.html", context)
 
 
@@ -204,6 +308,34 @@ def _base_context(session: Session) -> dict:
         "target_format": "auto",
         "keep_original": True,
     }
+
+
+def _page_error(request: Request, session: Session, message: str, eco: dict):
+    """Re-render the import page with a readable error (no raw 400 body).
+
+    ``eco`` devolve o que o usuário já tinha escolhido, para ele corrigir o
+    endereço sem perder categoria, formato e dispositivo.
+    """
+    context = _base_context(session)
+    context.update(eco)
+    context["err"] = message
+    return render(request, "import.html", context, status_code=400)
+
+
+def _read_page_metadata(path: Path, page_url: str) -> PageMetadata:
+    """Título/autor/descrição declarados pela própria página.
+
+    Reusa o leitor de metadados do conversor de páginas — o mesmo que o EPUB usa.
+    Nunca lança: um HTML estranho não pode impedir a importação.
+    """
+    from app.converters.webpage.dom import parse
+    from app.converters.webpage.metadata import PageMetadata, get_metadata
+
+    try:
+        return get_metadata(parse(path.read_bytes()), page_url)
+    except Exception:  # noqa: BLE001 - página esquisita ainda vira livro
+        logger.debug("page metadata failed", extra={"url": page_url})
+        return PageMetadata()
 
 
 def _result(
