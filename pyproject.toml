@@ -27,6 +27,8 @@ dependencies = [
     "python-docx>=1.1",
     "striprtf>=0.0.28",
     "mobi>=0.4.1",
+    # Cifragem do banco em repouso (SQLCipher vem na roda).
+    "sqlcipher3>=0.6.2",
 ]
 
 [tool.ruff]

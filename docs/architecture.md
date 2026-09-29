@@ -121,7 +121,13 @@ queue.finish()  -> status=done, output_book_id
   redistribuída em `app/vendor/unrar` para CBR/RAR. Se a máquina já tiver
   Calibre, ele é usado apenas para formatos exóticos (`.lit`, `.odt`, `.doc`).
 - **Tudo relativo ao `DATA_DIR`.** Banco, biblioteca, inbox, temporários e capas
-  ficam sob uma única pasta — backup é copiar a pasta.
+  ficam sob uma única pasta — backup é copiar a pasta (incluindo a
+  `secret.key`).
+- **Banco cifrado em repouso.** O SQLite é aberto pelo SQLCipher
+  (`sqlite+pysqlcipher`, de `database/crypto.py` + `database/sqlcipher.py`) com
+  a chave de `DATA_DIR/secret.key` (0600): metadados, credenciais e filas ficam
+  ilegíveis sem ela. Um banco em texto puro é migrado no primeiro boot via
+  `sqlcipher_export`, guardando `opds.db.plain.bak`.
 
 ## Modelo de dados (resumo)
 

@@ -35,6 +35,9 @@ htmlcov/
 # --- Dados de runtime (biblioteca, banco, capas, inbox, temp, logs) ---------
 # Tudo que fica sob DATA_DIR pertence ao usuario, nao ao codigo.
 data/
+# A chave do banco cifrado (DATA_DIR/secret.key): sem ela o opds.db nao abre.
+secret.key
+*.plain.bak
 *.db
 *.db-wal
 *.db-shm

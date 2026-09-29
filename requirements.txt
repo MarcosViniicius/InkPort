@@ -34,3 +34,8 @@ striprtf>=0.0.28
 # Ler MOBI/AZW/AZW3/PDB/PRC (port do KindleUnpack). Tambem usado nos testes
 # para verificar o escritor Kindle nativo.
 mobi>=0.4.1
+
+# Cifragem do banco em repouso: SQLCipher vem dentro da roda (nada a instalar no
+# sistema). A chave fica em DATA_DIR/secret.key -- faca backup dela junto com o
+# opds.db, senao os dados nao voltam.
+sqlcipher3>=0.6.2

@@ -178,6 +178,14 @@ tools/
 - **Capacidade é sempre best-effort**: `available_backends()` e afins devolvem o
   que existe em vez de explodir; o que falta simplesmente aparece como
   indisponível na interface.
+- **Banco cifrado (SQLCipher)**: o engine usa o dialeto `sqlite+pysqlcipher`
+  (`database/sqlcipher.py`) porque o mapeamento de exceções do SQLAlchemy segue
+  o DBAPI do dialeto — com um `creator` de `sqlcipher3`, `IntegrityError`
+  escaparia. A chave (`DATA_DIR/secret.key`, 0600) é aplicada **antes de
+  qualquer outra coisa** em cada conexão (`database/crypto.py`). Um banco em
+  texto puro é migrado no boot via `sqlcipher_export` (com
+  `opds.db.plain.bak`); `PRAGMA rekey` não funciona nesse sentido. Nunca
+  versione a `secret.key` nem quebre a ordem "chave primeiro".
 
 ## 5. Onde mexer
 

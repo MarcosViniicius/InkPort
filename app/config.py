@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     data_dir: Path = Path("./data")
     max_upload_mb: int = 2048
     storage_limit_gb: float = 0.0
+    # Cifragem do banco (SQLCipher). "auto" = cifrado quando o pacote sqlcipher3
+    # existe; "off" = texto puro (escape hatch para plataformas sem roda pronta).
+    # A chave fica em DATA_DIR/secret.key e NÃO deve ser perdida.
+    db_encryption: str = "auto"
 
     # --- Security ------------------------------------------------------------
     secret_key: str = "change-me-please-use-a-long-random-string"

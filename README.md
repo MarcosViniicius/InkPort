@@ -472,6 +472,10 @@ data/
 ```
 
 **Backup** = copiar a pasta (ou `data/opds.db` + `data/library` + `data/covers`).
+**Inclua a `data/secret.key`**: o banco é cifrado (SQLCipher) e sem essa chave o
+`opds.db` é ilegível — copiar os dois juntos é o que garante a recuperação.
+Ao subir uma versão com cifragem sobre um banco antigo, o `opds.db` original é
+preservado como `opds.db.plain.bak`.
 Em **Configurações** há ações de **manutenção** (reparos de capa, caminhos de
 imagem em EPUBs, links de feed e limpeza de temporários) que rodam sozinhas no
 boot e sob demanda.
@@ -479,6 +483,10 @@ boot e sob demanda.
 ## Limites e segurança
 
 - Autenticação de sessão no painel e Basic auth opcional no OPDS.
+- **Banco cifrado em repouso** (SQLCipher, biblioteca embutida na roda do
+  `sqlcipher3`): metadados, credenciais, feeds e filas ficam ilegíveis sem a
+  chave. Ela vive em `DATA_DIR/secret.key` (permissão 0600) — faça backup dela
+  junto com o banco.
 - CSRF de formulários mitigado por `SameSite=Lax`; para exposição pública,
   coloque atrás de um proxy com HTTPS.
 - Limite de tamanho de upload (`MAX_UPLOAD_MB`) e teto de armazenamento
