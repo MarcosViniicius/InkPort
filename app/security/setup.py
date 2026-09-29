@@ -12,12 +12,19 @@ que aparece no log do servidor (quem está na mesma máquina/rede não precisa).
 
 from __future__ import annotations
 
+import contextlib
+import os
 import secrets
+from pathlib import Path
 
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.security import settings_store
 from app.security.auth import ADMIN_CONFIRMED_KEY, ADMIN_HASH_KEY
+
+#: Arquivo com o token (0600) para quem não quer/pode caçar no log.
+TOKEN_FILENAME = "setup.token"
 
 _configured: bool | None = None
 #: Token do primeiro acesso: sorteado a cada boot e mostrado no log.
@@ -41,6 +48,32 @@ def token_ok(request, informado: str | None) -> bool:
     if not token_required(request):
         return True
     return secrets.compare_digest(str(informado or ""), _token)
+
+
+def token_path() -> Path:
+    return get_settings().data_dir / TOKEN_FILENAME
+
+
+def write_token_file() -> Path:
+    """Deixa o token em ``DATA_DIR/setup.token`` (0600).
+
+    O log é o caminho principal, mas ele rola e some (e no Docker exige outro
+    terminal). Com o arquivo, recuperar o token é um ``cat`` no volume -- o mesmo
+    nível de confiança (quem lê o arquivo já tem acesso à máquina).
+    """
+    path = token_path()
+    descriptor = os.open(path, os.O_CREAT | os.O_WRONLY | os.O_TRUNC, 0o600)
+    with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+        handle.write(_token + "\n")
+    with contextlib.suppress(OSError):
+        os.chmod(path, 0o600)
+    return path
+
+
+def clear_token_file() -> None:
+    """Some com o arquivo assim que o primeiro acesso deixa de existir."""
+    with contextlib.suppress(OSError):
+        token_path().unlink(missing_ok=True)
 
 
 def required(session: Session) -> bool:
@@ -73,6 +106,7 @@ def mark_configured() -> None:
     """Called right after the wizard (or a password change) creates the admin."""
     global _configured
     _configured = True
+    clear_token_file()
 
 
 def cached() -> bool:

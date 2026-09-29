@@ -21,6 +21,9 @@ DIALECT_CLASS = "SQLCipherDialect"
 class SQLCipherDialect(SQLiteDialect_pysqlite):
     """``sqlite+pysqlcipher://``: mesma linguagem, banco cifrado."""
 
+    #: Sem isto o SQLAlchemy não usa cache de compilação (e avisa no log).
+    supports_statement_cache = True
+
     @classmethod
     def import_dbapi(cls):
         import sqlcipher3

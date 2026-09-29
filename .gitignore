@@ -39,6 +39,8 @@ data/
 secret.key
 # Segredo de sessao gerado automaticamente quando SECRET_KEY nao e' definido.
 session.key
+# Token do assistente de primeiro acesso (existe so enquanto ele esta pendente).
+setup.token
 *.plain.bak
 *.db
 *.db-wal
