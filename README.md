@@ -151,7 +151,8 @@ qualidade, formato de imagem).
 - **Python 3.11+** (testado em 3.14) — **nada mais precisa ser instalado**.
   Todas as conversões usam pacotes Python (`pip install -r requirements.txt`) e a
   biblioteca UnRAR que acompanha o projeto em `app/vendor/unrar` para abrir
-  CBR/RAR.
+  CBR/RAR. **A DLL é do Windows**: no Linux/macOS o `rarfile` usa o
+  `bsdtar`/`unrar` do sistema, se existir (o painel mostra o que está disponível).
 - Opcional: se a máquina já tiver **Calibre** (`ebook-convert`), ele é usado
   apenas como último recurso para formatos exóticos (`.lit`, `.odt`, `.doc`).
   Nenhum recurso do servidor depende dele.

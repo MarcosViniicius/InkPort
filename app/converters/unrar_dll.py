@@ -130,12 +130,23 @@ class RARHeaderDataEx(Structure):
     ]
 
 
-UNRARCALLBACK = ctypes.WINFUNCTYPE(c_int, c_uint, c_void_p, c_void_p, c_void_p)
+def _callback_type():
+    """The UnRAR callback signature for this platform.
 
-_dll: ctypes.WinDLL | None = None
+    ``WINFUNCTYPE`` is Windows-only (it is the stdcall convention); ``CFUNCTYPE``
+    is the portable equivalent. It is resolved *lazily* on purpose: importing
+    this module must never touch a Windows-only attribute. The panel probes the
+    archive backends while rendering the dashboard, so an ``AttributeError``
+    here used to take the whole page down on Linux.
+    """
+    factory = getattr(ctypes, "WINFUNCTYPE", None) or ctypes.CFUNCTYPE
+    return factory(c_int, c_uint, c_void_p, c_void_p, c_void_p)
 
 
-def _load() -> ctypes.WinDLL | None:
+_dll: ctypes.CDLL | None = None
+
+
+def _load() -> ctypes.CDLL | None:
     global _dll
     if _dll is not None:
         return _dll
@@ -183,7 +194,7 @@ def namelist(source: Path) -> list[str]:
     handle, _data = _open(dll, source, RAR_OM_LIST)
     names: list[str] = []
     state: dict = {"sink": None, "abort": None}
-    callback = UNRARCALLBACK(_make_callback(state))
+    callback = _callback_type()(_make_callback(state))
     dll.RARSetCallback(handle, ctypes.cast(callback, c_void_p), None)
     try:
         header = RARHeaderDataEx()
@@ -228,7 +239,7 @@ def extract(source: Path, dest: Path, *, on_member=None) -> list[str]:
     handle, _data = _open(dll, source, RAR_OM_EXTRACT)
 
     state: dict = {"sink": None, "abort": None}
-    callback = UNRARCALLBACK(_make_callback(state))
+    callback = _callback_type()(_make_callback(state))
     dll.RARSetCallback(handle, ctypes.cast(callback, c_void_p), None)
 
     try:

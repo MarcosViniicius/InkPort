@@ -138,7 +138,11 @@ def detect_toolchain(refresh: bool = False) -> Capabilities:  # noqa: N802 - kep
 
     from app.converters.archives import available_backends
 
-    capabilities.archive_backends = available_backends()
+    try:
+        capabilities.archive_backends = available_backends()
+    except Exception as exc:  # noqa: BLE001 - the panel must render regardless
+        logger.warning("archive backend probe failed", extra={"error": str(exc)})
+        capabilities.archive_backends = {}
 
     from app.converters.tools_optional import find_optional_tools
 

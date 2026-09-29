@@ -184,17 +184,32 @@ def _extract_7z(source: Path, dest: Path) -> None:
         raise ArchiveError(f"Não consegui abrir o arquivo 7z: {exc}") from exc
 
 
+def _unrar_module():
+    """The bundled UnRAR wrapper, or ``None`` when it cannot be used here.
+
+    Probing capability must never raise. The DLL is Windows-only, so elsewhere
+    we simply fall back to ``rarfile`` and whatever tool the machine offers.
+    """
+    try:
+        from app.converters import unrar_dll
+
+        return unrar_dll
+    except Exception as exc:  # noqa: BLE001 - a broken probe hides one backend
+        logger.warning("unrar.dll module unavailable", extra={"error": str(exc)})
+        return None
+
+
 def _extract_rar(source: Path, dest: Path) -> None:
-    # 1. The UnRAR library we ship with the project: full support (RAR3/RAR5,
-    #    solid, multi-volume) and nothing to install.
-    from app.converters import unrar_dll
+    # 1. The UnRAR library we ship with the project (Windows): full support
+    #    (RAR3/RAR5, solid, multi-volume) and nothing to install.
+    unrar = _unrar_module()
 
     earlier: list[str] = []
-    if unrar_dll.available():
+    if unrar is not None and unrar.available():
         try:
-            unrar_dll.extract(source, dest)
+            unrar.extract(source, dest)
             return
-        except unrar_dll.UnrarError as exc:
+        except unrar.UnrarError as exc:
             if exc.fatal:  # missing volume, password: no backend can fix it
                 raise ArchiveError(str(exc)) from exc
             earlier.append(f"UnRAR: {exc}")
@@ -294,7 +309,10 @@ def _find_tool(names: tuple[str, ...], *, bsdtar_only: bool = False) -> str | No
 
 def rar_backend() -> str | None:
     """The RAR backend that actually answers a capability probe."""
-    import rarfile  # type: ignore
+    try:
+        import rarfile  # type: ignore
+    except ImportError:  # pragma: no cover - declared dependency
+        return None
 
     for label, configure in _rar_backends():
         try:
@@ -309,24 +327,29 @@ def rar_backend() -> str | None:
 
 
 RAR_MISSING_MESSAGE = (
-    "Este CBR/RAR precisa de um leitor de RAR. No Windows e no macOS o "
-    "próprio sistema já traz o 'bsdtar' e nada precisa ser instalado; se esta "
-    "mensagem aparece, instale o pacote Python 'rarfile' e um destes: o wheel "
-    "'unrar' (pip install unrar), ou o utilitário do sistema 'bsdtar'."
+    "Este CBR/RAR precisa de um leitor de RAR. No Windows e no macOS o próprio "
+    "sistema já traz o 'bsdtar' e nada precisa ser instalado. No Linux (ou se "
+    "esta mensagem aparecer), instale uma destas opções: o pacote Python "
+    "'unrar' (pip install unrar) ou um utilitário do sistema ('bsdtar', do "
+    "pacote libarchive-tools, ou 'unrar')."
 )
 
 
 def available_backends() -> dict[str, object]:
-    """What the archive layer can open right now (used by the panel)."""
-    from app.converters import unrar_dll
+    """What the archive layer can open right now (used by the panel).
 
-    rar_with_dll = unrar_dll.available()
+    Never raises: the dashboard calls this on every render, so a probe that
+    fails on some platform must hide that backend instead of breaking the page.
+    """
+    unrar = _unrar_module()
+    rar_with_dll = bool(unrar is not None and unrar.available())
+    fallback = rar_backend()
     return {
         "zip": True,
         "tar": True,
         "7z": _module_available("py7zr"),
-        "rar": rar_with_dll or rar_backend() is not None,
-        "rar_backend": "unrar.dll (embutida)" if rar_with_dll else rar_backend(),
+        "rar": rar_with_dll or fallback is not None,
+        "rar_backend": "unrar.dll (embutida)" if rar_with_dll else fallback,
     }
 
 

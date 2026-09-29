@@ -157,8 +157,71 @@ def main() -> int:
     print("\n[backends reportados]")
     backends = available_backends()
     check("zip/tar/7z disponíveis", bool(backends["zip"] and backends["tar"] and backends["7z"]))
-    check("RAR disponível (DLL embutida)", bool(backends["rar"]), str(backends))
+    if sys.platform == "win32":
+        check("RAR disponível (DLL embutida)", bool(backends["rar"]), str(backends))
+    else:
+        # A DLL que acompanha o projeto é do Windows; fora dele o app precisa
+        # degradar para o rarfile/utilitário do sistema sem quebrar nada.
+        check(
+            "fora do Windows a DLL embutida não é usada",
+            backends["rar_backend"] != "unrar.dll (embutida)",
+            str(backends),
+        )
     print(f"     {backends}")
+
+    print("\n[UnRAR não depende de API só do Windows]")
+    import ctypes  # noqa: PLC0415 - usado apenas neste bloco
+
+    from app.converters import unrar_dll as dll_module
+
+    check("módulo do UnRAR importa em qualquer plataforma", dll_module is not None)
+    check(
+        "o callback é resolvido na hora, não no import",
+        hasattr(dll_module, "_callback_type"),
+    )
+    check("o callback é criado nesta plataforma", dll_module._callback_type() is not None)
+    if not hasattr(ctypes, "WINFUNCTYPE"):
+        check("a ausência de WINFUNCTYPE não derruba o import", dll_module.available() is False)
+
+    cached_dll = dll_module._dll
+    real_platform = sys.platform
+    try:
+        dll_module._dll = None
+        sys.platform = "linux"
+        check("fora do Windows, available() é False", dll_module.available() is False)
+        try:
+            dll_module.namelist(FIXTURES / "rar3-solid.rar")
+            check("fora do Windows, extrair dá erro claro", False, "não levantou")
+        except dll_module.UnrarError as exc:
+            check(
+                "fora do Windows, extrair dá erro claro",
+                "indisponível" in str(exc),
+                str(exc)[:60],
+            )
+    finally:
+        sys.platform = real_platform
+        dll_module._dll = cached_dll
+
+    # Reproduz o caso Linux de forma deterministica: sem ctypes.WINFUNCTYPE o
+    # modulo PRECISA importar (antes o import estourava e derrubava o painel).
+    import importlib
+
+    original_winfunc = getattr(ctypes, "WINFUNCTYPE", None)
+    try:
+        if original_winfunc is not None:
+            del ctypes.WINFUNCTYPE
+        recarregado = importlib.reload(dll_module)
+        check("import sem WINFUNCTYPE não quebra (caso Linux)", recarregado is not None)
+        check(
+            "e a sondagem continua segura",
+            recarregado.available() in (True, False),
+        )
+    except Exception as exc:  # noqa: BLE001
+        check("import sem WINFUNCTYPE não quebra (caso Linux)", False, str(exc))
+    finally:
+        if original_winfunc is not None:
+            ctypes.WINFUNCTYPE = original_winfunc  # type: ignore[attr-defined]
+        importlib.reload(dll_module)
 
     shutil.rmtree(WORKDIR, ignore_errors=True)
     print(f"\n{len(PASSED)} passed, {len(FAILED)} failed")

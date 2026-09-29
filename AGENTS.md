@@ -13,8 +13,10 @@ Regras de ouro do projeto:
 
 1. **Nenhuma ferramenta externa é necessária.** Conversões usam só Python
    (`Pillow`, `PyMuPDF`, `lxml`, `py7zr`, `python-docx`, `rarfile`) + a
-   `unrar.dll` em `app/vendor/unrar`. Calibre/Ghostscript/ImageMagick/FFmpeg são
-   **opcionais** e nunca podem virar requisito. Não adicione dependência que
+   `unrar.dll` em `app/vendor/unrar` (**Windows**; fora dele o CBR/RAR usa o
+   `bsdtar`/`unrar` do sistema via `rarfile`, e o painel informa o que existe).
+   Calibre/Ghostscript/ImageMagick/FFmpeg são **opcionais** e nunca podem virar
+   requisito. Não adicione dependência que
    exija binário do sistema.
 2. **Nunca dependa de internet/CDN.** CSS/JS são locais (`app/web/static`), sem
    `fonts.googleapis.com` etc. URLs de assets passam por `static_url()` para
@@ -168,6 +170,14 @@ tools/
 - **Cancelamento** usa `JobCancelled(BaseException)` (`workers/progress.py`) e
   `is_cancelled`/`note_cancelled` (`workers/queue.py`). Não engula essa exceção.
 - **MIME/types** saem de `library/formats.py`; não invente string solta.
+- **Nada de API só-de-plataforma no import.** O painel importa muita coisa ao
+  renderizar (ex.: a sondagem de backends de arquivo), então um módulo que toca
+  `ctypes.WINFUNCTYPE`, `winreg` ou caminhos do Windows no nível do módulo
+  derruba a página no Linux. Resolva essas APIs **dentro da função**, atrás de
+  uma checagem de plataforma, e faça a sondagem de capacidade **nunca lançar**.
+- **Capacidade é sempre best-effort**: `available_backends()` e afins devolvem o
+  que existe em vez de explodir; o que falta simplesmente aparece como
+  indisponível na interface.
 
 ## 5. Onde mexer
 
