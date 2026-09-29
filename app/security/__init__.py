@@ -3,8 +3,8 @@
 from app.security.auth import (
     NotAuthenticated,
     change_password,
+    credentials_confirmed,
     current_user,
-    ensure_admin,
     login_session,
     logout_session,
     require_opds_auth,
@@ -16,8 +16,8 @@ from app.security.passwords import hash_password, verify_password
 __all__ = [
     "NotAuthenticated",
     "change_password",
+    "credentials_confirmed",
     "current_user",
-    "ensure_admin",
     "hash_password",
     "login_session",
     "logout_session",

@@ -21,7 +21,6 @@ sys.path.insert(0, str(ROOT))
 WORKDIR = Path(tempfile.mkdtemp(prefix="opds_sitemap_"))
 os.environ["DATA_DIR"] = str(WORKDIR)
 os.environ["SECRET_KEY"] = "test-secret-key"
-os.environ.setdefault("ADMIN_PASSWORD", "test-password")  # senha explicita: pula o assistente
 
 PASSED: list[str] = []
 FAILED: list[str] = []

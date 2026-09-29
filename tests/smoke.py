@@ -19,7 +19,6 @@ WORKDIR = Path(tempfile.mkdtemp(prefix="opds_smoke_"))
 os.environ["DATA_DIR"] = str(WORKDIR)
 os.environ["SECRET_KEY"] = "test-secret-key"
 os.environ["ADMIN_USERNAME"] = "admin"
-os.environ["ADMIN_PASSWORD"] = "admin"
 os.environ["RSS_WORKER_ENABLED"] = "false"
 os.environ["REQUIRE_AUTH_PANEL"] = "true"
 os.environ["BASE_URL"] = "http://testserver"
@@ -45,6 +44,10 @@ def main() -> int:
     app = create_app()
 
     with TestClient(app) as client:
+        # Primeiro acesso: cria a credencial do painel e sai (para testar o login).
+        client.post("/setup", data={"username": "admin", "password": "senha-de-teste",
+                                   "confirm_password": "senha-de-teste"})
+        client.get("/logout")
         _unauthenticated_checks(client)
         _panel_checks(client)
         _filter_checks(client)
@@ -86,7 +89,7 @@ def _panel_checks(client) -> None:
     print("\n[painel autenticado]")
     response = client.post(
         "/login",
-        data={"username": "admin", "password": "admin", "next": "/"},
+        data={"username": "admin", "password": "senha-de-teste", "next": "/"},
         follow_redirects=False,
     )
     check("login válido", response.status_code == 303)

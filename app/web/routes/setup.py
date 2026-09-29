@@ -33,6 +33,7 @@ def setup_page(request: Request, session: Session = Depends(get_session)):
         "setup.html",
         {
             "active": "setup",
+            "username": auth.admin_username(session),
             "groups": runtime.groups_for(onboarding=True),
             "fields": runtime.describe(onboarding=True),
             "min_password": MIN_PASSWORD,

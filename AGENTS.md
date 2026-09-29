@@ -196,12 +196,14 @@ tools/
   os campos, use `runtime.save(..., complete=True)`: caixa desmarcada não vem no
   payload e precisa virar `False` (sem `complete`, campos ausentes são
   preservados).
-- **Assistente de primeiro acesso**: sem senha no banco, o middleware em
-  `main.py` manda o painel para `/setup` (a API responde 503; `/opds`, `/health`
-  e `/static` continuam acessíveis). A senha do OPDS é guardada como **hash** e
-  verificada em `auth.require_opds_auth`. Senha definida no `.env`
-  (`ADMIN_PASSWORD`) é respeitada e pula o assistente — só o `.env` de exemplo
-  não traz mais essa variável.
+- **Assistente de primeiro acesso**: o middleware em `main.py` manda o painel
+  para `/setup` enquanto a credencial não tiver sido definida **no painel**
+  (`auth.change_password` grava `admin_confirmed`). Isso cobre instalação nova
+  *e* instalação antiga cuja senha vinha do `.env` — que passa pelo assistente
+  uma vez. A API responde 503; `/opds`, `/health` e `/static` continuam
+  acessíveis. O `.env` **não cria mais** admin (`ADMIN_USERNAME`/
+  `ADMIN_PASSWORD` são ignorados). A senha do OPDS é guardada como **hash** e
+  verificada em `auth.require_opds_auth`.
 
 ## 5. Onde mexer
 

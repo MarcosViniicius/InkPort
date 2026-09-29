@@ -32,7 +32,6 @@ WORKDIR = Path(tempfile.mkdtemp(prefix="opds_crosspoint_"))
 os.environ["DATA_DIR"] = str(WORKDIR)
 os.environ["SECRET_KEY"] = "crosspoint-test"
 os.environ["ADMIN_USERNAME"] = "admin"
-os.environ["ADMIN_PASSWORD"] = "admin"
 os.environ["RSS_WORKER_ENABLED"] = "false"
 os.environ["BASE_URL"] = "http://testserver"
 os.environ["REQUIRE_AUTH_PANEL"] = "false"
@@ -198,6 +197,10 @@ def main() -> int:
 
     app = create_app()
     with TestClient(app) as client:
+        # Primeiro acesso: cria a credencial do painel e sai (para testar o login).
+        client.post("/setup", data={"username": "admin", "password": "test-password",
+                                   "confirm_password": "test-password"})
+        client.get("/logout")
         # Import one comic and one ebook.
         response = client.post(
             "/api/imports/upload",

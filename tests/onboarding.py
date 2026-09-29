@@ -47,7 +47,8 @@ def main() -> int:
     from app.config import get_base_settings
     from app.database.base import session_scope
     from app.main import create_app
-    from app.security import runtime, settings_store
+    from app.security import auth, runtime, settings_store
+    from app.security import setup as setup_state
 
     print("\n[estado inicial: sem senha configurada]")
     check(
@@ -180,6 +181,39 @@ def main() -> int:
             runtime.load(session)
             check("valor acima do máximo é limitado", runtime.get("conversion_concurrency") == 8, str(runtime.get("conversion_concurrency")))
         check("limite aplicado sem erro para o usuário", excessivo.status_code == 303)
+
+        print("\n[migração: senha antiga (vinda do .env) passa pelo assistente uma vez]")
+        with session_scope() as session:
+            # É o caso de quem já tinha senha no .env e nunca a definiu no painel.
+            settings_store.set_value(session, "admin_confirmed", None)
+            session.commit()
+            setup_state.refresh(session)
+        resposta = client.get("/", follow_redirects=False)
+        check(
+            "senha não confirmada volta ao assistente",
+            resposta.status_code == 303 and resposta.headers.get("location") == "/setup",
+            f"{resposta.status_code} {resposta.headers.get('location', '')}",
+        )
+        pagina = client.get("/setup")
+        check("assistente reaparece para assumir a credencial", pagina.status_code == 200)
+        check("usuário atual já vem preenchido", 'value="marco"' in pagina.text)
+        denovo = client.post(
+            "/setup",
+            data={"username": "marco", "password": "senha-nova-123", "confirm_password": "senha-nova-123"},
+            follow_redirects=False,
+        )
+        check(
+            "concluir de novo libera o painel",
+            denovo.status_code == 303 and denovo.headers["location"].startswith("/?"),
+            denovo.headers.get("location", ""),
+        )
+        check("painel volta a abrir", client.get("/").status_code == 200)
+        with session_scope() as session:
+            check("credencial marcada como confirmada", auth.credentials_confirmed(session) is True)
+            check(
+                "e o assistente não volta mais",
+                setup_state.refresh(session) is True,
+            )
 
     print(f"\n{len(PASSED)} passed, {len(FAILED)} failed")
     for failure in FAILED:

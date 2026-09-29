@@ -1,8 +1,9 @@
 """Estado do primeiro acesso (assistente de configuração).
 
-Enquanto não existir senha no banco, o painel inteiro manda o usuário para
-``/setup``. O estado fica em cache porque isso é consultado a cada requisição;
-qualquer gravação de credencial atualiza o cache.
+O painel exige que a credencial tenha sido definida **pelo próprio usuário**
+(assistente ou tela de Configurações). Enquanto isso não acontece -- instalação
+nova, ou instalação antiga com senha vinda do ``.env`` -- todo o painel manda
+para ``/setup``. O estado fica em cache porque é consultado a cada requisição.
 """
 
 from __future__ import annotations
@@ -10,28 +11,35 @@ from __future__ import annotations
 from sqlalchemy.orm import Session
 
 from app.security import settings_store
-from app.security.auth import ADMIN_HASH_KEY
+from app.security.auth import ADMIN_CONFIRMED_KEY, ADMIN_HASH_KEY
 
 _configured: bool | None = None
 
 
 def required(session: Session) -> bool:
-    """True while the panel has no password yet (the wizard must run)."""
+    """True while the panel credentials were not created in the panel itself."""
     return not configured(session)
 
 
 def configured(session: Session) -> bool:
     global _configured
     if _configured is None:
-        _configured = settings_store.get(session, ADMIN_HASH_KEY) is not None
+        _configured = _read(session)
     return _configured
 
 
 def refresh(session: Session) -> bool:
     """Re-read the state from the database (boot, after saving credentials)."""
     global _configured
-    _configured = settings_store.get(session, ADMIN_HASH_KEY) is not None
+    _configured = _read(session)
     return _configured
+
+
+def _read(session: Session) -> bool:
+    """A password exists *and* was confirmed by the user in the panel."""
+    has_password = settings_store.get(session, ADMIN_HASH_KEY) is not None
+    confirmed = settings_store.get(session, ADMIN_CONFIRMED_KEY) is not None
+    return bool(has_password and confirmed)
 
 
 def mark_configured() -> None:

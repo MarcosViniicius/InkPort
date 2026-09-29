@@ -235,10 +235,12 @@ Nada precisa ser reconfigurado ao trocar de rede. Para **pinar** um endereço
 
 ## Primeiro uso
 
-1. **Entre no painel** (`http://SEU-IP:8080/`). Numa instalação nova ele abre o
-   **assistente de primeiro acesso**: você cria usuário e senha e já ajusta o
-   essencial (nome, raiz do OPDS, autenticação, limites, conversão, RSS). Nada
-   disso vai para arquivo: fica no **banco cifrado** e vale na hora.
+1. **Entre no painel** (`http://SEU-IP:8080/`). Ele abre o **assistente de
+   primeiro acesso**: você cria usuário e senha e já ajusta o essencial (nome,
+   raiz do OPDS, autenticação, limites, conversão, RSS). Nada disso vai para
+   arquivo: fica no **banco cifrado** e vale na hora. O assistente também
+   aparece — uma única vez — em uma instalação antiga cuja senha vinha do
+   `.env`, para você assumir a credencial.
 2. **Importe** livros em `/import` — envie arquivos ou aponte uma pasta. Toda
    importação exige uma **categoria** (ver abaixo).
 3. **Organize** em `/library`: busque, filtre por categoria/autor/formato, edite
@@ -380,7 +382,9 @@ e a cifragem do banco. Tudo que é *configurável pelo usuário* — nome da
 aplicação, raiz do OPDS, autenticação, endereço base, limites, concorrência e
 RSS — vive no **banco SQLite cifrado** e é editado no **assistente de primeiro
 acesso** ou em **Configurações**. A tabela abaixo traz as variáveis de bootstrap
-e o valor padrão usado enquanto o banco não tem valor próprio.
+e o valor padrão usado enquanto o banco não tem valor próprio. As credenciais do
+painel e do OPDS ficam **apenas** no banco (a do OPDS como hash):
+`ADMIN_USERNAME`/`ADMIN_PASSWORD` no ambiente são **ignorados**.
 
 Para rodar o assistente de novo (por exemplo, para trocar tudo de uma vez),
 apague a linha `admin_password_hash` da tabela `settings` — ou use

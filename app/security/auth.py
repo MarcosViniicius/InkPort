@@ -1,4 +1,10 @@
-"""Authentication: panel session login and optional OPDS Basic auth."""
+"""Authentication: panel session login and optional OPDS Basic auth.
+
+A credencial do painel nasce **no painel** (assistente de primeiro acesso ou
+tela de Configurações) e vive no banco cifrado. O ``.env`` não cria mais admin:
+quem tinha senha vinda de arquivo passa pelo assistente uma vez para assumir a
+credencial (ver ``security/setup.py``).
+"""
 
 from __future__ import annotations
 
@@ -9,7 +15,7 @@ from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from sqlalchemy.orm import Session
 
-from app.config import get_base_settings, get_settings
+from app.config import get_settings
 from app.database.base import get_session
 from app.security import passwords, runtime, settings_store
 
@@ -17,6 +23,9 @@ logger = logging.getLogger(__name__)
 
 ADMIN_USER_KEY = "admin_username"
 ADMIN_HASH_KEY = "admin_password_hash"
+#: Marca que a credencial foi definida pelo próprio usuário no painel. Sem ela,
+#: o assistente de primeiro acesso roda (inclusive para quem vem de `.env`).
+ADMIN_CONFIRMED_KEY = "admin_confirmed"
 SESSION_USER_KEY = "user"
 
 _basic = HTTPBasic(auto_error=False)
@@ -27,28 +36,9 @@ class NotAuthenticated(Exception):
 
 
 # --- credential storage ---------------------------------------------------
-def ensure_admin(session: Session) -> bool:
-    """Create the admin from the configuration only when a password was set.
-
-    A password is "set" when it comes from the environment or ``.env`` (even the
-    old default ``admin``): that is a deliberate choice and is respected. With
-    nothing configured, the panel stays in wizard mode and the user creates the
-    credentials in ``/setup`` -- so the ``.env`` is optional.
-    Returns True when an admin exists afterwards.
-    """
-    if settings_store.get(session, ADMIN_HASH_KEY) is not None:
-        return True
-    settings = get_base_settings()
-    explicit = "admin_password" in settings.model_fields_set
-    password = (settings.admin_password or "").strip()
-    if not password or not explicit:
-        logger.info("sem senha configurada: o assistente de primeiro acesso vai rodar")
-        return False
-    settings_store.set_value(session, ADMIN_USER_KEY, settings.admin_username or "admin")
-    settings_store.set_value(session, ADMIN_HASH_KEY, passwords.hash_password(password))
-    session.commit()
-    logger.info("admin criado a partir da configuração (senha definida por você)")
-    return True
+def credentials_confirmed(session: Session) -> bool:
+    """True when the panel password was set through the panel itself."""
+    return settings_store.get(session, ADMIN_CONFIRMED_KEY) is not None
 
 
 def verify_credentials(session: Session, username: str, password: str) -> bool:
@@ -62,10 +52,13 @@ def verify_credentials(session: Session, username: str, password: str) -> bool:
 
 
 def change_password(session: Session, password: str, *, username: str | None = None) -> None:
+    """Set the panel password (wizard or Configurações) and mark it confirmed."""
     if username:
         settings_store.set_value(session, ADMIN_USER_KEY, username)
     settings_store.set_value(session, ADMIN_HASH_KEY, passwords.hash_password(password))
+    settings_store.set_value(session, ADMIN_CONFIRMED_KEY, "1")
     session.commit()
+    logger.info("credenciais do painel definidas pelo usuário")
 
 
 def admin_username(session: Session) -> str:

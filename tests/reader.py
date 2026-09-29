@@ -24,7 +24,6 @@ WORKDIR = Path(tempfile.mkdtemp(prefix="opds_reader_"))
 os.environ["DATA_DIR"] = str(WORKDIR)
 os.environ["SECRET_KEY"] = "reader-secret"
 os.environ["ADMIN_USERNAME"] = "admin"
-os.environ["ADMIN_PASSWORD"] = "admin"
 os.environ["RSS_WORKER_ENABLED"] = "false"
 os.environ["REQUIRE_AUTH_PANEL"] = "false"
 os.environ["BASE_URL"] = "http://testserver"
@@ -437,6 +436,10 @@ def main() -> int:
 
     app = create_app()
     with TestClient(app) as client:
+        # Primeiro acesso: cria a credencial do painel e sai (para testar o login).
+        client.post("/setup", data={"username": "admin", "password": "test-password",
+                                   "confirm_password": "test-password"})
+        client.get("/logout")
         ids: dict[str, str] = {}
         for key, path in files.items():
             book_id = upload(client, path)

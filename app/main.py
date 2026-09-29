@@ -20,7 +20,7 @@ from app.logging_conf import configure_logging
 from app.opds import v1_router, v2_router
 from app.security import runtime
 from app.security import setup as setup_state
-from app.security.auth import NotAuthenticated, ensure_admin
+from app.security.auth import NotAuthenticated
 from app.web import STATIC_DIR
 from app.web.errors import register_error_handlers
 from app.web.routes import build_web_router
@@ -39,7 +39,6 @@ async def lifespan(app: FastAPI):
     with session_scope() as session:
         # Configuração salva no painel entra em vigor antes de tudo.
         runtime.load(session)
-        ensure_admin(session)
         configured = setup_state.refresh(session)
         seed_builtin_profiles(session)
         run_repairs(session)

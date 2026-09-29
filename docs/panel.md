@@ -25,8 +25,8 @@ tarefas comuns. O login usa as credenciais do `.env` (`ADMIN_USERNAME` /
 
 ## Primeiro acesso (`/setup`)
 
-Numa instalação nova (sem senha no banco) **todo o painel** vai para o
-assistente, inclusive a API. Ali você:
+Numa instalação nova — **ou numa instalação antiga cuja senha vinha do `.env`** —
+todo o painel vai para o assistente (uma vez), inclusive a API. Ali você:
 
 1. cria **usuário e senha** do painel (mínimo de 8 caracteres);
 2. ajusta o essencial: nome da aplicação, raiz do OPDS, autenticação do OPDS,

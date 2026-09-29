@@ -27,7 +27,6 @@ sys.path.insert(0, str(ROOT))
 WORKDIR = Path(tempfile.mkdtemp(prefix="opds_cancel_"))
 os.environ["DATA_DIR"] = str(WORKDIR)
 os.environ["SECRET_KEY"] = "test-secret-key"
-os.environ.setdefault("ADMIN_PASSWORD", "test-password")  # senha explicita: pula o assistente
 os.environ["RSS_WORKER_ENABLED"] = "false"
 os.environ["REQUIRE_AUTH_PANEL"] = "false"
 
