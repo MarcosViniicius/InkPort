@@ -38,6 +38,7 @@ def settings_page(request: Request, session: Session = Depends(get_session)):
             "on_network": settings.on_network,
             "groups": runtime.groups_for(onboarding=False),
             "fields": runtime.describe(),
+            "opds_problem": auth.opds_protection_problem(session),
         },
     )
 
@@ -50,8 +51,8 @@ async def save_app_settings(request: Request, session: Session = Depends(get_ses
     form = await request.form()
     warnings = runtime.save(
         session,
-        {name: form.get(name) for name in runtime.BY_NAME},
-        complete=True,
+        {name: form.get(name) for name in runtime.BY_NAME if name in form},
+        rendered=runtime.field_names(),
     )
     if warnings:
         return RedirectResponse(

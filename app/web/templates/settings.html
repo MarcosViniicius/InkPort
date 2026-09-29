@@ -44,6 +44,9 @@
 
 <div class="card mt4">
   <div class="card-head"><h2>{{ icon('settings', 17) }} Aplicação e catálogo</h2></div>
+  {% if opds_problem %}
+  <div class="flash err mb4" role="alert"><span>{{ opds_problem }}</span></div>
+  {% endif %}
   <p class="hint">
     Guardado no banco cifrado desta instalação — vale na hora. Conversões
     simultâneas e busca automática de feeds entram em vigor ao reiniciar o servidor.

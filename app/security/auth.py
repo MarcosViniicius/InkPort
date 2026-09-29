@@ -106,9 +106,22 @@ def require_opds_auth(
     credentials: HTTPBasicCredentials | None = Depends(_basic),
     session: Session = Depends(get_session),
 ) -> None:
+    """Protege o catálogo: por padrão **só com credencial**.
+
+    Sem usuário/senha configurados e com a exigência ligada (o padrão), o
+    catálogo fica fechado em vez de aberto -- quem tenta recebe 401 e a
+    orientação aparece no painel. Para um catálogo aberto (rede local
+    confiável), desligue "Exigir credencial no catálogo OPDS" em Configurações.
+    """
     username = runtime.get("opds_username") or ""
     if not username:
-        return  # OPDS is open
+        if runtime.get("opds_require_auth", True):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Catálogo protegido: defina usuário e senha do OPDS no painel.",
+                headers={"WWW-Authenticate": 'Basic realm="OPDS"'},
+            )
+        return  # catálogo aberto por escolha explícita
 
     if credentials is None or not secrets.compare_digest(credentials.username, username):
         raise _unauthorized()
@@ -121,3 +134,23 @@ def require_opds_auth(
         allowed = secrets.compare_digest(credentials.password, get_settings().opds_password)
     if not allowed:
         raise _unauthorized()
+
+
+def safe_next(value: str | None, default: str = "/") -> str:
+    """Só aceita caminho interno -- barra ``//host`` e ``/\\host`` (open redirect)."""
+    candidate = (value or "").strip()
+    if candidate.startswith("/") and not candidate.startswith("//") and "\\" not in candidate:
+        return candidate
+    return default
+
+
+def opds_protection_problem(session: Session) -> str | None:
+    """Mensagem para o painel quando o catálogo está fechado sem credencial."""
+    if not runtime.get("opds_require_auth", True):
+        return None
+    if runtime.get("opds_username"):
+        return None
+    return (
+        "O catálogo OPDS exige credencial e ainda não tem usuário/senha: "
+        "defina abaixo para os leitores voltarem a baixar."
+    )

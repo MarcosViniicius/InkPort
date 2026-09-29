@@ -113,7 +113,13 @@ def register_error_handlers(app) -> None:
     @app.exception_handler(StarletteHTTPException)
     async def _http_exception(request: Request, exc: StarletteHTTPException) -> Response:
         if is_machine_request(request):
-            return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
+            # Preserva os cabeçalhos da exceção: sem o WWW-Authenticate o leitor
+            # e-ink não sabe que precisa pedir usuário e senha (só falha).
+            return JSONResponse(
+                {"detail": exc.detail},
+                status_code=exc.status_code,
+                headers=dict(exc.headers or {}),
+            )
         if exc.status_code == 401:
             # Not logged in: send to the login page instead of an error.
             return RedirectResponse(

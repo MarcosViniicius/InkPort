@@ -46,6 +46,8 @@ class Field:
     choices: tuple[tuple[str, str], ...] = ()
     minimum: float | None = None
     maximum: float | None = None
+    #: Valor efetivo quando não há campo equivalente em ``Settings`` (o ``.env``).
+    default: Any = None
     secret: bool = False
     #: Só aparece no assistente de primeiro acesso (configurações essenciais).
     onboarding: bool = True
@@ -92,7 +94,18 @@ FIELDS: tuple[Field, ...] = (
         "opds_username",
         "Usuário do OPDS",
         group="opds",
-        help="Opcional: deixe vazio para um catálogo aberto na rede local.",
+        help="Obrigatório enquanto «exigir credencial» estiver ligado.",
+    ),
+    Field(
+        "opds_require_auth",
+        "Exigir credencial no catálogo OPDS",
+        group="opds",
+        kind="bool",
+        default=True,
+        help=(
+            "Ligado (recomendado): o catálogo só responde com usuário e senha. "
+            "Desligue apenas em rede local confiável."
+        ),
     ),
     Field(
         "opds_password",
@@ -244,17 +257,32 @@ def groups_for(onboarding: bool = True) -> list[tuple[str, str]]:
 
 
 # --- escrita --------------------------------------------------------------
-def save(session: Session, data: Mapping[str, Any], *, complete: bool = False) -> list[str]:
+def field_names(*, onboarding: bool = False) -> set[str]:
+    """Nomes dos campos que uma tela renderiza (o assistente mostra menos)."""
+    if onboarding:
+        return {field.name for field in FIELDS if field.onboarding}
+    return {field.name for field in FIELDS}
+
+
+def save(
+    session: Session,
+    data: Mapping[str, Any],
+    *,
+    rendered: set[str] | None = None,
+) -> list[str]:
     """Store the submitted fields, validated; returns user-facing warnings.
 
-    ``complete=True`` means the form rendered every field, so a boolean missing
-    from the payload is an unchecked box and becomes False. Leave it False for
-    partial updates, where missing keys must be left alone.
+    ``rendered`` lists the fields the form actually showed. A boolean that was
+    rendered but is missing from the payload is an unchecked box, so it becomes
+    False. Fields that were **not** on the screen are left untouched -- sem isso,
+    salvar um formulário parcial (o assistente mostra menos campos) apagaria
+    configurações que o usuário nem viu.
     """
+    visiveis = rendered or set()
     warnings: list[str] = []
     for field in FIELDS:
         present = field.name in data
-        if not present and not (complete and field.kind == "bool"):
+        if not present and not (field.kind == "bool" and field.name in visiveis):
             continue
         if field.kind == "password":
             text = str(data.get(field.name) or "").strip()
@@ -310,7 +338,10 @@ def _env_default(name: str) -> Any:
     if field is not None and field.secret:
         return None
     # get_base_settings (e não get_settings) para não chamar o overlay de volta.
-    return getattr(get_base_settings(), name, None)
+    value = getattr(get_base_settings(), name, None)
+    if value is None and field is not None:
+        return field.default
+    return value
 
 
 def _as_bool(raw: Any) -> bool:

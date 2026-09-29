@@ -45,9 +45,18 @@ def main() -> int:
 
     with TestClient(app) as client:
         # Primeiro acesso: cria a credencial do painel e sai (para testar o login).
+        from app.security import setup as _setup  # o token vem do proprio servidor
         client.post("/setup", data={"username": "admin", "password": "senha-de-teste",
-                                   "confirm_password": "senha-de-teste"})
+                                   "confirm_password": "senha-de-teste", "token": _setup.token()})
         client.get("/logout")
+
+        # O catalogo agora exige credencial por padrao; aqui interessa o conteudo.
+        from app.database.base import session_scope as _scope
+        from app.security import runtime as _runtime
+
+        with _scope() as _session:
+            _runtime.save(_session, {"opds_require_auth": False})
+
         _unauthenticated_checks(client)
         _panel_checks(client)
         _filter_checks(client)

@@ -156,3 +156,29 @@ def _is_loopback_url(url: str) -> bool:
         return is_loopback(urlparse(url).hostname)
     except ValueError:
         return False
+
+
+def client_ip(request) -> str:
+    """IP do cliente.
+
+    O uvicorn já resolve ``X-Forwarded-For`` quando ``TRUST_PROXY`` está ligado,
+    então basta ler o que ele entregou em ``request.client``.
+    """
+    client = getattr(request, "client", None)
+    return getattr(client, "host", "") or "?"
+
+
+def is_local_address(address: str) -> bool:
+    """True para loopback, rede privada ou link-local.
+
+    Serve para confiar em quem chega de dentro da rede (e do próprio host,
+    inclusive pelo gateway do Docker) sem exigir token: quem vem da internet
+    não é "local".
+    """
+    import ipaddress
+
+    try:
+        ip = ipaddress.ip_address(address)
+    except ValueError:
+        return False
+    return ip.is_loopback or ip.is_private or ip.is_link_local

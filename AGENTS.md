@@ -192,10 +192,12 @@ tools/
   duplique rótulo ou validação em template. `get_settings()` devolve um
   **overlay** (`security/effective.py`) com o banco por cima do `.env`, então
   todo o app já respeita o banco sem mudar call sites; para ler o valor cru do
-  `.env` use `get_base_settings()`. Ao salvar um formulário que renderiza todos
-  os campos, use `runtime.save(..., complete=True)`: caixa desmarcada não vem no
-  payload e precisa virar `False` (sem `complete`, campos ausentes são
-  preservados).
+  `.env` use `get_base_settings()`. Ao salvar um formulário, informe em
+  `runtime.save(..., rendered=...)` **quais campos a tela mostrou**
+  (`runtime.field_names(onboarding=True)` no assistente, `field_names()` em
+  Configurações): caixa renderizada e ausente vira `False`, e campo que não
+  estava na tela fica intocado. Sem isso, um formulário parcial apaga o que o
+  usuário não viu (já aconteceu: desligava o login do painel).
 - **Assistente de primeiro acesso**: o middleware em `main.py` manda o painel
   para `/setup` enquanto a credencial não tiver sido definida **no painel**
   (`auth.change_password` grava `admin_confirmed`). Isso cobre instalação nova

@@ -37,6 +37,8 @@ htmlcov/
 data/
 # A chave do banco cifrado (DATA_DIR/secret.key): sem ela o opds.db nao abre.
 secret.key
+# Segredo de sessao gerado automaticamente quando SECRET_KEY nao e' definido.
+session.key
 *.plain.bak
 *.db
 *.db-wal

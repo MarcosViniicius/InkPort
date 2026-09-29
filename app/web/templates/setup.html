@@ -27,7 +27,23 @@
         {% endif %}
 
         {% from "partials/fields.html" import render_field %}
+        {% if needs_token %}
+        <form method="get" action="/setup" class="mt4">
+          <div class="field">
+            <label for="token">Token de primeiro acesso</label>
+            <input id="token" name="token" autocomplete="one-time-code" autofocus required
+                   placeholder="veja no log do servidor (docker logs / systemd)">
+            <p class="hint">
+              Este servidor está exposto fora da rede local, então criar a senha
+              exige o token que aparece no log no boot — assim ninguém de fora
+              assume a sua instalação antes de você.
+            </p>
+          </div>
+          <button class="button block lg mt4" type="submit">Continuar</button>
+        </form>
+        {% else %}
         <form method="post" action="/setup" class="mt4">
+          {% if token %}<input type="hidden" name="token" value="{{ token }}">{% endif %}
           <h2>Acesso ao painel</h2>
           <div class="field-row">
             <div class="field">
@@ -61,6 +77,7 @@
             <code>secret.key</code>.
           </p>
         </form>
+        {% endif %}
       </div>
       <p class="muted small center mt4">
         Catálogo OPDS: <code>{{ opds_url }}</code>

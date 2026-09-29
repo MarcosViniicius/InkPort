@@ -22,7 +22,7 @@ externo** (nada de Calibre, Ghostscript, poppler, ImageMagick ou FFmpeg).
 > Documentação: [Arquitetura](docs/architecture.md) ·
 > [Painel](docs/panel.md) · [OPDS](docs/opds.md) · [Conversão](docs/conversion.md) ·
 > [Dispositivos](docs/device-formats.md) · [RSS](docs/rss.md) ·
-> [Containers](docs/devops/containers.md) ·
+> [Segurança](docs/security.md) · [Containers](docs/devops/containers.md) ·
 > [Desenvolvimento](docs/development.md) · [IA/agentes](AGENTS.md)
 
 ---
@@ -324,8 +324,11 @@ No leitor (ou app), adicione um catálogo OPDS apontando para:
 http://SEU-IP:8080/opds
 ```
 
-Use o IP que aparece no boot (ou em **Configurações → Acesso na rede**). Se
-`OPDS_USERNAME`/`OPDS_PASSWORD` estiverem definidos, use autenticação **Basic**.
+**O catálogo exige credencial por padrão.** Defina **usuário e senha do OPDS**
+em Configurações (ou no assistente de primeiro acesso) e informe os mesmos no
+leitor, em autenticação **Basic** — sem isso o catálogo responde `401` (é de
+propósito: o catálogo não pode ficar aberto para a internet). Para uma rede
+local confiável, desligue “Exigir credencial no catálogo OPDS”.
 
 ### Xteink X4 Pro (perfil verificado)
 
@@ -514,7 +517,16 @@ boot e sob demanda.
 
 ## Limites e segurança
 
-- Autenticação de sessão no painel e Basic auth opcional no OPDS.
+- Autenticação de sessão no painel e **Basic auth obrigatória** (por padrão) no
+  catálogo OPDS; a API e a especificação também exigem sessão.
+- **Segredos onde devem ficar**: sem `SECRET_KEY` definido, o servidor gera um
+  segredo de sessão em `DATA_DIR/session.key` (0600) — o valor de fábrica é
+  público e nunca é usado. O assistente de primeiro acesso exige token quando
+  chega de fora da rede local.
+- **Cabeçalhos de segurança** em toda resposta (CSP sem CDN, `nosniff`,
+  `X-Frame-Options`, `Referrer-Policy`); HSTS e cookie `Secure` quando o acesso
+  é HTTPS (`BASE_URL=https://…`). Detalhes e a auditoria em
+  [`docs/security.md`](docs/security.md).
 - **Banco cifrado em repouso** (SQLCipher, biblioteca embutida na roda do
   `sqlcipher3`): metadados, credenciais, feeds e filas ficam ilegíveis sem a
   chave. Ela vive em `DATA_DIR/secret.key` (permissão 0600) — faça backup dela

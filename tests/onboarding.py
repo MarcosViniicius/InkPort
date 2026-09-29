@@ -66,19 +66,41 @@ def main() -> int:
         resposta = client.get("/api/system/settings")
         check("API responde 503 enquanto não configurado", resposta.status_code == 503, str(resposta.status_code))
         resposta = client.get("/opds")
-        check("OPDS segue acessível (leitor não esbarra no assistente)", resposta.status_code == 200, str(resposta.status_code))
+        check(
+            "OPDS não é sequestrado pelo assistente (responde por si)",
+            resposta.status_code in (200, 401) and "/setup" not in resposta.headers.get("location", ""),
+            str(resposta.status_code),
+        )
         check("health segue acessível", client.get("/health").status_code == 200)
 
         print("\n[a página do assistente]")
-        resposta = client.get("/setup")
+        resposta = client.get(f"/setup?token={setup_state.token()}")
         check("abre com o formulário", resposta.status_code == 200 and "Primeiro acesso" in resposta.text)
         check("traz os campos do catálogo", "Raiz do OPDS" in resposta.text and "Nome da aplicação" in resposta.text)
         check("pede usuário e senha", 'name="password"' in resposta.text and 'name="confirm_password"' in resposta.text)
 
+        print("\n[sem token não dá para assumir a instalação]")
+        sem_token = client.post(
+            "/setup",
+            data={"username": "intruso", "password": "senha-do-intruso", "confirm_password": "senha-do-intruso"},
+            follow_redirects=False,
+        )
+        check(
+            "POST /setup sem token é recusado",
+            sem_token.status_code == 303 and "err=" in sem_token.headers["location"],
+            sem_token.headers.get("location", ""),
+        )
+        token_errado = client.get("/setup?token=chute", follow_redirects=False)
+        check(
+            "GET /setup com token errado não mostra o formulário",
+            token_errado.status_code == 401 and "Token de primeiro acesso" in token_errado.text,
+            str(token_errado.status_code),
+        )
+
         print("\n[validações]")
         curta = client.post(
             "/setup",
-            data={"username": "admin", "password": "123", "confirm_password": "123"},
+            data={"username": "admin", "password": "123", "confirm_password": "123", "token": setup_state.token()},
             follow_redirects=False,
         )
         check("senha curta é recusada", curta.status_code == 303 and "err=" in curta.headers["location"])
@@ -117,6 +139,7 @@ def main() -> int:
             "storage_limit_gb": "12.5",
             "rss_worker_enabled": "on",
             "require_auth_panel": "on",
+            "token": setup_state.token(),
         }
         pronto = client.post("/setup", data=dados, follow_redirects=False)
         check("assistente conclui e volta ao painel", pronto.status_code == 303 and pronto.headers["location"].startswith("/?"), pronto.headers.get("location", ""))
@@ -194,12 +217,13 @@ def main() -> int:
             resposta.status_code == 303 and resposta.headers.get("location") == "/setup",
             f"{resposta.status_code} {resposta.headers.get('location', '')}",
         )
-        pagina = client.get("/setup")
+        pagina = client.get(f"/setup?token={setup_state.token()}")
         check("assistente reaparece para assumir a credencial", pagina.status_code == 200)
         check("usuário atual já vem preenchido", 'value="marco"' in pagina.text)
         denovo = client.post(
             "/setup",
-            data={"username": "marco", "password": "senha-nova-123", "confirm_password": "senha-nova-123"},
+            data={"username": "marco", "password": "senha-nova-123",
+              "confirm_password": "senha-nova-123", "token": setup_state.token()},
             follow_redirects=False,
         )
         check(

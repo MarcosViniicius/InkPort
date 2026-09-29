@@ -6,6 +6,10 @@ validated settings with ``.env`` support and nothing else is needed.
 
 from __future__ import annotations
 
+import contextlib
+import logging
+import os
+import secrets
 from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -15,6 +19,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 if TYPE_CHECKING:
     from app.security.effective import EffectiveSettings
+
+#: Segredo de sessão de fábrica: público, portanto nunca aceitável em produção.
+DEFAULT_SECRET_KEY = "change-me-please-use-a-long-random-string"
 
 
 class Settings(BaseSettings):
@@ -172,7 +179,36 @@ def get_base_settings() -> Settings:
     """Valores do ``.env`` (bootstrap: caminhos, host, porta, log, cifragem)."""
     settings = Settings()
     settings.ensure_dirs()
+    _ensure_session_secret(settings)
     return settings
+
+
+def _ensure_session_secret(settings: Settings) -> None:
+    """Troca o segredo de sessão de fábrica por um aleatório persistido.
+
+    O valor padrão é público (está no ``.env.example``): aceitá-lo permitiria a
+    qualquer um forjar o cookie de sessão do painel. Sem ``SECRET_KEY`` definido,
+    geramos um em ``DATA_DIR/session.key`` (0600) -- como a chave do banco -- e
+    avisamos no log. Definir ``SECRET_KEY`` continua mandando.
+    """
+    if settings.secret_key and settings.secret_key != DEFAULT_SECRET_KEY:
+        return
+    path = settings.data_dir / "session.key"
+    if path.is_file():
+        value = path.read_text(encoding="utf-8").strip()
+    else:
+        value = secrets.token_urlsafe(48)
+        descriptor = os.open(path, os.O_CREAT | os.O_WRONLY | os.O_TRUNC, 0o600)
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            handle.write(value + "\n")
+        with contextlib.suppress(OSError):
+            os.chmod(path, 0o600)
+        logging.getLogger(__name__).warning(
+            "SECRET_KEY não definido: gerei um segredo de sessão em %s "
+            "(defina SECRET_KEY no ambiente para controlar isso)",
+            path,
+        )
+    settings.secret_key = value
 
 
 @lru_cache

@@ -437,8 +437,9 @@ def main() -> int:
     app = create_app()
     with TestClient(app) as client:
         # Primeiro acesso: cria a credencial do painel e sai (para testar o login).
+        from app.security import setup as _setup  # o token vem do proprio servidor
         client.post("/setup", data={"username": "admin", "password": "test-password",
-                                   "confirm_password": "test-password"})
+                                   "confirm_password": "test-password", "token": _setup.token()})
         client.get("/logout")
         ids: dict[str, str] = {}
         for key, path in files.items():

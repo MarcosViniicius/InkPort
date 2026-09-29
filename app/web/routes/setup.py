@@ -25,14 +25,32 @@ MIN_PASSWORD = 8
 
 
 @router.get("/setup")
-def setup_page(request: Request, session: Session = Depends(get_session)):
+def setup_page(request: Request, session: Session = Depends(get_session), token: str = ""):
     if not setup_state.required(session):
         return RedirectResponse("/", status_code=303)
+    if not setup_state.token_ok(request, token):
+        # De fora da rede local, primeiro o token (que está no log do servidor).
+        return render(
+            request,
+            "setup.html",
+            {
+                "active": "setup",
+                "needs_token": True,
+                "token": "",
+                "username": auth.admin_username(session),
+                "groups": [],
+                "fields": [],
+                "min_password": MIN_PASSWORD,
+            },
+            status_code=401,
+        )
     return render(
         request,
         "setup.html",
         {
             "active": "setup",
+            "needs_token": False,
+            "token": token,
             "username": auth.admin_username(session),
             "groups": runtime.groups_for(onboarding=True),
             "fields": runtime.describe(onboarding=True),
@@ -47,6 +65,12 @@ async def setup_submit(request: Request, session: Session = Depends(get_session)
         return RedirectResponse("/", status_code=303)
 
     form = await request.form()
+    if not setup_state.token_ok(request, str(form.get("token") or "")):
+        return RedirectResponse(
+            f"/setup?err={quote('Token de primeiro acesso inválido ou vencido (veja no log do servidor).')}",
+            status_code=303,
+        )
+
     username = str(form.get("username") or "").strip() or "admin"
     password = str(form.get("password") or "")
     confirm = str(form.get("confirm_password") or "")
@@ -63,8 +87,14 @@ async def setup_submit(request: Request, session: Session = Depends(get_session)
 
     auth.change_password(session, password, username=username)
     setup_state.mark_configured()
-    # Tudo que veio no formulário e é configurável vai para o banco de uma vez.
-    runtime.save(session, {name: form.get(name) for name in runtime.BY_NAME if name in form})
+    # Só o que veio no formulário vai para o banco. `rendered` diz quais caixas
+    # a tela mostrou: ausente ali = desmarcada (False); campo que o assistente
+    # nem exibe fica intocado (é o caso de USE_REQUEST_HOST e do login do painel).
+    runtime.save(
+        session,
+        {name: form.get(name) for name in runtime.BY_NAME if name in form},
+        rendered=runtime.field_names(onboarding=True),
+    )
     auth.login_session(request, username)
     return RedirectResponse(
         f"/?ok={quote('Configuração concluída. Bem-vindo!')}", status_code=303
