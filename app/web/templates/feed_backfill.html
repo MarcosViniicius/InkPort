@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
+{% block title %}Retroativos · {{ feed.name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="crumbs"><a href="/feeds">Feeds</a> / {{ feed.name }}</p>
+    <h1>Buscar do passado</h1>
+    <p class="lead">
+      Período: <strong>{{ backfill_label(feed.backfill_months) }}</strong>
+      {% if preview.sitemap %} · sitemap: <code>{{ preview.sitemap }}</code>{% endif %}
+    </p>
+  </div>
+  <div class="button-row">
+    <a class="button ghost" href="/feeds">{{ icon('back', 15) }} Voltar aos feeds</a>
+  </div>
+</div>
+
+{% if preview.error %}
+  <div class="flash err" role="alert">
+    {{ icon('alert') }}<span>{{ preview.error }}</span>
+  </div>
+  <div class="card mt4">
+    <p class="mb0">
+      A pré-visualização não conseguiu ler o sitemap. Se o endereço estiver errado,
+      informe o sitemap correto em <strong>Editar → Sitemap (opcional)</strong> e
+      tente de novo.
+    </p>
+  </div>
+
+{% elif preview.found == 0 %}
+  <div class="card">
+    <div class="card-head"><h2>{{ icon('search', 17) }} Nenhum post datado no sitemap</h2></div>
+    <p class="mb0">
+      O sitemap respondeu, mas não há posts com data na URL. Sem a data não dá
+      para saber o que é antigo — este site não permite voltar no tempo pelo
+      sitemap. Os itens do feed continuam sendo importados normalmente.
+    </p>
+  </div>
+
+{% else %}
+  <div class="grid stats">
+    <div class="stat"><div class="value num">{{ preview.found }}</div><div class="label">No sitemap</div></div>
+    <div class="stat"><div class="value num">{{ preview.in_window }}</div><div class="label">No período</div></div>
+    <div class="stat"><div class="value num">{{ preview.skipped }}</div><div class="label">Já temos</div></div>
+    <div class="stat {{ 'accent' if preview.new }}"><div class="value num">{{ preview.new }}</div><div class="label">Novos</div></div>
+  </div>
+
+  {% if preview.new %}
+  <div class="card mt4">
+    <div class="card-head">
+      <h2>Próximos a importar</h2>
+      <span class="muted small">{{ preview.new }} post(s) novo(s) no período</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Data</th><th>Título</th><th></th></tr></thead>
+        <tbody>
+        {% for post in preview.sample %}
+          <tr>
+            <td data-label="Data" class="mono small">{{ post.published }}</td>
+            <td data-label="Título">{{ post.title }}</td>
+            <td data-label=""><a class="button ghost small" href="{{ post.url }}" target="_blank" rel="noopener">{{ icon('external', 14) }} Abrir</a></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if preview.more %}<p class="muted small mt4 mb0">… e mais {{ preview.more }}.</p>{% endif %}
+  </div>
+
+  <div class="button-row mt4">
+    <form method="post" action="/feeds/{{ feed.id }}/backfill">
+      <button class="button" type="submit">{{ icon('download', 16) }} Buscar retroativos agora</button>
+    </form>
+    <a class="button ghost" href="/feeds/{{ feed.id }}/edit">{{ icon('edit', 15) }} Editar período</a>
+  </div>
+  <p class="hint mt4 mb0">
+    Nada foi importado ainda: esta tela é só uma pré-visualização. A importação
+    roda em segundo plano, em blocos de {{ feed.max_items_per_run }} por vez, e
+    não duplica o que já está na biblioteca.
+  </p>
+
+  {% else %}
+  <div class="card mt4">
+    <p class="mb0">Nada novo no período — os posts antigos deste site já estão na biblioteca.</p>
+  </div>
+  <div class="button-row mt4">
+    <a class="button ghost" href="/feeds">{{ icon('back', 15) }} Voltar aos feeds</a>
+  </div>
+  {% endif %}
+{% endif %}
+{% endblock %}

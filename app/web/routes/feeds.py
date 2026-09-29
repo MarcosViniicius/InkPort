@@ -349,6 +349,33 @@ async def backfill_feed(feed_id: int, session: Session = Depends(get_session)):
     )
 
 
+@router.post("/{feed_id}/backfill/preview")
+def backfill_preview(feed_id: int, request: Request, session: Session = Depends(get_session)):
+    """Dry run: what the retroactive pull would import (downloads nothing).
+
+    Reads the sitemap and filters the window; the heavy import only happens when
+    the user confirms, so nobody downloads hundreds of posts by accident.
+    """
+    feed = session.get(Feed, feed_id)
+    if feed is None:
+        return _back("/feeds", "Feed não encontrado.")
+    if not feed.backfill_months:
+        return _back(
+            "/feeds",
+            "Ligue «Buscar do passado» no feed e salve para importar os posts antigos.",
+        )
+    from app.rss.backfill import preview_backfill
+    from app.rss.downloader import Downloader
+
+    with Downloader() as downloader:
+        preview = preview_backfill(session, feed, downloader)
+    return render(
+        request,
+        "feed_backfill.html",
+        {"active": "feeds", "feed": feed, "preview": preview},
+    )
+
+
 def _backfill_in_background(feed_id: int) -> None:
     """Clear the "archive finished" mark and run the normal (RSS + archive) pass."""
     from app.database import session_scope

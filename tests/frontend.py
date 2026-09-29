@@ -39,6 +39,11 @@ def strip_comments(css: str) -> str:
     return re.sub(r"/\*.*?\*/", "", css, flags=re.S)
 
 
+def _pass(value, *args, **kwargs):
+    """Placeholder for the app's custom Jinja filters (parse-time only)."""
+    return value
+
+
 def main() -> int:
     css = CSS.read_text(encoding="utf-8")
     body = strip_comments(css)
@@ -79,6 +84,25 @@ def main() -> int:
     # --- templates -------------------------------------------------------
     templates = {p.name: p.read_text(encoding="utf-8") for p in TEMPLATES.rglob("*.html")}
     check("páginas encontradas", len(templates) >= 10, str(len(templates)))
+
+    # A template with a syntax error only explodes when its page is opened; parse
+    # them all here so a typo is caught by the suite instead of by the user.
+    try:
+        from jinja2 import Environment, FileSystemLoader, TemplateSyntaxError
+
+        env = Environment(loader=FileSystemLoader(str(TEMPLATES)))
+        for filtro in ("relative", "datetime", "filesize", "decimal", "volume"):
+            env.filters[filtro] = _pass
+        broken: list[str] = []
+        for path in sorted(TEMPLATES.rglob("*.html")):
+            name = path.relative_to(TEMPLATES).as_posix()
+            try:
+                env.get_template(name)
+            except TemplateSyntaxError as exc:
+                broken.append(f"{name}:{exc.lineno}")
+        check("todos os templates compilam (Jinja)", not broken, "; ".join(broken))
+    except ImportError as exc:  # pragma: no cover - jinja2 is a dependency
+        check("todos os templates compilam (Jinja)", False, str(exc))
 
     base = templates.get("base.html", "")
     check("base tem skip-link e main", "skip-link" in base and 'id="main"' in base)

@@ -496,6 +496,19 @@ def main() -> int:
         retro_id = retro.id
 
     routes = RouteDownloader()
+
+    print("\n[pré-visualização dos retroativos não baixa nada]")
+    from app.rss.backfill import preview_backfill
+
+    with session_scope() as session:
+        preview = preview_backfill(session, session.get(Feed, retro_id), routes)
+    check("preview: usa o sitemap do site", preview["sitemap"].endswith("sitemap.xml"), preview["sitemap"])
+    check("preview: 3 posts no sitemap", preview["found"] == 3, str(preview["found"]))
+    check("preview: 2 no período", preview["in_window"] == 2, str(preview["in_window"]))
+    check("preview: 2 novos", preview["new"] == 2, str(preview["new"]))
+    check("preview: amostra com 2 posts", len(preview["sample"]) == 2, str(preview["sample"]))
+    check("preview: só leu o sitemap (nenhum download)", len(routes.calls) == 1, str(routes.calls))
+
     with session_scope() as session:
         r1 = process_feed(session, session.get(Feed, retro_id), routes)
     check(
@@ -518,6 +531,14 @@ def main() -> int:
         "retroativos concluídos não são reprocessados",
         r3.backfilled == 0,
         str(r3.backfilled),
+    )
+
+    with session_scope() as session:
+        preview_done = preview_backfill(session, session.get(Feed, retro_id), routes)
+    check(
+        "preview após concluir mostra 0 novos",
+        preview_done["new"] == 0,
+        str(preview_done["new"]),
     )
 
     with session_scope() as session:

@@ -71,6 +71,15 @@ SOURCE_LABELS = {
     "download": "baixado da web",
 }
 
+BACKFILL_LABELS = {
+    0: "Desligado",
+    6: "Últimos 6 meses",
+    12: "Último 1 ano",
+    24: "Últimos 2 anos",
+    60: "Últimos 5 anos",
+    -1: "Todo o acervo do site",
+}
+
 STATUS_LABELS = {
     "pending": "na fila",
     "running": "executando",
@@ -127,6 +136,15 @@ def source_label(source: str | None) -> str:
     if not source:
         return "—"
     return SOURCE_LABELS.get(source, source)
+
+
+def backfill_label(months) -> str:
+    """Human label for the per-feed retroactive period."""
+    try:
+        value = int(months)
+    except (TypeError, ValueError):
+        value = 0
+    return BACKFILL_LABELS.get(value, f"{value} meses")
 
 
 def profile_label(slug: str | None) -> str:

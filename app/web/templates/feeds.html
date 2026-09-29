@@ -26,10 +26,9 @@
           <span class="badge info">{{ format_label(feed.output_format) }}</span>
           <span class="badge plain">{{ profile_label(feed.device_profile) }}</span>
           <span class="badge plain">{{ feed.max_items_per_run }} itens por busca</span>
-          {% set bf = {6:'6 meses', 12:'1 ano', 24:'2 anos', 60:'5 anos', -1:'acervo todo'}.get(feed.backfill_months) %}
-          {% if bf %}
+          {% if feed.backfill_months %}
           <span class="badge {{ 'ok' if feed.backfill_done_at else 'info' }}">
-            passado: {{ bf }}{{ ' (concluído)' if feed.backfill_done_at }}
+            passado: {{ backfill_label(feed.backfill_months) }}{{ ' (concluído)' if feed.backfill_done_at }}
           </span>
           {% endif %}
           {% if not feed.keep_original %}<span class="badge plain">não mantém o original</span>{% endif %}
@@ -55,6 +54,12 @@
         </button>
       </form>
       {% if feed.backfill_months %}
+      <form method="post" action="/feeds/{{ feed.id }}/backfill/preview">
+        <button class="button ghost small" type="submit"
+                title="Ver o que os retroativos importariam, sem baixar nada">
+          {{ icon('search', 14) }} Pré-visualizar
+        </button>
+      </form>
       <form method="post" action="/feeds/{{ feed.id }}/backfill">
         <button class="button ghost small" type="submit" {% if feed.id in running_feeds %}disabled{% endif %}
                 title="Voltar a ler o sitemap e importar os posts antigos do período configurado">

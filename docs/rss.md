@@ -102,6 +102,10 @@ Como funciona:
   é consumido em várias rodadas, sem travar). O botão **Buscar retroativos**
   força outra passada; quando o período é percorrido por completo, o feed mostra
   `passado: … (concluído)`.
+- **Pré-visualizar** (botão no feed, ou `GET /api/feeds/{id}/backfill/preview`)
+  mostra o que seria importado — quantos no sitemap, quantos no período, quantos
+  já existem e uma amostra dos posts — **sem baixar nada**, para conferir antes
+  de disparar.
 - Se o site não estiver com o sitemap acessível, a busca retroativa tenta de
   novo na próxima rodada (não marca "concluído").
 - Mudar o período reinicia a varredura do zero.

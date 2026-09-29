@@ -80,6 +80,29 @@ async def refresh_feed(feed_id: int, session: Session = Depends(get_session)) ->
     }
 
 
+def _backfill_preview(feed_id: int) -> dict | None:
+    from app.database import session_scope
+    from app.rss.backfill import preview_backfill
+    from app.rss.downloader import Downloader
+
+    with session_scope() as session:
+        feed = session.get(Feed, feed_id)
+        if feed is None:
+            return None
+        with Downloader() as downloader:
+            return preview_backfill(session, feed, downloader)
+
+
+@router.get("/{feed_id}/backfill/preview")
+async def backfill_preview(feed_id: int, session: Session = Depends(get_session)) -> dict:
+    """Dry run of the retroactive pull: counts and a sample, downloads nothing."""
+    _get_or_404(session, feed_id)
+    preview = await asyncio.to_thread(_backfill_preview, feed_id)
+    if preview is None:
+        raise HTTPException(status_code=404, detail="Feed não encontrado")
+    return preview
+
+
 @router.get("/{feed_id}/items")
 def list_items(
     feed_id: int,
