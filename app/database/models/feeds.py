@@ -49,6 +49,9 @@ class Feed(Base):
     #: Legacy column from the first version (months). Kept so an existing
     #: database keeps working; see ``backfill_days_total``.
     backfill_months: Mapped[int] = mapped_column(Integer, default=0)
+    #: How many retroactive posts to import per feed pass (0 = use
+    #: ``max_items_per_run``).
+    backfill_per_run: Mapped[int] = mapped_column(Integer, default=0)
     #: Optional sitemap URL; when empty it is derived from ``url``.
     sitemap_url: Mapped[str] = mapped_column(String(2048), default="")
     #: When the archive walk last had nothing left to import (informational).
@@ -90,6 +93,11 @@ class Feed(Base):
         if months < 0:
             return -1
         return months * 30
+
+    @property
+    def backfill_per_run_effective(self) -> int:
+        """Batch size for the retroactive pull (0 falls back to the feed's cap)."""
+        return max(1, self.backfill_per_run or self.max_items_per_run or 20)
 
     @property
     def backfill_percent(self) -> int:

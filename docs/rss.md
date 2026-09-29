@@ -101,12 +101,15 @@ Como funciona:
 - Os posts entram com a **categoria, o formato e o perfil** do feed, e são
   marcados no histórico do feed (aparecem em *Itens recentes*).
 - **Não duplica**: URLs já na biblioteca ou já vistas pelo feed são puladas.
-- É **contínuo**: a cada busca do feed o servidor importa um bloco (até
-  **Itens por execução**) dos posts antigos dentro do período e vai preenchendo
-  aos poucos, rodada a rodada — **não de uma vez**. Como o período é uma janela
-  que anda com o tempo, ele **continua verificando periodicamente** (a leitura do
-  sitemap é espaçada em 1 h para não martelar o site). O botão **Buscar
-  retroativos** força uma passada na hora; **Pré-visualizar** mostra o que falta.
+- É **contínuo**: a cada busca do feed o servidor importa um bloco dos posts
+  antigos dentro do período e vai preenchendo aos poucos, rodada a rodada —
+  **não de uma vez**. Como o período é uma janela que anda com o tempo, ele
+  **continua verificando periodicamente** (a leitura do sitemap é espaçada em
+  1 h para não martelar o site). O botão **Buscar retroativos** força uma passada
+  na hora; **Pré-visualizar** mostra o que falta.
+- **Itens por execução (retroativos)** define o tamanho do bloco, separado do
+  teto do RSS; `0` usa o mesmo valor de “Itens por execução”. Assim dá para, por
+  exemplo, manter o RSS em 20 e os retroativos em 100 por busca.
 - **Pré-visualizar** (botão no feed, ou `GET /api/feeds/{id}/backfill/preview`)
   mostra o que seria importado — quantos no sitemap, quantos no período, quantos
   já existem e uma amostra dos posts — **sem baixar nada**, para conferir antes

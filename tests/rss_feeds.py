@@ -211,6 +211,17 @@ def main() -> int:
           slugify_path("rss/Meu Feed") == "rss/meu-feed", slugify_path("rss/Meu Feed"))
     check("categoria simples continua plana",
           slugify_path("Mangá") == "manga", slugify_path("Mangá"))
+    check(
+        "retroativos sem valor próprio usam o teto do feed",
+        Feed(name="x", url="y", max_items_per_run=7).backfill_per_run_effective == 7,
+        "",
+    )
+    check(
+        "retroativos com valor próprio respeitam o valor",
+        Feed(name="x", url="y", max_items_per_run=7, backfill_per_run=2)
+        .backfill_per_run_effective == 2,
+        "",
+    )
 
     init_db()
     fake = FakeDownloader(feed_xml())
@@ -488,7 +499,10 @@ def main() -> int:
             url="https://exemplo.com/retro.xml",
             output_format="epub",
             device_profile="generic_epub",
-            max_items_per_run=1,
+            # Teto do RSS alto de propósito: o bloco é limitado pelo campo próprio
+            # dos retroativos (1 por busca), provando que são independentes.
+            max_items_per_run=50,
+            backfill_per_run=1,
             backfill_days=365,
         )
         session.add(retro)

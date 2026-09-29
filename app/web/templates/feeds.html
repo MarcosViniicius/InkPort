@@ -54,7 +54,10 @@
     {% if feed.backfill_days_total and feed.backfill_total and feed.backfill_imported < feed.backfill_total %}
     <div class="mt4">
       <div class="spread">
-        <span class="muted small">Retroativos: {{ backfill_label(feed.backfill_days_total) }}</span>
+        <span class="muted small">
+          Retroativos: {{ backfill_label(feed.backfill_days_total) }}
+          · até {{ feed.backfill_per_run_effective }} por busca
+        </span>
         <span class="muted small num">{{ feed.backfill_imported }} de {{ feed.backfill_total }}</span>
       </div>
       <span class="progress mt2" role="progressbar" aria-valuemin="0" aria-valuemax="{{ feed.backfill_total }}"

@@ -58,6 +58,8 @@ class FeedPayload(BaseModel):
     backfill_days: int = 0
     #: Legacy: months. Still accepted; ``backfill_days`` wins when set.
     backfill_months: int = 0
+    #: Retroactive posts per feed pass (0 = use ``max_items_per_run``).
+    backfill_per_run: int = Field(default=0, ge=0, le=10000)
     sitemap_url: str = ""
 
     @field_validator("backfill_months")

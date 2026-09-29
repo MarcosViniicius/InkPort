@@ -102,6 +102,7 @@ async def save_feed(
     max_items_per_run: str = Form(""),
     backfill_value: str = Form("1"),
     backfill_unit: str = Form("off"),
+    backfill_per_run: str = Form(""),
     sitemap_url: str = Form(""),
     active: str = Form(""),
     keep_original: str = Form(""),
@@ -149,6 +150,9 @@ async def save_feed(
     feed.destination_folder = destination_folder.strip()
     feed.max_items_per_run = _as_int(
         max_items_per_run, default=feed.max_items_per_run or 20, minimum=1
+    )
+    feed.backfill_per_run = _as_int(
+        backfill_per_run, default=feed.backfill_per_run or 0, minimum=0
     )
     # Retroativos: mudar o período reinicia a contagem e a próxima busca volta a
     # varrer o sitemap. Dias é o formato canônico; o campo antigo (meses) some.

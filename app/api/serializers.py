@@ -94,6 +94,8 @@ def feed(feed: Feed) -> dict:
         "backfill_days": feed.backfill_days,
         "backfill_days_total": feed.backfill_days_total,
         "backfill_months": feed.backfill_months,
+        "backfill_per_run": feed.backfill_per_run,
+        "backfill_per_run_effective": feed.backfill_per_run_effective,
         "sitemap_url": feed.sitemap_url,
         "backfill_done_at": feed.backfill_done_at.isoformat() if feed.backfill_done_at else None,
         "backfill_checked_at": feed.backfill_checked_at.isoformat() if feed.backfill_checked_at else None,

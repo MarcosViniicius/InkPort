@@ -103,7 +103,7 @@ def run_backfill(session, feed: Feed, downloader, *, force: bool = False) -> dic
         result["done"] = _mark_done(session, feed)
         return result
 
-    budget = max(1, feed.max_items_per_run)
+    budget = feed.backfill_per_run_effective
     batch = todo[:budget]
     category = feed_category_name(feed)
     target = feed.output_format or "epub"

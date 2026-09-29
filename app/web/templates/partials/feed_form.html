@@ -92,9 +92,18 @@
         O RSS só traz os posts recentes; ligado, o servidor lê o
         <code>sitemap.xml</code> do site e vai importando os posts antigos
         <strong>deste período</strong> a cada busca (ex.: <em>2 anos</em>,
-        <em>1 semana</em>, <em>7 dias</em>) — aos poucos, respeitando “Itens por
-        execução”. Funciona em sites com a data na URL, tipo
-        <code>/2026/09/28/post/</code>.
+        <em>1 semana</em>, <em>7 dias</em>) — aos poucos. Funciona em sites com a
+        data na URL, tipo <code>/2026/09/28/post/</code>.
+      </p>
+    </div>
+    <div class="field">
+      <label for="backfill_per_run">Itens por execução (retroativos)</label>
+      <input id="backfill_per_run" name="backfill_per_run" type="number" inputmode="numeric"
+             min="0" max="10000" step="1" value="{{ feed.backfill_per_run if feed else 0 }}"
+             placeholder="{{ feed.max_items_per_run if feed else 20 }}">
+      <p class="hint">
+        Quantos posts antigos importar por busca. <code>0</code> usa o mesmo de
+        “Itens por execução”.
       </p>
     </div>
     <div class="field">
