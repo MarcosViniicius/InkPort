@@ -41,10 +41,12 @@
               seu endereço poderia criar a senha antes de você.
             </p>
             <p class="hint">
-              Onde encontrar: <code>docker logs opds-server</code> (Docker) ·
-              <code>journalctl -u opds-server</code> (systemd) · o próprio terminal
-              onde o servidor está rodando. Se perdeu, reinicie o servidor: um
-              novo token é mostrado.
+              Onde encontrar: no bloco <strong>PRIMEIRO ACESSO</strong> que o
+              servidor imprime ao iniciar — <code>docker logs opds-server</code>,
+              <code>journalctl -u opds-server</code> ou o próprio terminal — e
+              também no arquivo <code>data/setup.token</code>
+              (<code>docker exec opds-server cat /data/setup.token</code>).
+              Reiniciar o servidor mostra um token novo.
             </p>
           </div>
           <button class="button block lg mt4" type="submit">Continuar</button>

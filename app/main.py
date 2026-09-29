@@ -68,9 +68,9 @@ async def lifespan(app: FastAPI):
 
     if not configured:
         caminho = setup_state.write_token_file()
+        _first_access_banner(setup_state.token(), caminho)
         logger.warning(
-            "primeiro acesso pendente: abra /setup e informe o token %s "
-            "(também em %s -- quem acessa da mesma rede/máquina não precisa dele)",
+            "primeiro acesso pendente: abra /setup e informe o token %s (também em %s)",
             setup_state.token(),
             caminho,
         )
@@ -116,6 +116,28 @@ def _setup_bypass(path: str) -> bool:
     esbarrar no assistente (numa instalação nova o acervo ainda está vazio).
     """
     return path.startswith(("/setup", "/static", "/health", "/opds", "/favicon.ico"))
+
+
+def _first_access_banner(token: str, path) -> None:
+    """Destaque no console: sem o token não dá para configurar de fora.
+
+    Usa ``print`` de propósito -- com ``LOG_JSON=true`` o log vira uma linha JSON
+    por evento, e aqui o que importa é um bloco impossível de não ver.
+    """
+    linha = "=" * 76
+    print(
+        f"\n{linha}\n"
+        "  PRIMEIRO ACESSO — defina a senha do painel\n"
+        f"{linha}\n"
+        f"    token:  {token}\n"
+        "\n"
+        "    Abra /setup no endereço que você usa para acessar este servidor e\n"
+        f"    informe o token acima (ele também está em {path}).\n"
+        "\n"
+        "    Da mesma máquina ou da rede local o token não é pedido.\n"
+        f"{linha}\n",
+        flush=True,
+    )
 
 
 def _log_access(settings) -> None:

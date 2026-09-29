@@ -19,7 +19,8 @@
       <dt>Raiz do OPDS</dt><dd>{{ 'só os menus' if settings.opds_root_mode == 'navigation' else ('só os livros' if settings.opds_root_mode == 'books' else 'livros e menus') }}</dd>
       <dt>Acesso</dt><dd>{% if settings.opds_username %}<span class="badge warn">Basic auth ativo</span>{% else %}<span class="badge">aberto na rede</span>{% endif %}</dd>
     </dl>
-    <p class="hint">No leitor, cadastre o catálogo com o endereço mostrado aqui. A biblioteca é servida direto, sem duplicar arquivos.</p>
+    <p class="hint">No leitor, cadastre o catálogo com o endereço mostrado aqui. A biblioteca é servida direto, sem duplicar arquivos.
+      Quando o leitor pedir <strong>usuário e senha</strong>, use os mesmos definidos em <em>Aplicação e catálogo</em> (Usuário/Senha do OPDS) — sem eles o catálogo responde <code>401</code>.</p>
   </div>
 
   <div class="card">

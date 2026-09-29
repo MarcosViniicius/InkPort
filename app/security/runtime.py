@@ -62,13 +62,11 @@ class Field:
 
 #: Tudo que é configurável pelo usuário. ``name`` coincide com o campo de
 #: ``Settings`` quando existe, para o ``.env`` continuar servindo de padrão.
+#:
+#: A ordem aqui é a ordem das telas. O assistente mostra só os campos
+#: ``onboarding`` -- por isso as credenciais do OPDS vêm logo no início: é o que
+#: o usuário precisa para configurar o leitor.
 FIELDS: tuple[Field, ...] = (
-    Field(
-        "app_name",
-        "Nome da aplicação",
-        group="app",
-        help="Aparece no painel, no título das páginas e no feed OPDS.",
-    ),
     Field(
         "require_auth_panel",
         "Exigir login no painel",
@@ -79,11 +77,47 @@ FIELDS: tuple[Field, ...] = (
         advanced=True,
     ),
     Field(
+        "opds_username",
+        "Usuário do OPDS (para o leitor)",
+        group="opds",
+        help=(
+            "O que você vai digitar no aplicativo/leitor para baixar os livros. "
+            "Escolha um nome curto (ex.: leitor)."
+        ),
+    ),
+    Field(
+        "opds_password",
+        "Senha do OPDS (para o leitor)",
+        group="opds",
+        kind="password",
+        secret=True,
+        minimum=6,
+        help=(
+            "A mesma senha que você digita no leitor. Fica guardada como hash: "
+            "nem esta aplicação consegue lê-la de volta."
+        ),
+    ),
+    Field(
+        "opds_require_auth",
+        "Exigir usuário e senha no catálogo",
+        group="opds",
+        kind="bool",
+        default=True,
+        help=(
+            "Ligado (recomendado): o catálogo só responde com as credenciais "
+            "acima — ninguém lê sua biblioteca sem elas. Desligue apenas em rede "
+            "local confiável."
+        ),
+    ),
+    Field(
         "opds_root_mode",
         "Raiz do OPDS",
         group="opds",
         kind="choice",
-        help="O que a raiz /opds entrega. /opds/browse sempre mostra só os menus.",
+        help=(
+            "O que a página inicial do catálogo entrega. Para leitores simples "
+            "(Xteink/CrossPoint) aponte o catálogo do aparelho: /opds/device/xteink_x4_pro."
+        ),
         choices=(
             ("mixed", "Livros e menus (funciona em todo cliente)"),
             ("navigation", "Só os menus"),
@@ -91,36 +125,19 @@ FIELDS: tuple[Field, ...] = (
         ),
     ),
     Field(
-        "opds_username",
-        "Usuário do OPDS",
-        group="opds",
-        help="Obrigatório enquanto «exigir credencial» estiver ligado.",
-    ),
-    Field(
-        "opds_require_auth",
-        "Exigir credencial no catálogo OPDS",
-        group="opds",
-        kind="bool",
-        default=True,
-        help=(
-            "Ligado (recomendado): o catálogo só responde com usuário e senha. "
-            "Desligue apenas em rede local confiável."
-        ),
-    ),
-    Field(
-        "opds_password",
-        "Senha do OPDS",
-        group="opds",
-        kind="password",
-        secret=True,
-        minimum=6,
-        help="Guardada como hash (nem esta aplicação consegue ler a senha).",
+        "app_name",
+        "Nome da aplicação",
+        group="app",
+        help="Aparece no painel, no título das páginas e no feed OPDS.",
     ),
     Field(
         "base_url",
         "Endereço base",
         group="network",
-        help="Vazio = detecta sozinho. Preencha atrás de proxy reverso ou em Docker.",
+        help=(
+            "Vazio = detecta sozinho. Preencha com https:// quando houver proxy "
+            "reverso ou domínio (isso também protege o cookie de sessão)."
+        ),
     ),
     Field(
         "use_request_host",
