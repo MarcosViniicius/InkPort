@@ -50,6 +50,10 @@ class Feed(Base):
     sitemap_url: Mapped[str] = mapped_column(String(2048), default="")
     #: Set once the archive walk had nothing left to import.
     backfill_done_at: Mapped[datetime | None] = mapped_column(DateTime)
+    #: Progress of the current window: how many posts the pull will import and
+    #: how many it already did (shown as a counter/bar in the feed list).
+    backfill_imported: Mapped[int] = mapped_column(Integer, default=0)
+    backfill_total: Mapped[int] = mapped_column(Integer, default=0)
 
     last_checked_at: Mapped[datetime | None] = mapped_column(DateTime)
     last_success_at: Mapped[datetime | None] = mapped_column(DateTime)
@@ -71,6 +75,13 @@ class Feed(Base):
         if last.tzinfo is None:
             last = last.replace(tzinfo=UTC)
         return (now - last).total_seconds() >= self.interval_minutes * 60
+
+    @property
+    def backfill_percent(self) -> int:
+        """How much of the retroactive window has been imported (0-100)."""
+        if not self.backfill_total:
+            return 0
+        return min(100, round(self.backfill_imported * 100 / self.backfill_total))
 
 
 class FeedItem(Base):

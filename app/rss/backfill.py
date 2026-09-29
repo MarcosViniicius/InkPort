@@ -65,6 +65,9 @@ def run_backfill(session, feed: Feed, downloader) -> dict:
 
     result.update(discovery)
     result["imported"] = result["queued"] = result["errors"] = 0
+    # Size of this window, recorded once so the panel can show "N de M".
+    if todo and (feed.backfill_total or 0) <= 0:
+        feed.backfill_total = len(todo)
 
     if result.get("error"):
         return result
@@ -112,6 +115,7 @@ def run_backfill(session, feed: Feed, downloader) -> dict:
         result["imported"] += 1
         result["queued"] += 1
 
+    feed.backfill_imported = (feed.backfill_imported or 0) + result["imported"]
     session.commit()
     if len(todo) <= len(batch):
         result["done"] = _mark_done(session, feed)

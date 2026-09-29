@@ -63,12 +63,16 @@ python -m app.tools.import_site https://site/sitemap.xml --year 2026 --list
 # importar o ano atual (limite por execução opcional)
 python -m app.tools.import_site https://site/sitemap.xml --year 2026 --limit 30
 
+# retroativos: últimos 12 meses, a partir de hoje (mesma janela do feed)
+python -m app.tools.import_site https://site/sitemap.xml --months 12 --list
+
 # acervo inteiro, com formato/perfil e categoria explícitos
 python -m app.tools.import_site https://site/sitemap.xml --all-years `
     --category rss/meu-blog --format epub --profile xteink_x4_pro
 ```
 
-- Por padrão usa o **ano atual**; `--all-years` pega tudo.
+- Por padrão usa o **ano atual**; `--all-years` pega tudo; `--months N` usa uma
+  janela de N meses a partir de hoje (tem prioridade sobre os dois).
 - A **categoria, o formato e o perfil** são herdados do feed cadastrado para o
   mesmo site (o que mantém o blog num lugar só); `--category/--format/--profile`
   sobrescrevem.
@@ -106,6 +110,10 @@ Como funciona:
   mostra o que seria importado — quantos no sitemap, quantos no período, quantos
   já existem e uma amostra dos posts — **sem baixar nada**, para conferir antes
   de disparar.
+- A lista de feeds mostra o **progresso** enquanto o período não termina:
+  `retroativos: N de M` com uma barra. `N` são os posts já importados e `M` o
+  tamanho do período (definido na primeira passada). Ao concluir, vira
+  `passado: … · concluído`.
 - Se o site não estiver com o sitemap acessível, a busca retroativa tenta de
   novo na próxima rodada (não marca "concluído").
 - Mudar o período reinicia a varredura do zero.

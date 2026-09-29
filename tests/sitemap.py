@@ -97,6 +97,19 @@ def main() -> int:
     check("filtra só 2026", len(ano_2026) == 2, str([p.year for p in ano_2026]))
     check("data publicada completa", ano_2026[0].published == "2026-09-28", ano_2026[0].published)
 
+    print("\n[janela por meses (retroativos)]")
+    from datetime import date
+
+    from app.rss.archive import posts_within, window_start
+
+    hoje = date(2026, 9, 29)
+    check("window_start(-1) = sem limite", window_start(-1, hoje) is None)
+    check("window_start(0) = hoje (nada entra)", window_start(0, hoje) == hoje)
+    check("window_start(12) = 1º dia do mês, 1 ano atrás", window_start(12, hoje) == date(2025, 9, 1), str(window_start(12, hoje)))
+    check("últimos 12 meses pegam tudo", len(posts_within(posts, 12, today=hoje)) == 3, str(len(posts_within(posts, 12, today=hoje))))
+    check("último 1 mês pega só o recente", len(posts_within(posts, 1, today=hoje)) == 1, str(len(posts_within(posts, 1, today=hoje))))
+    check("desligado (0) não pega nada", posts_within(posts, 0, today=hoje) == [])
+
     def fetch(url: str) -> bytes:
         return URLSET if "pt/sitemap" in url else INDEX
 

@@ -30,7 +30,13 @@ from urllib.parse import urlparse
 
 from app.database import session_scope
 from app.database.models import Feed
-from app.rss.archive import import_posts, known_urls, normalise_url
+from app.rss.archive import (
+    import_posts,
+    known_urls,
+    normalise_url,
+    posts_within,
+    window_start,
+)
 from app.rss.downloader import Downloader
 from app.rss.naming import feed_category_name
 from app.rss.sitemap import SitemapPost, collect_posts, current_year
@@ -67,6 +73,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("sitemap", help="URL do sitemap (ex.: https://site/sitemap.xml)")
     parser.add_argument("--year", type=int, default=None, help="ano a importar (padrão: ano atual)")
     parser.add_argument("--all-years", action="store_true", help="importa o acervo inteiro")
+    parser.add_argument(
+        "--months",
+        type=int,
+        default=0,
+        help="últimos N meses a partir de hoje (tem prioridade sobre --year/--all-years)",
+    )
     parser.add_argument("--limit", type=int, default=0, help="máximo de posts nesta execução")
     parser.add_argument("--category", default="", help="categoria de destino")
     parser.add_argument("--format", default="", help="formato de saída (ex.: epub, azw3)")
@@ -80,12 +92,20 @@ def main(argv: list[str] | None = None) -> int:
     init_db()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
-    year = None if args.all_years else (args.year or current_year())
+    # ``--months`` defines its own window, so it walks the whole sitemap and
+    # filters by date afterwards (the same rule the feed's retroativos use).
+    year = None if (args.months or args.all_years) else (args.year or current_year())
     with Downloader() as downloader:
         posts = collect_posts(downloader.fetch, args.sitemap, year=year)
+    if args.months:
+        posts = posts_within(posts, args.months)
 
     print(f"sitemap: {args.sitemap}")
-    print(f"ano: {'todos' if year is None else year} | posts encontrados: {len(posts)}")
+    if args.months:
+        inicio = window_start(args.months)
+        print(f"período: últimos {args.months} meses (desde {inicio}) | posts encontrados: {len(posts)}")
+    else:
+        print(f"ano: {'todos' if year is None else year} | posts encontrados: {len(posts)}")
     if args.list:
         with session_scope() as session:
             known = known_urls(session)

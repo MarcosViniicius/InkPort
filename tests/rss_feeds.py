@@ -516,6 +516,11 @@ def main() -> int:
         r1.backfilled == 1 and not r1.backfill_done,
         f"{r1.backfilled}/{r1.backfill_done}",
     )
+    with session_scope() as session:
+        parcial = session.get(Feed, retro_id)
+        total, feito = parcial.backfill_total, parcial.backfill_imported
+    check("contador de progresso: total do período gravado", total == 2, str(total))
+    check("contador de progresso: 1 de 2 importado", feito == 1, str(feito))
 
     with session_scope() as session:
         r2 = process_feed(session, session.get(Feed, retro_id), routes)
@@ -546,7 +551,9 @@ def main() -> int:
             book.title for book in session.query(Book).where(Book.source == "rss").all()
             if book.source_id and "/20" in (book.source_id or "")
         )
-        done_at = session.get(Feed, retro_id).backfill_done_at
+        fim = session.get(Feed, retro_id)
+        done_at = fim.backfill_done_at
+        progresso = (fim.backfill_imported, fim.backfill_total, fim.backfill_percent)
     print(f"  livros retroativos: {retro_books}")
     check("dois posts antigos na biblioteca", len(retro_books) == 2, str(retro_books))
     check(
@@ -555,6 +562,11 @@ def main() -> int:
         str([c for c in routes.calls if "antigo" in c]),
     )
     check("marca de concluído gravada", done_at is not None)
+    check(
+        "contador de progresso fecha em 100%",
+        progresso == (2, 2, 100),
+        str(progresso),
+    )
 
     shutil.rmtree(WORKDIR, ignore_errors=True)
     print(f"\n{len(PASSED)} passed, {len(FAILED)} failed")

@@ -94,6 +94,8 @@ def feed(feed: Feed) -> dict:
         "backfill_months": feed.backfill_months,
         "sitemap_url": feed.sitemap_url,
         "backfill_done_at": feed.backfill_done_at.isoformat() if feed.backfill_done_at else None,
+        "backfill_imported": feed.backfill_imported,
+        "backfill_total": feed.backfill_total,
         "last_checked_at": feed.last_checked_at.isoformat() if feed.last_checked_at else None,
         "last_error": feed.last_error,
         "consecutive_failures": feed.consecutive_failures,

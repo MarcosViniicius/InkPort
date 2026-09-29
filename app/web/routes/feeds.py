@@ -156,6 +156,8 @@ async def save_feed(
     feed.sitemap_url = _sitemap_url(sitemap_url)
     if feed.backfill_months != anterior:
         feed.backfill_done_at = None
+        feed.backfill_imported = 0
+        feed.backfill_total = 0
     feed.active = bool(active)
     feed.keep_original = bool(keep_original)
     # Só mexe se o formulário trouxe algo: a API pode ter definido uma categoria.
@@ -387,6 +389,10 @@ def _backfill_in_background(feed_id: int) -> None:
             feed = session.get(Feed, feed_id)
             if feed is None or not feed.backfill_months:
                 return
+            if feed.backfill_done_at is not None:
+                # Forcing after "concluído" restarts the window: reset the counter.
+                feed.backfill_imported = 0
+                feed.backfill_total = 0
             feed.backfill_done_at = None
             session.commit()
         report = process_feed_by_id(feed_id)
