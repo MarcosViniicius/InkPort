@@ -189,7 +189,13 @@ tools/
 - **Configuração vive no banco, não no `.env`.** `security/runtime.py` descreve
   cada ajuste (`FIELDS`: rótulo, tipo, limites) e mantém um cache; o assistente
   (`/setup`) e a tela de Configurações são gerados do mesmo registro — não
-  duplique rótulo ou validação em template. `get_settings()` devolve um
+  duplique rótulo ou validação em template. Na tela de Configurações cada grupo
+  de `FIELDS` vira uma **seção expansível** (`<details data-sect>`) e os campos
+  `advanced` vão para o bloco «Avançado» da própria seção; o título vem de
+  `GROUPS` e no template ficam só o ícone e a descrição (apresentação). Tudo que
+  é configurável mora em **um único** `<form action="/settings/app">` — seção
+  recolhida continua sendo enviada, então não mova um campo desse form sem
+  acertar o `rendered`. `get_settings()` devolve um
   **overlay** (`security/effective.py`) com o banco por cima do `.env`, então
   todo o app já respeita o banco sem mudar call sites; para ler o valor cru do
   `.env` use `get_base_settings()`. Ao salvar um formulário, informe em

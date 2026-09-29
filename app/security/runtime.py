@@ -23,12 +23,13 @@ from app.security import passwords, settings_store
 
 logger = logging.getLogger(__name__)
 
-#: Rótulo dos grupos usados pela interface.
+#: Rótulo dos grupos usados pela interface. A tela de Configurações desenha uma
+#: seção expansível por grupo, então o rótulo é o título que o usuário vê.
 GROUPS: dict[str, str] = {
-    "access": "Acesso",
+    "opds": "Aplicação e catálogo",
+    "access": "Acesso ao painel",
     "app": "Aplicação",
-    "opds": "Catálogo OPDS",
-    "network": "Rede",
+    "network": "Rede e endereços",
     "conversion": "Conversão e armazenamento",
     "automation": "Automação",
 }
@@ -51,7 +52,7 @@ class Field:
     secret: bool = False
     #: Só aparece no assistente de primeiro acesso (configurações essenciais).
     onboarding: bool = True
-    #: Só aparece na tela de Configurações (ajustes avançados).
+    #: Vai para o bloco «Avançado» da seção na tela de Configurações.
     advanced: bool = False
 
     @property
@@ -66,15 +67,15 @@ class Field:
 #: A ordem aqui é a ordem das telas. O assistente mostra só os campos
 #: ``onboarding`` -- por isso as credenciais do OPDS vêm logo no início: é o que
 #: o usuário precisa para configurar o leitor.
+#:
+#: ``advanced`` tira o campo do caminho principal: na tela de Configurações ele
+#: vai para um bloco «Avançado» dentro da própria seção (não some, só espera).
 FIELDS: tuple[Field, ...] = (
     Field(
-        "require_auth_panel",
-        "Exigir login no painel",
-        group="access",
-        kind="bool",
-        help="Desligue apenas em rede totalmente confiável.",
-        onboarding=False,
-        advanced=True,
+        "app_name",
+        "Nome da aplicação",
+        group="opds",
+        help="Aparece no painel, no título das páginas e no feed OPDS.",
     ),
     Field(
         "opds_username",
@@ -94,7 +95,8 @@ FIELDS: tuple[Field, ...] = (
         minimum=6,
         help=(
             "A mesma senha que você digita no leitor. Fica guardada como hash: "
-            "nem esta aplicação consegue lê-la de volta."
+            "nem esta aplicação consegue lê-la de volta. Deixe em branco para "
+            "manter a atual."
         ),
     ),
     Field(
@@ -115,20 +117,29 @@ FIELDS: tuple[Field, ...] = (
         group="opds",
         kind="choice",
         help=(
-            "O que a página inicial do catálogo entrega. Para leitores simples "
-            "(Xteink/CrossPoint) aponte o catálogo do aparelho: /opds/device/xteink_x4_pro."
+            "O que a página inicial do catálogo entrega. «Livros e menus» "
+            "funciona em qualquer leitor; se o seu só lista o que tem link de "
+            "download, use «Só livros» ou aponte para o catálogo do aparelho "
+            "em Dispositivos."
         ),
         choices=(
-            ("mixed", "Livros e menus (funciona em todo cliente)"),
-            ("navigation", "Só os menus"),
-            ("books", "Só os livros"),
+            ("mixed", "Livros e menus"),
+            ("navigation", "Só menus"),
+            ("books", "Só livros"),
         ),
     ),
     Field(
-        "app_name",
-        "Nome da aplicação",
-        group="app",
-        help="Aparece no painel, no título das páginas e no feed OPDS.",
+        "require_auth_panel",
+        "Exigir login no painel",
+        group="access",
+        kind="bool",
+        help=(
+            "Desligue apenas em rede totalmente confiável: sem login, qualquer "
+            "pessoa que alcançar este endereço abre a biblioteca e as "
+            "configurações."
+        ),
+        # Fora do assistente: ele não pode desligar o login sem o usuário pedir.
+        onboarding=False,
     ),
     Field(
         "base_url",
@@ -138,6 +149,7 @@ FIELDS: tuple[Field, ...] = (
             "Vazio = detecta sozinho. Preencha com https:// quando houver proxy "
             "reverso ou domínio (isso também protege o cookie de sessão)."
         ),
+        advanced=True,
     ),
     Field(
         "use_request_host",
@@ -155,17 +167,7 @@ FIELDS: tuple[Field, ...] = (
         kind="int",
         minimum=1,
         maximum=8,
-        help="Mais paralelismo = mais RAM. Aplica após reiniciar o servidor.",
-    ),
-    Field(
-        "conversion_timeout",
-        "Tempo máximo por conversão (s)",
-        group="conversion",
-        kind="int",
-        minimum=60,
-        maximum=7200,
-        help="Depois disso o job é interrompido.",
-        advanced=True,
+        help="Mais paralelismo = mais RAM. Vale depois de reiniciar o servidor.",
     ),
     Field(
         "max_upload_mb",
@@ -183,6 +185,17 @@ FIELDS: tuple[Field, ...] = (
         minimum=0,
         maximum=102400,
         help="0 = sem teto.",
+    ),
+    Field(
+        "conversion_timeout",
+        "Tempo máximo por conversão (s)",
+        group="conversion",
+        kind="int",
+        minimum=60,
+        maximum=7200,
+        help="Depois disso o job é interrompido.",
+        onboarding=False,
+        advanced=True,
     ),
     Field(
         "rss_worker_enabled",
@@ -254,6 +267,8 @@ def describe(group: str | None = None, *, onboarding: bool | None = None) -> lis
                 "minimum": field.minimum,
                 "maximum": field.maximum,
                 "secret": field.secret,
+                # Segredo já guardado? Só o fato, nunca o valor (nem o hash).
+                "defined": bool(get(field.name)) if field.secret else False,
                 "advanced": field.advanced,
                 "group": field.group,
                 "value": "" if field.secret else get(field.name),

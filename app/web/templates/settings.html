@@ -1,126 +1,264 @@
 {% extends "base.html" %}
 {% from "partials/icons.html" import icon %}
+{% from "partials/fields.html" import render_field %}
 {% block title %}Configurações · {{ app_name }}{% endblock %}
+
+{#- Aparência de cada seção. O título vem do registro (runtime.GROUPS), aqui
+    fica só o que é apresentação: ícone e uma linha dizendo para que serve. -#}
+{% set SKIN = {
+  'opds':       {'icon': 'library',  'desc': 'Nome do servidor e o catálogo que o leitor baixa.'},
+  'access':     {'icon': 'lock',     'desc': 'Quem precisa de senha para entrar nesta interface.'},
+  'network':    {'icon': 'globe',    'desc': 'Como o servidor se anuncia para leitores e proxy reverso.'},
+  'conversion': {'icon': 'database', 'desc': 'Limites de upload, paralelismo e espaço em disco.'},
+  'automation': {'icon': 'feeds',    'desc': 'Atualização automática dos feeds cadastrados.'},
+  'app':        {'icon': 'settings', 'desc': 'Ajustes gerais.'}
+} %}
+
+{% macro fundo(url, rotulo) -%}
+<div class="copy-line">
+  <span class="copy-tag">{{ rotulo }}</span>
+  <code>{{ url }}</code>
+  <button class="button ghost small" type="button" data-copy="{{ url }}">{{ icon('copy', 14) }} Copiar</button>
+</div>
+{%- endmacro %}
+
+{% macro campos(lista) -%}
+{% if lista %}<div class="field-row">{% for field in lista %}{{ render_field(field) }}{% endfor %}</div>{% endif %}
+{%- endmacro %}
+
 {% block content %}
 <div class="page-head">
   <div>
     <h1>Configurações</h1>
-    <p class="lead">Catálogo, armazenamento, segurança e manutenção.</p>
+    <p class="lead">Tudo o que você muda aqui fica no banco cifrado desta instalação e vale na hora — sem editar arquivo nenhum.</p>
+  </div>
+  <div class="button-row">
+    <a class="button ghost" href="{{ opds_url }}" target="_blank" rel="noopener">{{ icon('external', 15) }} Abrir catálogo</a>
   </div>
 </div>
 
-<div class="grid two">
-  <div class="card">
-    <div class="card-head"><h2>{{ icon('external', 17) }} Catálogo OPDS</h2></div>
-    <dl class="kv">
-      <dt>OPDS 1.2</dt><dd class="copy-line"><code>{{ base_url }}/opds</code><button class="button ghost small" type="button" data-copy="{{ base_url }}/opds">{{ icon('copy', 14) }} Copiar</button></dd>
-      <dt>OPDS 2.0</dt><dd class="copy-line"><code>{{ base_url }}/opds/v2</code><button class="button ghost small" type="button" data-copy="{{ base_url }}/opds/v2">{{ icon('copy', 14) }} Copiar</button></dd>
-      <dt>Busca</dt><dd><code>{{ base_url }}/opds/search.xml</code></dd>
-      <dt>Raiz do OPDS</dt><dd>{{ 'só os menus' if settings.opds_root_mode == 'navigation' else ('só os livros' if settings.opds_root_mode == 'books' else 'livros e menus') }}</dd>
-      <dt>Acesso</dt><dd>{% if settings.opds_username %}<span class="badge warn">Basic auth ativo</span>{% else %}<span class="badge">aberto na rede</span>{% endif %}</dd>
-    </dl>
-    <p class="hint">No leitor, cadastre o catálogo com o endereço mostrado aqui. A biblioteca é servida direto, sem duplicar arquivos.
-      Quando o leitor pedir <strong>usuário e senha</strong>, use os mesmos definidos em <em>Aplicação e catálogo</em> (Usuário/Senha do OPDS) — sem eles o catálogo responde <code>401</code>.</p>
-  </div>
+{#- Um formulário só para tudo que é configurável: as seções recolhidas
+    continuam sendo enviadas, então nada se perde ao salvar. -#}
+<form id="settings-form" method="post" action="/settings/app">
+  {% for group, rotulo in groups %}
+  {% set skin = SKIN.get(group, SKIN['app']) %}
+  {% set normais = fields | selectattr('group', 'equalto', group) | rejectattr('advanced') | list %}
+  {% set avancados = fields | selectattr('group', 'equalto', group) | selectattr('advanced') | list %}
+  <details class="sect" data-sect="{{ group }}" {{ 'open' if loop.first }}>
+    <summary>
+      <span class="s-ico" aria-hidden="true">{{ icon(skin.icon, 17) }}</span>
+      <span class="s-txt">
+        <span class="s-title" role="heading" aria-level="2">{{ rotulo }}</span>
+        <span class="s-desc">{{ skin.desc }}</span>
+      </span>
+      <span class="s-meta">
+        {% if group == 'opds' %}
+          {% if settings.opds_username and settings.opds_require_auth %}
+          <span class="badge ok">protegido</span>
+          {% else %}
+          <span class="badge warn">aberto</span>
+          {% endif %}
+        {% elif group == 'access' %}
+          {% if settings.require_auth_panel %}
+          <span class="badge ok">login exigido</span>
+          {% else %}
+          <span class="badge warn">sem login</span>
+          {% endif %}
+        {% elif group == 'network' %}
+          {% if settings.on_network %}
+          <span class="badge info">na rede · {{ settings.port }}</span>
+          {% else %}
+          <span class="badge">só esta máquina</span>
+          {% endif %}
+        {% elif group == 'conversion' %}
+          {% if queue.pending + queue.running %}
+          <span class="badge info">{{ queue.pending + queue.running }} na fila</span>
+          {% else %}
+          <span class="badge ok">fila vazia</span>
+          {% endif %}
+        {% elif group == 'automation' %}
+          {% if settings.rss_worker_enabled %}
+          <span class="badge ok">ativo</span>
+          {% else %}
+          <span class="badge">manual</span>
+          {% endif %}
+        {% endif %}
+      </span>
+      <span class="chev" aria-hidden="true">{{ icon('chevron', 16) }}</span>
+    </summary>
+    <div class="s-body">
 
-  <div class="card">
-    <div class="card-head"><h2>{{ icon('devices', 17) }} Acesso na rede</h2></div>
-    <p class="muted small">
-      {% if on_network %}
-        Escutando em todas as interfaces (<code>{{ settings.host }}:{{ settings.port }}</code>). Use um destes endereços:
-      {% else %}
-        Escutando apenas em <code>{{ settings.host }}:{{ settings.port }}</code>. Defina <code>HOST=0.0.0.0</code> no .env para liberar a rede.
+      {% if group == 'opds' %}
+      {% if opds_problem %}
+      <div class="flash err mb4" role="alert"><span>{{ opds_problem }}</span></div>
       {% endif %}
-    </p>
-    <ul class="small list">
-      {% for url in network_urls %}<li><code>{{ url }}/opds</code></li>{% endfor %}
-    </ul>
-    <p class="hint">
-      Os links do catálogo seguem o endereço por onde o cliente chega (LAN, Tailscale, domínio) — não é preciso configurar nada.
-      No Windows, se outro aparelho não conectar:
-      <code>New-NetFirewallRule -DisplayName "OPDS" -Direction Inbound -LocalPort {{ settings.port }} -Protocol TCP -Action Allow</code>
-    </p>
+      {{ campos(normais) }}
+      <h3 class="s-sub">Endereços do catálogo</h3>
+      <div class="stack-sm">
+        {{ fundo(base_url ~ '/opds', 'OPDS 1.2') }}
+        {{ fundo(base_url ~ '/opds/v2', 'OPDS 2.0') }}
+        {{ fundo(base_url ~ '/opds/search.xml', 'Busca') }}
+      </div>
+      <p class="hint mb0">
+        No leitor, cadastre o catálogo com um destes endereços — a biblioteca é
+        servida direto, sem duplicar arquivos. Quando ele pedir usuário e senha,
+        use os mesmos definidos acima. Leitores simples (Xteink/CrossPoint) que
+        só listam o que tem download: aponte para o catálogo do aparelho, em
+        <a href="/devices">Dispositivos</a>.
+      </p>
+
+      {% elif group == 'access' %}
+      {{ campos(normais) }}
+      <p class="hint">
+        Usuário atual: <code>{{ admin_username }}</code> ·
+        <a href="#credenciais">trocar usuário e senha</a>.
+      </p>
+
+      {% elif group == 'network' %}
+      {{ campos(normais) }}
+      <h3 class="s-sub">Como este servidor está escutando</h3>
+      <p class="small">
+        {% if on_network %}
+        Em todas as interfaces (<code>{{ settings.host }}:{{ settings.port }}</code>). Endereços que funcionam:
+        {% else %}
+        Apenas em <code>{{ settings.host }}:{{ settings.port }}</code>. Defina <code>HOST=0.0.0.0</code> para liberar a rede.
+        {% endif %}
+      </p>
+      {% if network_urls %}
+      <ul class="list small mono mb0">
+        {% for url in network_urls %}<li>{{ url }}</li>{% endfor %}
+      </ul>
+      {% endif %}
+      <p class="hint">
+        Os links do catálogo seguem o endereço por onde o cliente chega (LAN,
+        Tailscale, domínio), então isto normalmente fica em branco. No Windows, se
+        outro aparelho não conectar:
+        <code>New-NetFirewallRule -DisplayName "OPDS" -Direction Inbound -LocalPort {{ settings.port }} -Protocol TCP -Action Allow</code>
+      </p>
+
+      {% elif group == 'conversion' %}
+      {{ campos(normais) }}
+      <h3 class="s-sub">Uso atual</h3>
+      <div class="spread mb2">
+        <strong class="big-num">{{ human_size(usage.total_bytes) }}</strong>
+        <span class="muted small">{{ usage.file_count }} arquivo(s){% if usage.limit_bytes %} de {{ human_size(usage.limit_bytes) }}{% endif %}</span>
+      </div>
+      {% if usage.limit_bytes %}<div class="bar mb3"><span style="width: {{ usage.percent if usage.percent < 100 else 100 }}%"></span></div>{% endif %}
+      <dl class="kv"><dt>Fila</dt><dd>{{ queue.pending }} pendente(s) · {{ queue.running }} executando</dd></dl>
+      <p class="hint mb0">Upload e teto de armazenamento valem na hora. O paralelismo só depois de reiniciar o servidor.</p>
+
+      {% else %}
+      {{ campos(normais) }}
+      <p class="hint">
+        Desligado, os feeds continuam cadastrados e você atualiza quando quiser em
+        <a href="/feeds">Feeds</a>.
+      </p>
+      {% endif %}
+
+      {% if avancados %}
+      <details class="adv">
+        <summary>{{ icon('sliders', 15) }} Configurações avançadas</summary>
+        <div class="adv-body">{{ campos(avancados) }}</div>
+      </details>
+      {% endif %}
+
+    </div>
+  </details>
+  {% endfor %}
+
+  <div class="save-bar" data-save-bar>
+    <button class="button" type="submit">{{ icon('check', 16) }} Salvar alterações</button>
+    <button class="button ghost" type="button" data-save-reset>Desfazer</button>
+    <span class="state" data-save-state role="status" aria-live="polite">Tudo salvo</span>
   </div>
-</div>
+</form>
 
-<div class="card mt4">
-  <div class="card-head"><h2>{{ icon('settings', 17) }} Aplicação e catálogo</h2></div>
-  {% if opds_problem %}
-  <div class="flash err mb4" role="alert"><span>{{ opds_problem }}</span></div>
-  {% endif %}
-  <p class="hint">
-    Guardado no banco cifrado desta instalação — vale na hora. Conversões
-    simultâneas e busca automática de feeds entram em vigor ao reiniciar o servidor.
-  </p>
-  {% from "partials/fields.html" import render_field %}
-  <form method="post" action="/settings/app">
-    {% for group, rotulo in groups %}
-    <h3 class="mt4">{{ rotulo }}</h3>
-    <div class="field-row">
-      {% for field in fields if field.group == group %}{{ render_field(field) }}{% endfor %}
-    </div>
-    {% endfor %}
-    <div class="button-row mt4">
-      <button class="button" type="submit">Salvar configuração</button>
-    </div>
-  </form>
-</div>
-
-<div class="grid two mt4">
-  <div class="card">
-    <div class="card-head"><h2>{{ icon('library', 17) }} Armazenamento</h2></div>
-    <div class="spread mb4">
-      <strong class="big-num">{{ human_size(usage.total_bytes) }}</strong>
-      <span class="muted small">{{ usage.file_count }} arquivo(s){% if usage.limit_bytes %} de {{ human_size(usage.limit_bytes) }}{% endif %}</span>
-    </div>
-    {% if usage.limit_bytes %}<div class="bar mb4"><span style="width: {{ usage.percent if usage.percent < 100 else 100 }}%"></span></div>{% endif %}
-    <dl class="kv">
-      <dt>Limite</dt><dd>{{ settings.storage_limit_gb }} GB</dd>
-      <dt>Upload máximo</dt><dd>{{ settings.max_upload_mb }} MB</dd>
-      <dt>Conversões simultâneas</dt><dd class="num">{{ settings.conversion_concurrency }}</dd>
-      <dt>Worker de feeds</dt><dd>{{ 'ativo' if settings.rss_worker_enabled else 'inativo' }}</dd>
-      <dt>Fila</dt><dd>{{ queue.pending }} pendente(s) · {{ queue.running }} executando</dd>
-    </dl>
-  </div>
-
-  <div class="card">
-    <div class="card-head"><h2>{{ icon('settings', 17) }} Segurança</h2></div>
+<details class="sect" data-sect="credenciais" id="credenciais">
+  <summary>
+    <span class="s-ico" aria-hidden="true">{{ icon('key', 17) }}</span>
+    <span class="s-txt">
+      <span class="s-title" role="heading" aria-level="2">Usuário e senha do painel</span>
+      <span class="s-desc">Trocar quem entra nesta interface.</span>
+    </span>
+    <span class="s-meta"><span class="badge">{{ admin_username }}</span></span>
+    <span class="chev" aria-hidden="true">{{ icon('chevron', 16) }}</span>
+  </summary>
+  <div class="s-body">
     <form method="post" action="/settings/password">
       <div class="field-row">
-        <div class="field"><label for="username">Usuário</label><input id="username" name="username" value="{{ admin_username }}"></div>
-        <div class="field"><label for="current_password">Senha atual</label><input id="current_password" name="current_password" type="password" required autocomplete="current-password"></div>
+        <div class="field">
+          <label for="username">Usuário</label>
+          <input id="username" name="username" value="{{ admin_username }}" autocomplete="username">
+        </div>
+        <div class="field">
+          <label for="current_password">Senha atual</label>
+          <input id="current_password" name="current_password" type="password" required autocomplete="current-password">
+        </div>
       </div>
       <div class="field-row">
-        <div class="field"><label for="new_password">Nova senha</label><input id="new_password" name="new_password" type="password" required autocomplete="new-password"></div>
-        <div class="field"><label for="confirm_password">Confirmar</label><input id="confirm_password" name="confirm_password" type="password" required autocomplete="new-password"></div>
+        <div class="field">
+          <label for="new_password">Nova senha</label>
+          <input id="new_password" name="new_password" type="password" required minlength="6" autocomplete="new-password">
+          <p class="hint">Mínimo de 6 caracteres.</p>
+        </div>
+        <div class="field">
+          <label for="confirm_password">Confirmar nova senha</label>
+          <input id="confirm_password" name="confirm_password" type="password" required minlength="6" autocomplete="new-password">
+        </div>
       </div>
-      <button class="button" type="submit">Atualizar credenciais</button>
-    </form>
-    <hr>
-    <h3>Manutenção</h3>
-    <p class="muted small">Remove temporários, retoma tarefas interrompidas, religa itens, organiza categorias e marca livros ausentes.</p>
-    <form method="post" action="/settings/maintenance">
-      <button class="button ghost" type="submit">{{ icon('refresh', 14) }} Executar agora</button>
+      <button class="button" type="submit">{{ icon('check', 15) }} Atualizar credenciais</button>
     </form>
   </div>
-</div>
+</details>
 
-<div class="card mt4">
-  <div class="card-head"><h2>{{ icon('settings', 17) }} Recursos de conversão</h2></div>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Recurso</th><th>Estado</th><th>Detalhe</th></tr></thead>
-      <tbody>
-      {% for tool, path in tools.items() %}
-        <tr>
-          <td data-label="Recurso">{{ tool }}</td>
-          <td data-label="Estado">{% if path %}<span class="badge ok">ok</span>{% else %}<span class="badge">opcional</span>{% endif %}</td>
-          <td data-label="Detalhe" class="muted small mono">{{ path or '—' }}</td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
+<details class="sect" data-sect="manutencao">
+  <summary>
+    <span class="s-ico" aria-hidden="true">{{ icon('wrench', 17) }}</span>
+    <span class="s-txt">
+      <span class="s-title" role="heading" aria-level="2">Manutenção</span>
+      <span class="s-desc">Reparos que o servidor já faz sozinho ao iniciar.</span>
+    </span>
+    <span class="chev" aria-hidden="true">{{ icon('chevron', 16) }}</span>
+  </summary>
+  <div class="s-body">
+    <p class="muted small">
+      Remove temporários, retoma tarefas interrompidas, religa itens, organiza
+      categorias e marca livros ausentes. Rode na hora se algo parecer fora do
+      lugar — é seguro repetir.
+    </p>
+    <form method="post" action="/settings/maintenance">
+      <button class="button ghost" type="submit">{{ icon('refresh', 15) }} Executar agora</button>
+    </form>
   </div>
-  <p class="hint">Tudo isso vem com o servidor (pacotes Python + a biblioteca UnRAR que acompanha o projeto): nenhum programa precisa ser instalado. Os itens “opcionais” são apenas aceleradores que o servidor usa se já existirem.</p>
-</div>
+</details>
+
+{% set prontos = tools.values() | select | list | length %}
+<details class="sect" data-sect="ferramentas">
+  <summary>
+    <span class="s-ico" aria-hidden="true">{{ icon('sliders', 17) }}</span>
+    <span class="s-txt">
+      <span class="s-title" role="heading" aria-level="2">Recursos de conversão</span>
+      <span class="s-desc">O que esta instalação consegue converter.</span>
+    </span>
+    <span class="s-meta"><span class="badge ok">{{ prontos }} de {{ tools | length }} prontos</span></span>
+    <span class="chev" aria-hidden="true">{{ icon('chevron', 16) }}</span>
+  </summary>
+  <div class="s-body">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Recurso</th><th>Estado</th><th>Detalhe</th></tr></thead>
+        <tbody>
+        {% for tool, path in tools.items() %}
+          <tr>
+            <td data-label="Recurso">{{ tool }}</td>
+            <td data-label="Estado">{% if path %}<span class="badge ok">ok</span>{% else %}<span class="badge">opcional</span>{% endif %}</td>
+            <td data-label="Detalhe" class="muted small mono">{{ path or '—' }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="hint mb0">Tudo vem com o servidor (pacotes Python + a biblioteca UnRAR que acompanha o projeto): nenhum programa precisa ser instalado. Os itens “opcional” são apenas aceleradores que o servidor usa se já existirem.</p>
+  </div>
+</details>
 {% endblock %}

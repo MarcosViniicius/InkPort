@@ -205,6 +205,63 @@
     }
   });
 
+  /* --- settings: sections that remember, and unsaved-change feedback ----- */
+  (function () {
+    var onPhone = window.matchMedia("(max-width: 720px)").matches;
+    function read(key) {
+      try { return localStorage.getItem(key); } catch (e) { return null; }
+    }
+    function write(key, value) {
+      try { localStorage.setItem(key, value); } catch (e) { /* private mode */ }
+    }
+
+    document.querySelectorAll("details[data-sect]").forEach(function (panel) {
+      var key = "opds-sect-" + panel.getAttribute("data-sect");
+      var saved = read(key);
+      if (saved === "1") panel.open = true;
+      else if (saved === "0") panel.open = false;
+      // No saved choice on a phone: the page reads as a short menu.
+      else if (onPhone) panel.open = false;
+      panel.addEventListener("toggle", function () {
+        write(key, panel.open ? "1" : "0");
+      });
+    });
+
+    var form = document.getElementById("settings-form");
+    if (!form) return;
+    var state = form.querySelector("[data-save-state]");
+    var reset = form.querySelector("[data-save-reset]");
+
+    function snapshot() {
+      var parts = [];
+      Array.prototype.forEach.call(form.elements, function (el) {
+        if (!el.name) return;
+        if (el.type === "checkbox") parts.push(el.name + "=" + (el.checked ? "1" : "0"));
+        else if (el.type === "radio") { if (el.checked) parts.push(el.name + "=" + el.value); }
+        else parts.push(el.name + "=" + el.value);
+      });
+      return parts.join("&");
+    }
+    var baseline = snapshot();
+
+    function sync() {
+      var dirty = snapshot() !== baseline;
+      if (state) {
+        state.textContent = dirty ? "Alterações não salvas" : "Tudo salvo";
+        state.classList.toggle("dirty", dirty);
+      }
+    }
+    form.addEventListener("input", sync);
+    form.addEventListener("change", sync);
+    if (reset) {
+      reset.addEventListener("click", function () {
+        form.reset();
+        sync();
+      });
+    }
+    sync();
+  })();
+
   /* --- selection counter + select-all (library) ------------------------- */
   (function () {
     var bar = document.querySelector("[data-selection-bar]");

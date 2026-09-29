@@ -327,7 +327,7 @@ fieldset > legend { font-size: .76rem; font-weight: 600; text-transform: upperca
 }
 .card-head h2 { display: flex; align-items: center; gap: var(--s2); }
 .card.soft { background: var(--surface-2); box-shadow: none; }
-.card.onboard { border-color: var(--accent); background: var(--accent-soft); box-shadow: var(--shadow-md); }
+.card.onboard { border-color: var(--accent); background: var(--accent-soft); box-shadow: var(--shadow); }
 .card.onboard .card-head h2 { color: var(--accent-ink, var(--ink)); }
 
 /* Numbered "how to" list (onboarding). */
@@ -530,6 +530,109 @@ td .sub { display: block; font-size: .76rem; color: var(--muted); }
 .grow { flex: 1 1 200px; min-width: 0; }
 .list { margin: 0 0 var(--s3); padding-left: 18px; }
 .empty.bare { border: 0; padding: var(--s6); }
+
+/* --- settings: collapsible sections ------------------------------------ */
+/* The page reads as a short menu: each block is a disclosure, and its state
+   (protected, on the network, queue) lives in the summary as a badge. */
+.sect {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-lg); box-shadow: var(--shadow-sm); overflow: clip;
+}
+.sect + .sect { margin-top: var(--s3); }
+.sect > summary {
+  display: flex; align-items: center; gap: var(--s3);
+  padding: var(--s4) var(--s5); min-height: 58px; cursor: pointer; list-style: none;
+  transition: background .16s var(--ease);
+}
+.sect > summary::-webkit-details-marker { display: none; }
+.sect > summary::marker { content: ""; }
+.sect > summary:hover { background: var(--hover); }
+.sect > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; border-radius: var(--r-lg); }
+.sect[open] > summary { border-bottom: 1px solid var(--border); }
+.sect .s-ico {
+  flex: none; display: grid; place-items: center; width: 34px; height: 34px;
+  border-radius: 9px; background: var(--accent-soft); color: var(--accent-ink);
+}
+.sect .s-txt { display: grid; gap: 1px; min-width: 0; }
+.sect .s-title { font-size: .96rem; font-weight: 600; color: var(--ink); }
+.sect .s-desc { font-size: .78rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sect .s-meta { display: flex; align-items: center; gap: var(--s2); margin-left: auto; flex: none; }
+.sect .chev { flex: none; display: grid; place-items: center; color: var(--muted); transition: transform .2s var(--ease); }
+.sect[open] > summary .chev { transform: rotate(180deg); }
+.sect > .s-body { padding: var(--s5); }
+.sect > .s-body > :first-child { margin-top: 0; }
+.sect > .s-body > :last-child { margin-bottom: 0; }
+.s-sub { margin: var(--s5) 0 var(--s3); padding-top: var(--s4); border-top: 1px solid var(--border); font-size: .95rem; }
+
+/* Nested "advanced" disclosure: same idea, quieter surface, dashed edge. */
+.adv { margin-top: var(--s4); border: 1px dashed var(--border-strong); border-radius: var(--r); background: var(--surface-2); }
+.adv > summary { display: flex; align-items: center; gap: var(--s2); padding: var(--s3) var(--s4); cursor: pointer; list-style: none; font-size: .82rem; font-weight: 600; color: var(--ink-2); }
+.adv > summary::-webkit-details-marker { display: none; }
+.adv > summary::marker { content: ""; }
+.adv > summary::after { content: "▾"; margin-left: auto; color: var(--muted); }
+.adv[open] > summary { border-bottom: 1px dashed var(--border-strong); }
+.adv[open] > summary::after { content: "▴"; }
+.adv .adv-body { padding: var(--s4); }
+.adv .adv-body > :last-child { margin-bottom: 0; }
+
+/* Switch for boolean settings (the checkbox stays in the DOM, fully usable). */
+.switch { position: relative; display: flex; align-items: flex-start; gap: var(--s3); cursor: pointer; }
+.switch > input { position: absolute; width: 1px; height: 1px; opacity: 0; margin: 0; }
+.switch .track {
+  flex: none; position: relative; width: 42px; height: 24px; margin-top: 1px;
+  border-radius: var(--r-full); background: var(--surface-3); border: 1px solid var(--border-strong);
+  transition: background .18s var(--ease), border-color .18s var(--ease);
+}
+.switch .track::after {
+  content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px;
+  border-radius: 50%; background: var(--surface); box-shadow: var(--shadow-sm);
+  transition: transform .18s var(--ease);
+}
+.switch > input:checked + .track { background: var(--accent); border-color: var(--accent); }
+.switch > input:checked + .track::after { transform: translateX(18px); }
+.switch > input:focus-visible + .track { box-shadow: var(--ring); }
+.switch .switch-txt { min-width: 0; display: grid; gap: 2px; }
+.switch .switch-label { font-size: .9rem; font-weight: 500; color: var(--ink); }
+.switch .hint { margin: 0; }
+
+/* Segmented control for short option lists (radio inputs, no JS). */
+.segmented { display: flex; flex-wrap: wrap; gap: 2px; padding: 3px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-sm); }
+.segmented label { position: relative; flex: 1 1 auto; min-width: 0; }
+.segmented input { position: absolute; width: 1px; height: 1px; opacity: 0; margin: 0; }
+.segmented label > span {
+  display: block; padding: 7px 12px; border-radius: 5px; text-align: center;
+  font-size: .82rem; font-weight: 600; color: var(--muted); cursor: pointer;
+  transition: background .16s var(--ease), color .16s var(--ease);
+}
+.segmented label > span:hover { color: var(--ink); }
+.segmented input:checked + span { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sm); }
+.segmented input:focus-visible + span { box-shadow: var(--ring); }
+
+/* Sticky action bar: always reachable while the page scrolls. */
+.save-bar {
+  position: sticky; bottom: var(--s4); z-index: 20;
+  display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap;
+  margin-top: var(--s3); padding: var(--s3) var(--s4);
+  background: var(--glass); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow);
+}
+.save-bar .state { font-size: .82rem; color: var(--muted); }
+.save-bar .state.dirty { color: var(--warn); font-weight: 600; }
+
+/* Label in front of an address (OPDS 1.2, OPDS 2.0, Busca). */
+.copy-tag { flex: none; font-size: .68rem; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+.stack-sm .copy-line { margin: 0; }
+
+@media (max-width: 720px) {
+  .sect > summary { padding: var(--s3) var(--s4); gap: var(--s2); }
+  .sect .s-desc { display: none; }
+  .sect .s-ico { width: 30px; height: 30px; }
+  .sect .s-meta .badge { font-size: .66rem; }
+  .sect > .s-body { padding: var(--s4); }
+  .adv .adv-body { padding: var(--s3); }
+  .save-bar { bottom: var(--s2); padding: var(--s2) var(--s3); gap: var(--s2); }
+  .save-bar .state { order: 3; width: 100%; }
+}
 
 /* --- responsive --------------------------------------------------------- */
 /* Tablet / small laptop: single-column detail, lighter cover */

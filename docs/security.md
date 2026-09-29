@@ -53,8 +53,8 @@ internos, cabeçalhos e API atrás do login.
 2. **Credencial do OPDS**: defina usuário e senha em Configurações (obrigatório
    enquanto “exigir credencial” estiver ligado). No leitor, o catálogo precisa
    dessas credenciais.
-3. **Senha forte** no painel (Configurações → Segurança) e **troque** sempre que
-   ela passar por um canal inseguro (chat, e-mail, print).
+3. **Senha forte** no painel (Configurações → **Usuário e senha do painel**) e
+   **troque** sempre que ela passar por um canal inseguro (chat, e-mail, print).
 4. **Feche a porta** para o mundo quando não precisar: firewall por IP, VPN
    (Tailscale/WireGuard) ou proxy com autenticação.
 5. **Backup com a chave**: `data/` inteiro (banco cifrado + `secret.key` +

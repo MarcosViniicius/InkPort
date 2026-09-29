@@ -40,7 +40,7 @@ configurado não esbarra nele). Depois, os mesmos campos ficam em
 **Configurações → Aplicação e catálogo**.
 
 Para rodar o assistente de novo, apague a linha `admin_password_hash` da tabela
-`settings` — ou troque só a senha em **Configurações → Segurança**.
+`settings` — ou troque só a senha em **Configurações → Usuário e senha do painel**.
 
 ---
 
@@ -158,13 +158,25 @@ dispositivo e pasta/categoria de destino. Ações por feed: **testar**,
 
 ## Configurações (`/settings`)
 
-- **Acesso na rede** e o cartão **OPDS** (endereços, raiz configurada, teste do
-  feed).
-- **Trocar a senha** do painel.
-- **Manutenção**: reparos de capa, caminhos de imagem em EPUBs, links de feed e
-  limpeza de temporários.
-- **Ferramentas**: o que esta instalação consegue converter e quais opcionais
-  foram detectados.
+Uma página só, em seções expansíveis — cada título mostra o estado atual
+(*protegido*, *na rede*, *2 na fila*) e o que está recolhido continua valendo:
+
+- **Aplicação e catálogo**: nome, usuário/senha do OPDS, exigir credencial, raiz
+  do OPDS e os endereços do catálogo (1.2, 2.0 e busca) com botão de copiar.
+- **Acesso ao painel**: exigir login nesta interface.
+- **Usuário e senha do painel**: trocar as credenciais do painel.
+- **Rede e endereços**: como o servidor está escutando e os endereços ativos;
+  em *Avançado*, `BASE_URL` e `USE_REQUEST_HOST`.
+- **Conversão e armazenamento**: limite de upload, teto de disco, paralelismo e,
+  em *Avançado*, o tempo máximo por conversão — mais o uso atual do disco.
+- **Automação**: busca automática dos feeds.
+- **Manutenção**: os mesmos reparos que rodam no boot, sob demanda.
+- **Recursos de conversão**: o que esta instalação consegue converter.
+
+Os ajustes “avançados” ficam na seção a que pertencem: não somem, só esperam um
+clique. **Um único botão salva a página inteira** (o que está recolhido também é
+enviado) e o indicador avisa quando há alteração não salva; *Desfazer* volta ao
+que estava gravado.
 
 ---
 
@@ -188,5 +200,5 @@ Abra o livro → **Ler no navegador** → valide imagens/capítulos → mande pa
 aparelho pelo OPDS.
 
 **Trocar o IP/endereço do catálogo**
-Configurações mostra os endereços ativos; se precisar fixar, ajuste `BASE_URL` +
-`USE_REQUEST_HOST=false` no `.env` e reinicie.
+Configurações → **Rede e endereços** mostra os endereços ativos. Para fixar um
+domínio/proxy, preencha `BASE_URL` em *Avançado* — vale na hora, sem reiniciar.

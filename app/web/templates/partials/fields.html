@@ -6,29 +6,42 @@
 -#}
 {% macro render_field(field) -%}
   {%- if field.kind == 'bool' -%}
-    <div class="field">
-      <label class="check">
+    <div class="field field--wide">
+      <label class="switch">
         <input type="checkbox" name="{{ field.name }}" value="on" {{ 'checked' if field.value }}>
-        <span>{{ field.label }}</span>
+        <span class="track" aria-hidden="true"></span>
+        <span class="switch-txt">
+          <span class="switch-label">{{ field.label }}</span>
+          {% if field.help %}<span class="hint">{{ field.help }}</span>{% endif %}
+        </span>
       </label>
-      {% if field.help %}<p class="hint">{{ field.help }}</p>{% endif %}
     </div>
   {%- elif field.kind == 'choice' -%}
-    <div class="field">
-      <label for="f-{{ field.name }}">{{ field.label }}</label>
-      <select id="f-{{ field.name }}" name="{{ field.name }}">
+    <div class="field field--wide">
+      <span class="lbl" id="f-{{ field.name }}-lbl">{{ field.label }}</span>
+      {# Um rádio por opção: o valor escolhido fica visível sem abrir menu. #}
+      <div class="segmented" role="radiogroup" aria-labelledby="f-{{ field.name }}-lbl">
         {% for value, rotulo in field.choices %}
-        <option value="{{ value }}" {{ 'selected' if field.value == value }}>{{ rotulo }}</option>
+        <label>
+          <input type="radio" name="{{ field.name }}" value="{{ value }}"
+                 {{- ' checked' if field.value == value or (not field.value and loop.first) }}>
+          <span>{{ rotulo }}</span>
+        </label>
         {% endfor %}
-      </select>
+      </div>
       {% if field.help %}<p class="hint">{{ field.help }}</p>{% endif %}
     </div>
   {%- else -%}
     <div class="field">
-      <label for="f-{{ field.name }}">{{ field.label }}</label>
+      <label for="f-{{ field.name }}">
+        {{ field.label }}
+        {%- if field.secret %}
+        <span class="badge {{ 'ok' if field.defined else 'warn' }}">{{ 'definida' if field.defined else 'vazia' }}</span>
+        {%- endif %}
+      </label>
       <input id="f-{{ field.name }}" name="{{ field.name }}"
              type="{% if field.kind == 'password' %}password{% elif field.kind in ('int', 'float') %}number{% else %}text{% endif %}"
-             {%- if field.kind in ('int', 'float') %} step="{{ 1 if field.kind == 'int' else '0.1' }}"{% if field.minimum is not none %} min="{{ field.minimum }}"{% endif %}{% if field.maximum is not none %} max="{{ field.maximum }}"{% endif %}{% endif %}
+             {%- if field.kind in ('int', 'float') %} step="{{ 1 if field.kind == 'int' else '0.1' }}"{% if field.minimum is not none %} min="{{ field.minimum }}"{% endif %}{% if field.maximum is not none %} max="{{ field.maximum }}"{% endif %} inputmode="numeric"{% endif %}
              {%- if field.secret %} autocomplete="new-password" placeholder="(manter a atual)"{% endif %}
              value="{{ '' if field.secret else field.value }}">
       {% if field.help %}<p class="hint">{{ field.help }}</p>{% endif %}
