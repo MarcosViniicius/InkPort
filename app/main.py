@@ -67,7 +67,11 @@ async def lifespan(app: FastAPI):
         run_repairs(session)
 
     if not configured:
-        logger.info("primeiro acesso pendente: o painel abre em /setup")
+        logger.warning(
+            "primeiro acesso pendente: abra /setup e informe o token %s "
+            "(quem acessa da mesma rede/máquina não precisa do token)",
+            setup_state.token(),
+        )
 
     _log_access(settings)
 

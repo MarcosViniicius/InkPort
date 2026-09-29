@@ -35,8 +35,16 @@
                    placeholder="veja no log do servidor (docker logs / systemd)">
             <p class="hint">
               Este servidor está exposto fora da rede local, então criar a senha
-              exige o token que aparece no log no boot — assim ninguém de fora
-              assume a sua instalação antes de você.
+              exige o <strong>token de primeiro acesso</strong>: um código
+              aleatório que o servidor imprime <strong>no log de inicialização</strong>
+              e que muda a cada reinício. Sem ele, qualquer pessoa que achasse o
+              seu endereço poderia criar a senha antes de você.
+            </p>
+            <p class="hint">
+              Onde encontrar: <code>docker logs opds-server</code> (Docker) ·
+              <code>journalctl -u opds-server</code> (systemd) · o próprio terminal
+              onde o servidor está rodando. Se perdeu, reinicie o servidor: um
+              novo token é mostrado.
             </p>
           </div>
           <button class="button block lg mt4" type="submit">Continuar</button>
