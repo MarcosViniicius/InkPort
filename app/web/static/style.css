@@ -276,7 +276,10 @@ footer.foot {
 
 /* --- forms -------------------------------------------------------------- */
 .field { margin-bottom: var(--s4); min-width: 0; }
-.field > label, label.lbl {
+/* `:not(.switch)` is essential: the switch label must stay a flex row. Without
+   it this rule (higher specificity) turns it into a block, the .track span
+   collapses to zero width and the toggle looks like a stray dot + line. */
+.field > label:not(.switch), label.lbl {
   display: block; font-size: .78rem; font-weight: 600; color: var(--ink-2);
   letter-spacing: .01em; margin-bottom: 5px;
 }
@@ -605,21 +608,36 @@ td .sub { display: block; font-size: .76rem; color: var(--muted); }
 .adv .adv-body { padding: var(--s4); }
 .adv .adv-body > :last-child { margin-bottom: 0; }
 
-/* Switch for boolean settings (the checkbox stays in the DOM, fully usable). */
-.switch { position: relative; display: flex; align-items: flex-start; gap: var(--s3); cursor: pointer; }
+/* Switch for boolean settings (the checkbox stays in the DOM, fully usable).
+   Big enough to read at a glance, with an explicit on/off word — the same
+   component is used by Configurações and by the other forms. */
+.switch {
+  position: relative; display: flex; align-items: flex-start; gap: var(--s3);
+  cursor: pointer; padding: var(--s1) 0;
+}
 .switch > input { position: absolute; width: 1px; height: 1px; opacity: 0; margin: 0; }
 .switch .track {
-  flex: none; position: relative; width: 42px; height: 24px; margin-top: 1px;
-  border-radius: var(--r-full); background: var(--surface-3); border: 1px solid var(--border-strong);
+  flex: none; position: relative; width: 50px; height: 28px; margin-top: 1px;
+  border-radius: var(--r-full); background: var(--surface-3); border: 1.5px solid var(--border-strong);
+  box-shadow: inset 0 1px 2px rgba(20, 16, 10, .14);
   transition: background .18s var(--ease), border-color .18s var(--ease);
 }
+.switch .track::before {
+  content: "off"; position: absolute; top: 50%; right: 7px; transform: translateY(-50%);
+  font: 700 9px/1 var(--sans); letter-spacing: .07em; text-transform: uppercase;
+  color: var(--muted); pointer-events: none;
+}
 .switch .track::after {
-  content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px;
-  border-radius: 50%; background: var(--surface); box-shadow: var(--shadow-sm);
+  content: ""; position: absolute; top: 3px; left: 3px; width: 19px; height: 19px;
+  /* White in both themes: the themed knob vanished against the dark track. */
+  border-radius: 50%; background: #fff; border: 1px solid rgba(0, 0, 0, .18);
+  box-shadow: 0 1px 3px rgba(20, 16, 10, .32);
   transition: transform .18s var(--ease);
 }
 .switch > input:checked + .track { background: var(--accent); border-color: var(--accent); }
-.switch > input:checked + .track::after { transform: translateX(18px); }
+.switch > input:checked + .track::before { content: "on"; right: auto; left: 8px; color: var(--accent-contrast); }
+.switch > input:checked + .track::after { transform: translateX(22px); }
+.switch:hover .track { border-color: var(--muted); }
 .switch > input:focus-visible + .track { box-shadow: var(--ring); }
 .switch .switch-txt { min-width: 0; display: grid; gap: 2px; }
 .switch .switch-label { font-size: .9rem; font-weight: 500; color: var(--ink); }

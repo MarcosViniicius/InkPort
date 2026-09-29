@@ -67,6 +67,11 @@ def main() -> int:
     # which broke the library grid/list switch and the queue filters.
     check("[hidden] vence os displays dos componentes",
           "[hidden] { display: none !important; }" in body)
+    # .field > label{display:block} beat .switch{display:flex}, collapsing the
+    # track to zero width (the "stray dot + line" toggle in Configurações).
+    check("rótulo de campo não colapsa o switch",
+          ".field > label:not(.switch)" in body and ".switch .track" in body,
+          "o seletor .field > label voltou a pegar o switch")
     check("CSS tem foco visível", ":focus-visible" in body)
     check("CSS tem alvos de toque no celular", "min-height: 42px" in body)
     check("JS existe", JS.exists() and "nav-open" in JS.read_text(encoding="utf-8"))
