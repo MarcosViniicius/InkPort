@@ -30,29 +30,51 @@ COVER_INK = (27, 25, 23)
 COVER_MUTED = (111, 106, 98)
 COVER_ACCENT = (31, 111, 92)
 
+#: DejaVu Sans ships with the project (``app/vendor/fonts``) so covers render
+#: accented text everywhere -- including the slim Docker image, where no system
+#: font exists and Pillow's built-in fallback draws ``é ç ã`` as boxes.
+BUNDLED_FONT = Path(__file__).resolve().parent.parent / "vendor" / "fonts" / "DejaVuSans.ttf"
+
 _FONT_CANDIDATES = (
+    str(BUNDLED_FONT),
     r"C:\Windows\Fonts\georgia.ttf",
     r"C:\Windows\Fonts\segoeui.ttf",
-    "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf",
     "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf",
     "/usr/share/fonts/truetype/liberation/LiberationSerif-Regular.ttf",
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+    "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
+    "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
     "/System/Library/Fonts/Supplemental/Georgia.ttf",
     "/System/Library/Fonts/Supplemental/Arial.ttf",
 )
 
 
-def _load_font(size: int):
+def _ascii_fold(text: str) -> str:
+    """Drop accents so a font without Latin-1 glyphs never draws boxes."""
+    import unicodedata
+
+    decomposed = unicodedata.normalize("NFKD", text)
+    return "".join(char for char in decomposed if not unicodedata.combining(char))
+
+
+def _load_font(size: int) -> tuple[object, bool]:
+    """Return ``(font, unicode_ok)``.
+
+    ``unicode_ok`` is ``False`` only for Pillow's built-in fallback, which has no
+    accented glyphs; the callers then transliterate the text to ASCII.
+    """
     from PIL import ImageFont
 
     for candidate in _FONT_CANDIDATES:
         try:
-            return ImageFont.truetype(candidate, size)
+            return ImageFont.truetype(candidate, size), True
         except (OSError, AttributeError):
             continue
     try:
-        return ImageFont.load_default(size=size)
+        return ImageFont.load_default(size=size), False
     except TypeError:  # Pillow < 10.1
-        return ImageFont.load_default()
+        return ImageFont.load_default(), False
 
 
 def generate_title_cover(title: str, author: str | None, out_dir: Path) -> Path:
@@ -66,13 +88,17 @@ def generate_title_cover(title: str, author: str | None, out_dir: Path) -> Path:
     margin = 72
     draw.rectangle([margin, margin, margin + 96, margin + 9], fill=COVER_ACCENT)
 
-    title_font = _load_font(66)
-    author_font = _load_font(30)
+    title_font, title_unicode = _load_font(66)
+    author_font, author_unicode = _load_font(30)
+
+    title_text = title or "Sem título"
+    if not title_unicode:
+        title_text = _ascii_fold(title_text)
 
     max_width = width - margin * 2
     line_height = 82
     lines: list[str] = []
-    for word in (title or "Sem título").split():
+    for word in title_text.split():
         if lines and draw.textlength(f"{lines[-1]} {word}", font=title_font) > max_width:
             lines.append(word)
         elif lines:
@@ -87,7 +113,10 @@ def generate_title_cover(title: str, author: str | None, out_dir: Path) -> Path:
         y += line_height
 
     if author:
-        draw.text((margin, height - margin - 60), author[:60], font=author_font, fill=COVER_MUTED)
+        author_text = author[:60]
+        if not author_unicode:
+            author_text = _ascii_fold(author_text)
+        draw.text((margin, height - margin - 60), author_text, font=author_font, fill=COVER_MUTED)
     draw.rectangle([margin, height - margin - 3, width - margin, height - margin], fill=COVER_ACCENT)
 
     from app.library.hashing import hash_bytes

@@ -53,6 +53,7 @@ python tests/sitemap.py
 python tests/archives.py
 python tests/frontend.py
 python tests/cancellation.py
+python tests/covers.py            # capa tipográfica (fonte embutida, acentos)
 ```
 
 Os testes sobem o app com `TestClient` e um `DATA_DIR` temporário — nunca tocam
