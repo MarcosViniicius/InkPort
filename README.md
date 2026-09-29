@@ -471,8 +471,19 @@ ruff check app tests
 docker compose up -d --build
 ```
 
-A pasta `./data` é montada como volume. O `Dockerfile` já instala tudo o que é
-necessário; não há dependências de sistema a adicionar.
+- A pasta `./data` é montada como volume e guarda **tudo**: banco cifrado,
+  biblioteca, capas e a `secret.key`. Backup = copiar essa pasta.
+- **Primeiro acesso**: abra `http://SEU-IP:8080/` — o assistente cria a senha e
+  configura o essencial (não é preciso definir `ADMIN_PASSWORD`).
+- O `docker-compose.yml` traz só o *bootstrap* (`SECRET_KEY`, `HOST`, `PORT`,
+  `LOG_JSON`, `BASE_URL`) e **rotação de log** (10 MB × 3), que evita o
+  crescimento sem fim do `json-file`.
+- A imagem instala apenas o `bsdtar` (`libarchive-tools`), que dá suporte a
+  CBR/RAR no Linux; todo o resto da conversão é Python puro. Testes, docs e
+  ferramentas ficam fora da imagem (ver `.dockerignore`).
+- Em Docker a auto-detecção enxerga o IP interno do container: para acessar de
+  outros aparelhos, defina `BASE_URL` com o endereço público (e
+  `USE_REQUEST_HOST=false`, que fica no painel).
 
 ## Backup e manutenção
 

@@ -90,14 +90,20 @@ Preencha de novo depois de cada mudança e compare — os números ficam aqui.
 
 ### Candidatos confirmados pela medição
 
-| Candidato | Ganho medido/estimado | Risco |
+Situação em 2026-09-29. **Os deltas são esperados, não remedidos**: o build e a
+medição seguintes ficaram pendentes (sem Docker disponível no momento) — rode
+`python tools/devops/container_report.py` depois do próximo `--build` para
+fechar os números.
+
+| Candidato | Ganho medido/esperado | Situação |
 | --- | --- | --- |
-| Healthcheck sem `curl` (usar `python -c`) | elimina a camada de **13,5 MB** | baixo |
-| Não copiar `tests/`, `docs/`, `.env.example` | ~1,7 MB de `/app` (5,3 MB) | baixo |
-| Rotação de log no compose | contém o crescimento **ilimitado** de disco | nenhum |
-| `USER` non-root | hoje **root** | médio (permissões em `/data`) |
-| `--mount=type=cache` no pip | rebuild mais rápido (208 MB de dependências) | nenhum |
-| `init: true` + limites no compose | picos de conversão sob controle | médio |
+| Healthcheck sem `curl` (usar `python -c`) | elimina a camada de **13,5 MB** | ✅ feito no `Dockerfile` |
+| Não copiar `tests/`, `docs/`, `.env.example` à imagem | ~1,7 MB dos 5,3 MB de `/app` | ✅ feito |
+| `.dockerignore` cobrindo `tests/docs/tools/.opencode` | build mais rápido | ✅ feito |
+| Rotação de log (`logging.options.max-size`) | contém o crescimento **ilimitado** de disco | ✅ feito no `docker-compose.yml` |
+| `USER` non-root | menos superfície | pendente |
+| `--mount=type=cache` no pip | rebuild mais rápido (208 MB de dependências) | pendente |
+| `init: true` + limites de memória/CPU | picos de conversão sob controle | pendente |
 
 O `pip install` (208 MB) é o grosso da imagem e **é o app**: não dá para "cortar"
 sem perder formato. O ganho real está em tirar o que não é runtime, na camada do

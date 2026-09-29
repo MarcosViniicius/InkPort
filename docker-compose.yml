@@ -7,16 +7,30 @@ services:
     ports:
       - "8080:8080"
     environment:
-      # Troque estes valores!
+      # --- Bootstrap ---------------------------------------------------------
+      # Aqui fica so' o que precisa existir ANTES do banco abrir. Tudo que e'
+      # configuravel pelo usuario (nome, OPDS, limites, conversao, RSS) mora no
+      # banco cifrado e se edita no assistente de primeiro acesso (/setup) ou em
+      # Configuracoes -- nao precisa mexer neste arquivo.
+      # TROQUE: assina o cookie de sessao do painel.
       SECRET_KEY: "change-me-please-use-a-long-random-string"
-      ADMIN_USERNAME: "admin"
-      ADMIN_PASSWORD: "admin"
       HOST: "0.0.0.0"
       PORT: "8080"
-      # Em Docker a auto-detecção pega o IP interno do container. Para acessar
-      # de outros aparelhos, informe o IP:porta do host, ex.: http://192.168.1.50:8080
+      # Acesso de outros aparelhos por proxy/dominio: defina BASE_URL com o
+      # endereco publico e USE_REQUEST_HOST=false (pelo painel) ou pelo ambiente.
       BASE_URL: ""
-      CONVERSION_CONCURRENCY: "2"
       LOG_JSON: "true"
+      # Cifragem do banco: "auto" (padrao). "off" deixa em TEXTO PURO -- so' use
+      # em plataforma sem a roda do sqlcipher3.
+      # DB_ENCRYPTION: "auto"
     volumes:
+      # O banco (cifrado), a biblioteca, as capas E a chave (secret.key) vivem
+      # aqui: o backup e' copiar esta pasta inteira.
       - ./data:/data
+    # Sem rotacao o driver json-file cresce para sempre; assim o log ocupa no
+    # maximo ~30 MB (10 MB x 3 arquivos).
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

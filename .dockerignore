@@ -13,3 +13,11 @@ data
 .env
 .DS_Store
 Thumbs.db
+
+# Nao entram na imagem (dev/testes/ferramentas) -- tambem aceleram o build.
+tests
+docs
+tools
+.opencode
+*.md
+
