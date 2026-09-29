@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.database.base import get_session
 from app.database.models import Book
+from app.downloads import store as downloads
+from app.downloads.response import TrackedFileResponse
 from app.library.formats import media_type_for
 from app.metadata.cover import get_thumbnail
 from app.opds import entries, feeds, urls
@@ -43,7 +45,9 @@ def opds_thumbnail(book_id: str, session: Session = Depends(get_session)) -> Fil
 
 
 @router.get("/download/{book_id}")
-def opds_download(book_id: str, session: Session = Depends(get_session)) -> FileResponse:
+def opds_download(
+    book_id: str, request: Request, session: Session = Depends(get_session)
+) -> FileResponse:
     book = session.get(Book, book_id)
     if book is None:
         raise HTTPException(status_code=404, detail="Livro não encontrado")
@@ -56,7 +60,22 @@ def opds_download(book_id: str, session: Session = Depends(get_session)) -> File
 
     media_type = media_type_for(book.format, book.media_type)
     filename = f"{book.title}.{book.format}".replace("/", "-")
-    return FileResponse(path, media_type=media_type, filename=filename)
+    # Start the tracking here (request session) and close it in the response, so
+    # "access to the feed" stays different from "bytes actually delivered".
+    track = downloads.start_download(
+        session,
+        book,
+        user_agent=request.headers.get("user-agent"),
+        range_header=request.headers.get("range"),
+    )
+    return TrackedFileResponse(
+        path,
+        track_id=track.id,
+        countable=track.countable,
+        total_bytes=path.stat().st_size or track.total_bytes,
+        media_type=media_type,
+        filename=filename,
+    )
 
 
 def _cover_file(session: Session, book_id: str, *, thumbnail: bool):

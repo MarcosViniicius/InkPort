@@ -89,6 +89,9 @@ app/
 │
 ├── storage/           paths.py (nomes seguros/relativos), temp.py, usage.py
 │
+├── downloads/         rastreio de downloads: store.py (domínio) +
+│                      response.py (entrega instrumentada)   <-- ver docs/downloads.md
+│
 ├── library/           domínio biblioteca
 │   ├── formats.py     taxonomia extensão↔MIME↔assinatura   <-- novo formato aqui
 │   ├── sniff.py       magic bytes
@@ -234,6 +237,7 @@ tools/
 | Nova rota OPDS | `opds/v1/navigation.py` (seções) ou `acquisition.py` (livros) |
 | Novo endpoint do leitor | `reader/registry.py` + handler em `reader/` |
 | Reparo/migração leve | `library/repairs.py` (idempotente, roda no boot) |
+| Rastrear downloads / gerir arquivos | `app/downloads/` (`store.py` = domínio, `response.py` = entrega) — ver `docs/downloads.md` |
 | CLI interna | `app/tools/` |
 | Otimizar containers | `.opencode/agents/container-optimizer.md` + `tools/devops/container_report.py` (ver `docs/devops/containers.md`) |
 | Arte/documentação visual (banner, badges, diagrama) | `tools/artwork/` — edite `artwork.toml` e rode `python -m tools.artwork.generate` |
@@ -273,6 +277,7 @@ tools/
 - Conversão e formatos: [`docs/conversion.md`](docs/conversion.md),
   [`docs/device-formats.md`](docs/device-formats.md)
 - Feeds: [`docs/rss.md`](docs/rss.md)
+- Rastreamento de downloads e gerência de arquivos: [`docs/downloads.md`](docs/downloads.md)
 - Fluxo de dev (adicionar conversor/dispositivo/rota): [`docs/development.md`](docs/development.md)
 - Containers (auditoria de RAM e disco, agente DevOps): [`docs/devops/containers.md`](docs/devops/containers.md)
 - Arte do projeto (banner, badges, diagrama): [`tools/artwork/README.md`](tools/artwork/README.md)

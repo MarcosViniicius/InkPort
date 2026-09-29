@@ -3,9 +3,12 @@
 from app.database.models.base import new_uuid, utcnow
 from app.database.models.book import Book
 from app.database.models.classification import BookTag, Category, Tag
+from app.database.models.downloads import DownloadEvent, FileRecord
 from app.database.models.enums import (
     ContentType,
+    DownloadStatus,
     FeedItemStatus,
+    FileState,
     JobStatus,
     SourceKind,
 )
@@ -19,7 +22,11 @@ __all__ = [
     "Category",
     "Tag",
     "ContentType",
+    "DownloadEvent",
+    "DownloadStatus",
     "FeedItemStatus",
+    "FileRecord",
+    "FileState",
     "JobStatus",
     "SourceKind",
     "Feed",

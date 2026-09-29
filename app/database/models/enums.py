@@ -30,6 +30,24 @@ class FeedItemStatus(enum.StrEnum):
     ERROR = "error"
 
 
+class DownloadStatus(enum.StrEnum):
+    """Lifecycle of one download attempt."""
+
+    STARTED = "started"          # headers/stream opened, bytes may be flowing
+    COMPLETED = "completed"      # the response finished (client got the body)
+    INTERRUPTED = "interrupted"  # client/proxy or process went away mid-stream
+    ERROR = "error"              # the server failed while streaming
+
+
+class FileState(enum.StrEnum):
+    """Lifecycle of a stored file, for tracking and future file management."""
+
+    AVAILABLE = "available"    # offered normally
+    DOWNLOADED = "downloaded"  # already downloaded at least once (still offered)
+    BLOCKED = "blocked"        # "do not download again" / not offered
+    DELETED = "deleted"        # removed from storage
+
+
 class SourceKind(enum.StrEnum):
     UPLOAD = "upload"
     RSS = "rss"

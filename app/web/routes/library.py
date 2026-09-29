@@ -12,6 +12,8 @@ from app.converters.planner import describe, plan_conversion
 from app.database.base import get_session
 from app.database.models import Book
 from app.devices.registry import all_profiles, get_profile
+from app.downloads import store as downloads
+from app.downloads.response import TrackedFileResponse
 from app.library import repository, service
 from app.library.detect import detect
 from app.metadata.extractor import extract_metadata
@@ -111,6 +113,7 @@ def book_page(book_id: str, request: Request, session: Session = Depends(get_ses
             "categories": repository.categories(session),
             "variants": opds_queries.variants(session, book),
             "origin": session.get(Book, book.origin_book_id) if book.origin_book_id else None,
+            "download_stats": downloads.stats(session, book.id),
             "file_exists": path.exists(),
             "file_size": path.stat().st_size if path.exists() else book.file_size,
         },
@@ -265,14 +268,26 @@ def serve_cover(book_id: str, session: Session = Depends(get_session)):
 
 
 @router.get("/{book_id}/file")
-def serve_file(book_id: str, session: Session = Depends(get_session)):
+def serve_file(book_id: str, request: Request, session: Session = Depends(get_session)):
     book = session.get(Book, book_id)
     if book is None:
         raise HTTPException(status_code=404, detail="Livro não encontrado")
     path = resolve_library_path(book.file_path)
     if not path.exists():
         raise HTTPException(status_code=404, detail="Arquivo ausente")
-    return FileResponse(path, filename=f"{book.title}.{book.format}")
+    track = downloads.start_download(
+        session,
+        book,
+        user_agent=request.headers.get("user-agent"),
+        range_header=request.headers.get("range"),
+    )
+    return TrackedFileResponse(
+        path,
+        track_id=track.id,
+        countable=track.countable,
+        total_bytes=path.stat().st_size or track.total_bytes,
+        filename=f"{book.title}.{book.format}",
+    )
 
 
 def _to_float(value: str) -> float | None:

@@ -203,8 +203,12 @@ def repair_epub_image_paths(session: Session) -> int:
             continue
         if not path.is_file():
             continue
-        if _fix_epub_image_paths(path):
-            fixed += 1
+        try:
+            if _fix_epub_image_paths(path):
+                fixed += 1
+        except (OSError, zipfile.BadZipFile):
+            # A mislabelled/corrupt .epub must not break the boot repairs.
+            continue
     return fixed
 
 

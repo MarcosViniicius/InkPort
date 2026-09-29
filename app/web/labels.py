@@ -74,6 +74,20 @@ SOURCE_LABELS = {
 #: Days per unit used by the retroactive period field.
 BACKFILL_UNIT_DAYS = {"day": 1, "week": 7, "month": 30, "year": 365}
 
+DOWNLOAD_STATE_LABELS = {
+    "available": "disponível",
+    "downloaded": "baixado anteriormente",
+    "blocked": "bloqueado para novo download",
+    "deleted": "excluído",
+}
+
+DOWNLOAD_STATUS_LABELS = {
+    "started": "iniciado",
+    "completed": "concluído",
+    "interrupted": "interrompido",
+    "error": "erro",
+}
+
 STATUS_LABELS = {
     "pending": "na fila",
     "running": "executando",
@@ -130,6 +144,20 @@ def source_label(source: str | None) -> str:
     if not source:
         return "—"
     return SOURCE_LABELS.get(source, source)
+
+
+def download_state_label(state: str | None) -> str:
+    """Lifecycle of a stored file: disponível, baixado, bloqueado, excluído."""
+    if not state:
+        return "disponível"
+    return DOWNLOAD_STATE_LABELS.get(state, state)
+
+
+def download_status_label(status: str | None) -> str:
+    """One download attempt: iniciado, concluído, interrompido, erro."""
+    if not status:
+        return "—"
+    return DOWNLOAD_STATUS_LABELS.get(status, status)
 
 
 def backfill_parts(days) -> dict:

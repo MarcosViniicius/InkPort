@@ -8,6 +8,7 @@ import logging
 
 from app.config import get_settings
 from app.database import session_scope
+from app.downloads import store as downloads
 from app.library.repairs import run_repairs
 from app.library.service import mark_missing
 from app.storage.temp import clean_temp_dir
@@ -37,14 +38,17 @@ class MaintenanceLoop:
         with session_scope() as session:
             resumed = queue.requeue_stale(session, older_than_seconds=1800)
             missing = mark_missing(session)
+            # A download left "started" for hours means a hung request; close it.
+            stuck_downloads = downloads.recover_interrupted(session, older_than_seconds=21600)
             repairs = run_repairs(session)
-        if removed or resumed or missing or any(repairs.values()):
+        if removed or resumed or missing or stuck_downloads or any(repairs.values()):
             logger.info(
                 "maintenance done",
                 extra={
                     "temp_removed": removed,
                     "resumed": resumed,
                     "missing": missing,
+                    "stuck_downloads": stuck_downloads,
                     **repairs,
                 },
             )
@@ -55,11 +59,14 @@ class MaintenanceLoop:
 
 
 def startup_recovery() -> int:
-    """Called once at boot: requeue everything left RUNNING by a crash."""
+    """Called once at boot: requeue jobs and close downloads killed by a crash."""
     with session_scope() as session:
         count = queue.requeue_stale(session, older_than_seconds=0)
+        stuck = downloads.recover_interrupted(session, older_than_seconds=0)
     if count:
         logger.warning("requeued interrupted jobs", extra={"count": count})
+    if stuck:
+        logger.warning("marked interrupted downloads", extra={"count": stuck})
     return count
 
 

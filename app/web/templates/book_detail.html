@@ -43,6 +43,20 @@
         <dt>Formato</dt><dd>{{ format_label(book.format) }}</dd>
         <dt>Tipo</dt><dd>{{ content_label(book.content_type) }}{% if detection.image_only %} (só imagens){% endif %}</dd>
         <dt>Tamanho</dt><dd class="num">{{ human_size(file_size) }}</dd>
+        {% if download_stats %}
+        <dt>Downloads</dt>
+        <dd class="num">
+          {{ download_stats.download_count }}
+          {%- if download_stats.active_downloads %} · {{ download_stats.active_downloads }} em andamento{% endif %}
+          {%- if download_stats.last_download_at %} · último {{ download_stats.last_download_at|relative }}{% endif %}
+        </dd>
+        <dt>Situação</dt>
+        <dd>
+          <span class="badge {{ 'ok' if download_stats.state == 'downloaded' else 'err' if download_stats.state in ['blocked', 'deleted'] else '' }}">
+            {{ download_state_label(download_stats.state) }}
+          </span>
+        </dd>
+        {% endif %}
         <dt>Páginas</dt><dd class="num">{{ book.page_count or '—' }}</dd>
         <dt>Leitura</dt><dd>{{ 'Direita → esquerda' if book.reading_direction == 'rtl' else 'Esquerda → direita' }}</dd>
         <dt>Origem</dt><dd>{{ source_label(book.source) }}{% if book.source_url %} · <a href="{{ book.source_url }}" target="_blank" rel="noopener">link</a>{% endif %}</dd>

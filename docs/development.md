@@ -55,6 +55,7 @@ python tests/frontend.py
 python tests/cancellation.py
 python tests/covers.py            # capa tipográfica (fonte embutida, acentos)
 python tests/schema.py            # migração aditiva (colunas novas em banco antigo)
+python tests/downloads.py         # rastreio de downloads (entrega, Range, estados)
 ```
 
 Os testes sobem o app com `TestClient` e um `DATA_DIR` temporário — nunca tocam
