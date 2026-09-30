@@ -152,6 +152,9 @@ def main() -> int:
             str(response.status_code),
         )
 
+        before = client.get("/opds/all?per_page=100")
+        check("antes de bloquear, aparece no OPDS", book_id in before.text)
+
         response = client.post(f"/api/downloads/book/{book_id}/block")
         check(
             "API bloqueia",
@@ -160,9 +163,35 @@ def main() -> int:
         )
         with session_scope() as session:
             check("bloqueado não é oferecido", downloads.should_offer(session, book_id) is False)
+        check("bloqueado some do catálogo OPDS 1.2", book_id not in client.get("/opds/all?per_page=100").text)
+        check("bloqueado some do OPDS 2.0", book_id not in client.get("/opds/v2/all?per_page=100").text)
+        check(
+            "download bloqueado é recusado",
+            client.get(f"/opds/download/{book_id}").status_code == 404,
+        )
+        check(
+            "ficha OPDS 2.0 do bloqueado some",
+            client.get(f"/opds/v2/books/{book_id}").status_code == 404,
+        )
+        check("o painel continua mostrando o livro", "Livro de teste" in client.get("/library").text)
+
         client.post(f"/api/downloads/book/{book_id}/unblock")
         with session_scope() as session:
             check("desbloqueado volta a ser oferecido", downloads.should_offer(session, book_id) is True)
+        check("desbloqueado volta ao catálogo", book_id in client.get("/opds/all?per_page=100").text)
+        check(
+            "download volta a responder",
+            client.get(f"/opds/download/{book_id}", headers={"Range": "bytes=0-0"}).status_code == 206,
+        )
+        check(
+            "botão do painel bloqueia",
+            client.post(
+                f"/library/{book_id}/download-state", data={"action": "block"}
+            ).status_code in (200, 303),
+        )
+        with session_scope() as session:
+            check("painel: bloqueio gravado", downloads.get_record(session, book_id).state == FileState.BLOCKED.value)
+        client.post(f"/library/{book_id}/download-state", data={"action": "unblock"})
 
     print("\n[downloads simultâneos]")
     with session_scope() as session:

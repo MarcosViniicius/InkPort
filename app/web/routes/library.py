@@ -267,6 +267,37 @@ def serve_cover(book_id: str, session: Session = Depends(get_session)):
     return FileResponse(path, media_type="image/jpeg")
 
 
+@router.post("/{book_id}/download-state")
+def set_download_state(
+    book_id: str,
+    action: str = Form(...),
+    session: Session = Depends(get_session),
+):
+    """Block/unblock a file in the OPDS catalog, or mark it as downloaded."""
+    from urllib.parse import quote
+
+    book = repository.get_book(session, book_id)
+    if book is None:
+        raise HTTPException(status_code=404, detail="Livro não encontrado")
+    downloads.ensure_record(session, book)
+    session.commit()
+
+    if action == "block":
+        downloads.block(session, book_id)
+        message = "O arquivo deixou de ser oferecido no catálogo OPDS."
+    elif action == "unblock":
+        downloads.unblock(session, book_id)
+        message = "O arquivo voltou a ser oferecido no catálogo OPDS."
+    elif action == "downloaded":
+        downloads.mark_downloaded(session, book_id)
+        message = "Arquivo marcado como já baixado."
+    else:
+        return RedirectResponse(
+            f"/library/{book_id}?err={quote('Ação desconhecida.')}", status_code=303
+        )
+    return RedirectResponse(f"/library/{book_id}?ok={quote(message)}", status_code=303)
+
+
 @router.get("/{book_id}/file")
 def serve_file(book_id: str, request: Request, session: Session = Depends(get_session)):
     book = session.get(Book, book_id)

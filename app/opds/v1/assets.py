@@ -13,7 +13,7 @@ from app.downloads import store as downloads
 from app.downloads.response import TrackedFileResponse
 from app.library.formats import media_type_for
 from app.metadata.cover import get_thumbnail
-from app.opds import entries, feeds, urls
+from app.opds import entries, feeds, queries, urls
 from app.opds.constants import ACQUISITION_TYPE
 from app.opds.v1._common import xml_response
 from app.storage.paths import resolve_cover_path, resolve_library_path
@@ -24,7 +24,7 @@ router = APIRouter()
 @router.get("/books/{book_id}")
 def opds_book(book_id: str, session: Session = Depends(get_session)) -> Response:
     book = session.get(Book, book_id)
-    if book is None:
+    if book is None or not queries.is_offerable(session, book_id):
         raise HTTPException(status_code=404, detail="Livro não encontrado")
     root = feeds.build_feed(
         title=book.title, feed_id=urls.book_entry(book.id), self_href=urls.book_entry(book.id)
@@ -51,6 +51,8 @@ def opds_download(
     book = session.get(Book, book_id)
     if book is None:
         raise HTTPException(status_code=404, detail="Livro não encontrado")
+    if not queries.is_offerable(session, book_id):
+        raise HTTPException(status_code=404, detail="Arquivo não disponível")
     try:
         path = resolve_library_path(book.file_path)
     except ValueError:

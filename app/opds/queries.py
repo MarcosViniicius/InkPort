@@ -6,11 +6,17 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database.models import Book, Category
+from app.downloads import store as downloads
 from app.library.repository import BookQuery, Page, search
 
 
 def get_category(session: Session, slug: str) -> Category | None:
     return session.scalar(select(Category).where(Category.slug == slug))
+
+
+def is_offerable(session: Session, book_id: str) -> bool:
+    """False when the file is blocked/deleted, so OPDS must hide it."""
+    return downloads.should_offer(session, book_id)
 
 
 def list_books(
@@ -46,6 +52,8 @@ def list_books(
             page=page,
             per_page=per_page,
             collapse_variants=collapse,
+            # Blocked/deleted files never show up in the OPDS catalogs.
+            exclude_states=downloads.HIDDEN_STATES,
         ),
     )
 
@@ -108,6 +116,9 @@ def variants_for_device(session: Session, book: Book, device_slug: str) -> list[
     (adaptive) EPUB and finally to the other files.
     """
     all_variants = variants(session, book)
+    # A blocked/deleted variant must not become an acquisition link.
+    hidden = downloads.hidden_book_ids(session, [v.id for v in all_variants])
+    all_variants = [v for v in all_variants if v.id not in hidden] or [book]
     device_files = [v for v in all_variants if v.device_profile == device_slug]
     universal = [v for v in all_variants if (v.device_profile or "") in UNIVERSAL_PROFILES]
     others = [v for v in all_variants if v not in device_files and v not in universal]

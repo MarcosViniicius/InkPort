@@ -30,6 +30,9 @@ from app.database.models import (
 
 logger = logging.getLogger(__name__)
 
+#: States that make a file stop being offered in the catalogs.
+HIDDEN_STATES: tuple[str, ...] = (FileState.BLOCKED.value, FileState.DELETED.value)
+
 #: Coarse client labels, so we never store raw user-agents or IPs.
 _CLIENT_HINTS = (
     ("koreader", "KOReader"),
@@ -318,6 +321,19 @@ def unblock(session, book_id: str) -> FileRecord | None:
     return record
 
 
+def hidden_book_ids(session, book_ids: list[str]) -> set[str]:
+    """Book ids whose file is blocked/deleted (batch, for list filtering)."""
+    ids = [bid for bid in book_ids if bid]
+    if not ids:
+        return set()
+    rows = session.scalars(
+        select(FileRecord.book_id)
+        .where(FileRecord.book_id.in_(ids))
+        .where(FileRecord.state.in_(HIDDEN_STATES))
+    ).all()
+    return {row for row in rows if row}
+
+
 def should_offer(session, book_id: str) -> bool:
     """False for blocked/deleted files.
 
@@ -377,6 +393,7 @@ def prune_events(session, *, keep_days: int = 180, limit: int = 500) -> int:
 
 
 __all__ = [
+    "HIDDEN_STATES",
     "TrackStart",
     "block",
     "cleanup_candidates",
@@ -385,6 +402,7 @@ __all__ = [
     "extract_extension",
     "finish_download",
     "get_record",
+    "hidden_book_ids",
     "mark_downloaded",
     "prune_events",
     "range_flags",

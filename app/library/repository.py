@@ -8,7 +8,7 @@ from math import ceil
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, aliased, selectinload
 
-from app.database.models import Book, BookTag, Category, Tag
+from app.database.models import Book, BookTag, Category, FileRecord, Tag
 
 SORT_OPTIONS = {
     "added_desc": (Book.added_at.desc(),),
@@ -36,6 +36,9 @@ class BookQuery:
     #: Hide conversions when their original is still present, so the OPDS feed
     #: shows one entry per work instead of one per generated file.
     collapse_variants: bool = False
+    #: File states to leave out (the OPDS catalogs hide blocked/deleted files;
+    #: the panel does not, so the admin still sees and can free them).
+    exclude_states: tuple[str, ...] = ()
 
     def normalized(self) -> BookQuery:
         self.page = max(1, self.page)
@@ -99,6 +102,13 @@ def _base_statement(query: BookQuery):
                 .where(Tag.name == query.tag)
             )
         )
+    if query.exclude_states:
+        hidden = (
+            select(FileRecord.book_id)
+            .where(FileRecord.book_id.is_not(None))
+            .where(FileRecord.state.in_(query.exclude_states))
+        )
+        filters.append(Book.id.not_in(hidden))
     if query.collapse_variants:
         origin = aliased(Book)
         filters.append(

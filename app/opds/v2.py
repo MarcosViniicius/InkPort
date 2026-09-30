@@ -190,7 +190,7 @@ def v2_category(
 @router.get("/books/{book_id}")
 def v2_book(book_id: str, session: Session = Depends(get_session)) -> Response:
     book = session.get(Book, book_id)
-    if book is None:
+    if book is None or not queries.is_offerable(session, book_id):
         raise HTTPException(status_code=404, detail="Livro não encontrado")
     return _json(publication.publication(book, [book]))
 

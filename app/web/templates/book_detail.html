@@ -62,6 +62,29 @@
         <dt>Origem</dt><dd>{{ source_label(book.source) }}{% if book.source_url %} · <a href="{{ book.source_url }}" target="_blank" rel="noopener">link</a>{% endif %}</dd>
         {% if detection.note %}<dt>Nota</dt><dd class="muted small">{{ detection.note }}</dd>{% endif %}
       </dl>
+      <div class="button-row mt4">
+        {% if download_stats and download_stats.state == 'blocked' %}
+        <form method="post" action="/library/{{ book.id }}/download-state">
+          <input type="hidden" name="action" value="unblock">
+          <button class="button ghost small" type="submit" title="Voltar a oferecer este arquivo no catálogo OPDS">Liberar no catálogo</button>
+        </form>
+        {% else %}
+        <form method="post" action="/library/{{ book.id }}/download-state"
+              data-confirm="Não oferecer «{{ book.title }}» de novo?"
+              data-confirm-msg="O arquivo sai do catálogo OPDS e deixa de ser listado para download. Nada é apagado."
+              data-confirm-ok="Bloquear"
+              onsubmit="return confirm('Deixar de oferecer este arquivo no catálogo?')">
+          <input type="hidden" name="action" value="block">
+          <button class="button ghost small" type="submit" title="Tirar este arquivo do catálogo OPDS">Bloquear novo download</button>
+        </form>
+        {% endif %}
+        {% if not download_stats or download_stats.state != 'downloaded' %}
+        <form method="post" action="/library/{{ book.id }}/download-state">
+          <input type="hidden" name="action" value="downloaded">
+          <button class="button ghost small" type="submit" title="Marcar como já baixado">Marcar como baixado</button>
+        </form>
+        {% endif %}
+      </div>
       <p class="hint mb0 mono break">{{ book.file_path }}</p>
     </div>
   </div>

@@ -92,6 +92,21 @@ processo morrer): é derivado de `active_downloads > 0` ou de um evento `started
 **Tentativa** (`download_events.status`): `started` → `completed` /
 `interrupted` / `error`.
 
+## Bloqueio no catálogo (já ligado)
+
+Arquivos em `blocked`/`deleted` **deixam de aparecer** nos catálogos:
+
+- as listagens do OPDS 1.2 e 2.0 filtram por estado (a contagem da paginação
+  acompanha, porque o filtro entra na consulta);
+- a entrada individual (`/opds/books/{id}`, `/opds/v2/books/{id}`) responde 404;
+- o download (`/opds/download/{id}`) responde 404;
+- um arquivo relacionado bloqueado não vira link de aquisição.
+
+O **painel continua mostrando** o livro (com a situação), para o dono decidir —
+o filtro é só nas consultas do OPDS (`opds/queries.py` → `list_books`), não nas
+do painel. No detalhe do livro há os botões **Bloquear novo download** /
+**Liberar no catálogo** e **Marcar como baixado**.
+
 ## Downloads grandes, Range e retomada
 
 - O arquivo é transmitido em blocos; nada é lido inteiro para memória.
@@ -128,10 +143,10 @@ precisam; falta só ligar nas telas/consultas:
 
 1. **Marcar como baixado** — `store.mark_downloaded(session, book_id)`.
 2. **Não baixar novamente / bloquear** — `store.block(...)` / `store.unblock(...)`.
-3. **Impedir de reaparecer no RSS/OPDS** — chame `store.should_offer(session, book_id)`
-   (ou filtre por `FileRecord.state`) nas consultas de catálogo
-   (`app/opds/queries.py`, `app/library/repository.py`). Hoje o estado é
-   registrado, mas a listagem ainda não o consulta.
+3. **Impedir de reaparecer no OPDS** — ✅ já ligado: `opds/queries.list_books`
+   passa `exclude_states=store.HIDDEN_STATES` para `repository.search`, e as
+   entradas/downloads individuais consultam `queries.is_offerable`. Para incluir
+   outros catálogos, use o mesmo `exclude_states` (ou `store.should_offer`).
 4. **Excluir do armazenamento** — marque `deleted` (`store.set_state`) e apague o
    arquivo; o histórico fica (o `book_id` pode virar `NULL`).
 5. **Evitar reconversão desnecessária** — consulte o registro/estado antes de
@@ -158,7 +173,10 @@ Alterados:
 
 - `app/database/models/enums.py` (`DownloadStatus`, `FileState`),
   `app/database/models/__init__.py` (registro).
-- `app/opds/v1/assets.py` e `app/web/routes/library.py` — instrumentação da entrega.
+- `app/opds/v1/assets.py`, `app/opds/queries.py`, `app/opds/v2.py`,
+  `app/library/repository.py` — instrumentação da entrega e filtro de bloqueio.
+- `app/web/routes/library.py` — instrumentação da entrega, botão de bloqueio e
+  exibição no detalhe.
 - `app/workers/maintenance.py` — recuperação de downloads interrompidos.
 - `app/web/routes/library.py` (detalhe do livro), `app/web/labels.py`,
   `app/web/templating.py`, `app/web/templates/book_detail.html` — exibição.
