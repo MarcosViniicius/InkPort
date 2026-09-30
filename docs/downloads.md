@@ -126,6 +126,28 @@ do painel. No detalhe do livro há os botões **Bloquear novo download** /
   `active_downloads`. A manutenção periódica repete para eventos pendurados há
   mais de 6 h.
 
+## Limpeza automática
+
+Configurável em **Configurações → Limpeza automática** (fica no banco, como o
+resto da configuração):
+
+| Ajuste | Padrão | O que faz |
+| --- | --- | --- |
+| Limpeza automática de arquivos | desligada | liga a rotina |
+| Remover depois de (dias) | 30 | prazo desde o último download (ou desde o bloqueio) |
+| Incluir arquivos originais | desligado | desligado, só remove arquivos gerados por conversão |
+
+Elegível = estado `downloaded` ou `blocked`, **sem download em andamento** e
+ocioso há mais que o prazo. Rodar com os originais desligados é o padrão seguro:
+a limpeza mira os artefatos de conversão que o usuário já baixou, não os
+originais que ele importou.
+
+Ao remover: o arquivo sai do disco, o livro sai da biblioteca e o
+**registro vira `deleted`** (com `book_id` nulo) — o histórico permanece. A
+rotina roda na manutenção periódica (a cada ~15 min, quando ligada) e há um
+**Limpar agora** em *Configurações → Manutenção*, que mostra antes quantos
+arquivos seriam removidos e quanto espaço isso libera.
+
 ## API (base para a gerência futura)
 
 | Rota | Efeito |
@@ -155,9 +177,10 @@ precisam; falta só ligar nas telas/consultas:
 6. **Histórico mínimo** — `file_records` + `download_events`;
    `store.prune_events(keep_days=...)` poda eventos antigos sem perder o
    agregado.
-7. **Limpeza/expiração automática** — `store.cleanup_candidates(states=..., idle_seconds=...)`
-   devolve os candidatos (baixados, ociosos, sem download em andamento) para uma
-   rotina decidir e apagar.
+7. **Limpeza/expiração automática** — ✅ já ligado: `app/downloads/cleanup.py`
+   (`CleanupRule`, `plan`, `run`) usa `store.cleanup_candidates` e roda na
+   manutenção quando habilitado. Novas regras (tamanho, categoria, só originais)
+   entram como campos de `CleanupRule` + `FIELDS`.
 
 ## Arquivos
 
@@ -167,6 +190,7 @@ Criados:
 - `app/downloads/__init__.py`, `app/downloads/store.py`,
   `app/downloads/response.py` — domínio + resposta instrumentada.
 - `app/api/downloads.py` — API de leitura e estados.
+- `app/downloads/cleanup.py` — limpeza automática configurável.
 - `tests/downloads.py`, `docs/downloads.md`.
 
 Alterados:
@@ -177,7 +201,10 @@ Alterados:
   `app/library/repository.py` — instrumentação da entrega e filtro de bloqueio.
 - `app/web/routes/library.py` — instrumentação da entrega, botão de bloqueio e
   exibição no detalhe.
-- `app/workers/maintenance.py` — recuperação de downloads interrompidos.
+- `app/workers/maintenance.py` — recuperação de downloads interrompidos e a
+  rotina de limpeza.
+- `app/security/runtime.py` (`FIELDS`/`GROUPS`), `app/web/routes/settings_routes.py`
+  e `app/web/templates/settings.html` — seção «Limpeza automática» e «Limpar agora».
 - `app/web/routes/library.py` (detalhe do livro), `app/web/labels.py`,
   `app/web/templating.py`, `app/web/templates/book_detail.html` — exibição.
 - `app/api/__init__.py` — registra o router.

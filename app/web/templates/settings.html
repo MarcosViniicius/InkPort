@@ -11,6 +11,7 @@
   'network':    {'icon': 'globe',    'desc': 'Como o servidor se anuncia para leitores e proxy reverso.'},
   'conversion': {'icon': 'database', 'desc': 'Limites de upload, paralelismo e espaço em disco.'},
   'automation': {'icon': 'feeds',    'desc': 'Atualização automática dos feeds cadastrados.'},
+  'cleanup':    {'icon': 'trash',    'desc': 'Remove do servidor arquivos já baixados e antigos.'},
   'app':        {'icon': 'settings', 'desc': 'Ajustes gerais.'}
 } %}
 
@@ -226,6 +227,38 @@
     <form method="post" action="/settings/maintenance">
       <button class="button ghost" type="submit">{{ icon('refresh', 15) }} Executar agora</button>
     </form>
+
+    <h3 class="s-sub">Limpeza de arquivos</h3>
+    {% if cleanup_enabled %}
+      {% if cleanup_plan %}
+      <p class="muted small">
+        {{ cleanup_plan|length }} arquivo(s) já baixado(s) há mais de {{ cleanup_days }} dia(s)
+        — {{ human_size(cleanup_bytes) }} no total{% if not cleanup_include_originals %}, só conversões{% endif %}.
+      </p>
+      <ul class="list small">
+        {% for row in cleanup_plan[:8] %}
+        <li>{{ row.title }} <span class="muted">· {{ human_size(row.size_bytes) }}</span></li>
+        {% endfor %}
+        {% if cleanup_plan|length > 8 %}<li class="muted">… e mais {{ cleanup_plan|length - 8 }}</li>{% endif %}
+      </ul>
+      <form method="post" action="/settings/cleanup"
+            data-confirm="Remover do disco os arquivos já baixados?"
+            data-confirm-msg="Os arquivos saem do disco; o histórico de downloads é mantido. Isto não pode ser desfeito."
+            data-confirm-ok="Remover"
+            data-confirm-danger
+            onsubmit="return confirm('Remover os arquivos já baixados do disco?')">
+        <button class="button ghost danger" type="submit">{{ icon('trash', 15) }} Limpar agora</button>
+      </form>
+      {% else %}
+      <p class="muted small mb0">
+        Nada elegível agora ({{ cleanup_days }} dia(s){% if not cleanup_include_originals %}, só conversões{% endif %}).
+      </p>
+      {% endif %}
+    {% else %}
+    <p class="muted small mb0">
+      Ligue em <strong>Limpeza automática</strong> para remover do disco arquivos já baixados.
+    </p>
+    {% endif %}
   </div>
 </details>
 

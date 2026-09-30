@@ -44,27 +44,36 @@ def check(name: str, condition: bool, detail: str = "") -> None:
         print(f"  FAIL {name} {detail}")
 
 
-def _make_book() -> str:
+def _make_book(
+    *,
+    book_id: str = "bkdwn00000000000000000000000001",
+    title: str = "Livro de teste",
+    fmt: str = "epub",
+    name: str = "livro.epub",
+    media_type: str = "application/epub+zip",
+    is_original: bool = True,
+) -> str:
     from app.config import get_settings
     from app.database import session_scope
     from app.database.models import Book, ContentType
 
     folder = get_settings().library_dir / "testes"
     folder.mkdir(parents=True, exist_ok=True)
-    (folder / "livro.epub").write_bytes(CONTENT)
+    (folder / name).write_bytes(CONTENT)
     with session_scope() as session:
         session.add(
             Book(
-                id="bkdwn00000000000000000000000001",
-                title="Livro de teste",
-                format="epub",
-                media_type="application/epub+zip",
+                id=book_id,
+                title=title,
+                format=fmt,
+                media_type=media_type,
                 content_type=ContentType.EBOOK.value,
-                file_path="testes/livro.epub",
+                file_path=f"testes/{name}",
                 file_size=len(CONTENT),
+                is_original=is_original,
             )
         )
-    return "bkdwn00000000000000000000000001"
+    return book_id
 
 
 def main() -> int:
@@ -74,6 +83,7 @@ def main() -> int:
         DownloadEvent,
         DownloadStatus,
         FileState,
+        utcnow,
     )
     from app.downloads import store as downloads
 
@@ -230,6 +240,48 @@ def main() -> int:
         candidates = downloads.cleanup_candidates(session)
         check("baixado vira candidato à limpeza", any(c.book_id == book_id for c in candidates), str(len(candidates)))
         check("histórico preservado", bool(session.query(DownloadEvent).count()))
+
+    print("\n[limpeza automática com regras]")
+    from datetime import timedelta
+
+    from app.config import get_settings
+    from app.database.models import FileRecord
+    from app.downloads import cleanup as cleanup_mod
+
+    converted_id = _make_book(
+        book_id="bkdwn00000000000000000000000002",
+        title="Conversão antiga",
+        fmt="mobi",
+        name="antiga.mobi",
+        media_type="application/x-mobipocket-ebook",
+        is_original=False,
+    )
+    with session_scope() as session:
+        record = downloads.ensure_record(session, session.get(Book, converted_id))
+        record.state = FileState.DOWNLOADED.value
+        record.last_download_at = utcnow() - timedelta(days=10)
+        session.commit()
+        converted_record_id = record.id
+
+    rule = cleanup_mod.CleanupRule(days=1, include_originals=False)
+    with session_scope() as session:
+        preview = cleanup_mod.plan(session, rule)
+    check("planejamento inclui a conversão antiga", any(r["book_id"] == converted_id for r in preview), str(preview))
+    check("planejamento NÃO inclui o original", all(r["book_id"] != book_id for r in preview), str(preview))
+
+    library = get_settings().library_dir / "testes"
+    check("arquivo existe antes", (library / "antiga.mobi").exists())
+    with session_scope() as session:
+        result = cleanup_mod.run(session, rule)
+    check("limpeza removeu 1 arquivo", result["removed"] == 1, str(result))
+    check("liberou espaço", result["freed_bytes"] > 0, str(result))
+    check("arquivo da conversão saiu do disco", not (library / "antiga.mobi").exists())
+    with session_scope() as session:
+        record = session.get(FileRecord, converted_record_id)
+        check("registro marcado como excluído", record.state == FileState.DELETED.value, record.state)
+        check("histórico preservado (sem livro)", record.book_id is None, str(record.book_id))
+        check("livro removido da biblioteca", session.get(Book, converted_id) is None)
+    check("original continua no disco", (library / "livro.epub").exists())
 
     shutil.rmtree(WORKDIR, ignore_errors=True)
     print(f"\n{len(PASSED)} passed, {len(FAILED)} failed")

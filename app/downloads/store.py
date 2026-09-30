@@ -362,15 +362,17 @@ def cleanup_candidates(
         select(FileRecord)
         .where(FileRecord.state.in_(states))
         .where(FileRecord.active_downloads == 0)
-        .order_by(FileRecord.last_download_at.asc().nullsfirst())
+        .order_by(func.coalesce(FileRecord.last_download_at, FileRecord.updated_at).asc())
         .limit(max(1, limit))
     )
     if idle_seconds:
+        # Reference date: last download, or when it was last touched (e.g. when
+        # it was blocked). A blocked-but-never-downloaded file still ages out.
         cutoff = utcnow() - timedelta(seconds=max(0, idle_seconds))
-        stmt = stmt.where(
-            (FileRecord.last_download_at.is_(None))
-            | (FileRecord.last_download_at <= cutoff)
+        reference = func.coalesce(
+            FileRecord.last_download_at, FileRecord.updated_at, FileRecord.created_at
         )
+        stmt = stmt.where(reference <= cutoff)
     return list(session.scalars(stmt).all())
 
 

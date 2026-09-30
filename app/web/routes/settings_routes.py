@@ -24,6 +24,11 @@ router = APIRouter(prefix="/settings", dependencies=[Depends(require_panel)], ta
 @router.get("")
 def settings_page(request: Request, session: Session = Depends(get_session)):
     settings = get_settings()
+    from app.downloads.cleanup import CleanupRule
+    from app.downloads.cleanup import plan as plan_cleanup
+
+    cleanup_rule = CleanupRule.from_settings(settings)
+    cleanup = plan_cleanup(session, cleanup_rule)
     return render(
         request,
         "settings.html",
@@ -39,6 +44,11 @@ def settings_page(request: Request, session: Session = Depends(get_session)):
             "groups": runtime.groups_for(onboarding=False),
             "fields": runtime.describe(),
             "opds_problem": auth.opds_protection_problem(session),
+            "cleanup_plan": cleanup,
+            "cleanup_bytes": sum(row["size_bytes"] for row in cleanup),
+            "cleanup_enabled": bool(getattr(settings, "download_cleanup_enabled", False)),
+            "cleanup_days": cleanup_rule.days,
+            "cleanup_include_originals": cleanup_rule.include_originals,
         },
     )
 
@@ -104,3 +114,23 @@ def maintenance(session: Session = Depends(get_session)):
     return RedirectResponse(
         f"/settings?ok={quote('Manutenção concluída.')}", status_code=303
     )
+
+
+@router.post("/cleanup")
+def cleanup_now(session: Session = Depends(get_session)):
+    """Run the download cleanup now with the current rules."""
+    from urllib.parse import quote
+
+    from app.downloads.cleanup import CleanupRule
+    from app.downloads.cleanup import run as run_cleanup
+    from app.storage.paths import human_size
+
+    result = run_cleanup(session, CleanupRule.from_settings(get_settings()))
+    if result["removed"]:
+        message = (
+            f"Limpeza: {result['removed']} arquivo(s) removido(s) "
+            f"({human_size(result['freed_bytes'])})."
+        )
+    else:
+        message = "Nada para limpar agora."
+    return RedirectResponse(f"/settings?ok={quote(message)}", status_code=303)

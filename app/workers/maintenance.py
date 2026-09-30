@@ -34,14 +34,21 @@ class MaintenanceLoop:
         logger.info("maintenance loop stopped")
 
     def _tick(self) -> None:
+        settings = get_settings()
         removed = clean_temp_dir(max_age_seconds=3600)
+        cleaned = None
         with session_scope() as session:
             resumed = queue.requeue_stale(session, older_than_seconds=1800)
             missing = mark_missing(session)
             # A download left "started" for hours means a hung request; close it.
             stuck_downloads = downloads.recover_interrupted(session, older_than_seconds=21600)
+            if getattr(settings, "download_cleanup_enabled", False):
+                from app.downloads.cleanup import CleanupRule
+                from app.downloads.cleanup import run as run_cleanup
+
+                cleaned = run_cleanup(session, CleanupRule.from_settings(settings))
             repairs = run_repairs(session)
-        if removed or resumed or missing or stuck_downloads or any(repairs.values()):
+        if removed or resumed or missing or stuck_downloads or cleaned or any(repairs.values()):
             logger.info(
                 "maintenance done",
                 extra={
@@ -49,6 +56,7 @@ class MaintenanceLoop:
                     "resumed": resumed,
                     "missing": missing,
                     "stuck_downloads": stuck_downloads,
+                    "downloads_cleaned": cleaned,
                     **repairs,
                 },
             )

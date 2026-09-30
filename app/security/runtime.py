@@ -32,6 +32,7 @@ GROUPS: dict[str, str] = {
     "network": "Rede e endereços",
     "conversion": "Conversão e armazenamento",
     "automation": "Automação",
+    "cleanup": "Limpeza automática",
 }
 
 
@@ -203,6 +204,41 @@ FIELDS: tuple[Field, ...] = (
         group="automation",
         kind="bool",
         help="Desligado, os feeds só são atualizados quando você pedir no painel.",
+    ),
+    Field(
+        "download_cleanup_enabled",
+        "Limpeza automática de arquivos",
+        group="cleanup",
+        kind="bool",
+        help=(
+            "Remove do disco os arquivos marcados como baixados depois do prazo "
+            "abaixo. O histórico de downloads é mantido."
+        ),
+        onboarding=False,
+    ),
+    Field(
+        "download_cleanup_days",
+        "Remover depois de (dias)",
+        group="cleanup",
+        kind="int",
+        minimum=1,
+        maximum=3650,
+        default=30,
+        help="Contado desde o último download (ou desde o bloqueio).",
+        onboarding=False,
+    ),
+    Field(
+        "download_cleanup_include_originals",
+        "Incluir arquivos originais",
+        group="cleanup",
+        kind="bool",
+        default=False,
+        help=(
+            "Desligado, a limpeza remove apenas arquivos gerados por conversão — "
+            "os originais ficam. Ligue para incluir tudo."
+        ),
+        onboarding=False,
+        advanced=True,
     ),
 )
 
