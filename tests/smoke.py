@@ -62,6 +62,7 @@ def main() -> int:
         _filter_checks(client)
         _import_category_checks(client)
         _url_import_checks(client)
+        _text_import_checks(client)
         _background_feed_actions(client)
         _feed_edit_checks(client)
         _devices_checks(client)
@@ -298,6 +299,92 @@ def _url_import_checks(client) -> None:
     finally:
         server.shutdown()
         server.server_close()
+
+
+def _text_import_checks(client) -> None:
+    """Colar texto: validações e o caminho texto -> TXT -> fila de conversão."""
+    from sqlalchemy import select
+
+    from app.database.base import session_scope
+    from app.database.models import Book, ConversionJob
+
+    print("\n[importar texto colado]")
+    base = {
+        "title": "Conto de teste",
+        "author": "Autora de Teste",
+        "text": "Era uma vez um texto colado para virar livro.\nSegunda linha.",
+        "category": "Textos",
+        "convert": "on",
+        "target_format": "epub",
+        "device_profile": "generic_epub",
+        "keep_original": "on",
+    }
+
+    sem_titulo = dict(base, title="")
+    response = client.post("/import/text", data=sem_titulo)
+    check(
+        "texto sem título é recusado com aviso",
+        response.status_code == 400 and "título" in response.text,
+        str(response.status_code),
+    )
+    sem_texto = dict(base, text="   ")
+    response = client.post("/import/text", data=sem_texto)
+    check(
+        "texto vazio é recusado com aviso",
+        response.status_code == 400 and "Cole o texto" in response.text,
+        str(response.status_code),
+    )
+    sem_categoria = dict(base, category="")
+    response = client.post("/import/text", data=sem_categoria)
+    check(
+        "texto sem categoria é recusado com aviso",
+        response.status_code == 400 and "categoria" in response.text,
+        str(response.status_code),
+    )
+
+    response = client.post("/import/text", data=base)
+    check("texto colado é importado", response.status_code == 200, str(response.status_code))
+    check(
+        "o resultado mostra importado e a conversão na fila",
+        "importado" in response.text and "na fila" in response.text,
+    )
+
+    livro_id = None
+    with session_scope() as session:
+        livro = session.scalar(
+            select(Book).where(Book.title == "Conto de teste", Book.format == "txt")
+        )
+        check("livro TXT guardado com o título colado", livro is not None)
+        if livro is not None:
+            livro_id = livro.id
+            check("autor informado vai para o livro", livro.author == "Autora de Teste", livro.author or "")
+            check(
+                "categoria aplicada",
+                livro.category_rel is not None and livro.category_rel.name == "Textos",
+                getattr(livro.category_rel, "name", None),
+            )
+            job = session.scalar(
+                select(ConversionJob).where(ConversionJob.book_id == livro.id)
+            )
+            check(
+                "conversão para EPUB enfileirada",
+                job is not None and job.target_format == "epub",
+                str(job and job.target_format),
+            )
+
+    # O texto duplicado não cria um segundo livro (dedup por hash).
+    repetido = client.post("/import/text", data=base)
+    check(
+        "colar o mesmo texto avisa que já existe",
+        repetido.status_code == 200 and "Já existe" in repetido.text,
+        str(repetido.status_code),
+    )
+
+    if livro_id:
+        client.post(f"/library/{livro_id}/delete", data={"delete_files": "on"})
+        with session_scope() as session:
+            resto = session.get(Book, livro_id)
+        check("a importação de teste não deixa livros para trás", resto is None)
 
 
 def _background_feed_actions(client) -> None:

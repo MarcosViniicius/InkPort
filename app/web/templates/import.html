@@ -24,7 +24,7 @@
 </div>
 
 <ol class="flow" aria-label="Como importar">
-  <li><span class="n">1</span><span><strong>Escolha os arquivos</strong><em>Arraste para a área ou selecione do computador.</em></span></li>
+  <li><span class="n">1</span><span><strong>Escolha os arquivos ou cole um texto</strong><em>Arraste para a área, selecione do computador ou digite direto.</em></span></li>
   <li><span class="n">2</span><span><strong>Diga a categoria</strong><em>É a pasta no catálogo OPDS. Obrigatória.</em></span></li>
   <li><span class="n">3</span><span><strong>Converta se quiser</strong><em>Ligue a conversão e escolha o formato.</em></span></li>
 </ol>
@@ -35,7 +35,7 @@
     <form method="post" action="/import/upload" enctype="multipart/form-data">
       <div class="drop" data-drop>
         <div class="big">Arraste os arquivos aqui</div>
-        <p class="hint" data-drop-name>ou clique para escolher · PDF, EPUB, CBZ/CBR, imagens, MOBI/AZW… até {{ max_upload_mb }} MB cada</p>
+        <p class="hint" data-drop-name>ou clique para escolher · PDF, EPUB, TXT, FB2, DOCX, CBZ/CBR, imagens, MOBI/AZW… até {{ max_upload_mb }} MB cada</p>
         <input type="file" name="files" multiple required aria-label="Escolher arquivos">
       </div>
 
@@ -69,6 +69,58 @@
 
       <button class="button lg" type="submit">{{ icon('import', 16) }} Importar{{ ' e converter' if conv }}</button>
       <p class="form-note">{{ icon('alert', 14) }} Arquivos grandes podem demorar: não feche a aba até ver o resultado abaixo.</p>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>{{ icon('edit', 17) }} Colar texto</h2></div>
+    <p class="hint">Cole um texto para guardar como livro TXT. Vale para contos, poemas, anotações e rascunhos.</p>
+    <form method="post" action="/import/text">
+      <div class="field">
+        <label for="text-title">Título <span class="text-danger">*</span></label>
+        <input id="text-title" name="title" required maxlength="300"
+               value="{{ text_title or '' }}" placeholder="ex.: O conto da noite">
+      </div>
+      <div class="field">
+        <label for="text-author">Autor (opcional)</label>
+        <input id="text-author" name="author" maxlength="300"
+               value="{{ text_author or '' }}" placeholder="ex.: Machado de Assis">
+      </div>
+      <div class="field">
+        <label for="text-body">Texto <span class="text-danger">*</span></label>
+        <textarea id="text-body" name="text" required rows="10"
+                  placeholder="Cole o texto aqui…">{{ text_body or '' }}</textarea>
+      </div>
+
+      {{ category_select('text-category', categories, selected=selected_category) }}
+
+      <fieldset>
+        <legend>Conversão</legend>
+        <div class="switch-stack mb3">
+          {{ toggle('convert', 'Converter automaticamente', checked=conv,
+                    hint='O servidor escolhe o melhor formato compatível quando você deixa em “Automático”.',
+                    attrs='data-toggle-target="#text-targets"') }}
+        </div>
+        <div id="text-targets">
+          <div class="field-row">
+            <div class="field mb0">
+              <label for="text-format">Converter para</label>
+              <select id="text-format" name="target_format">
+                {% for fmt in output_formats %}
+                  <option value="{{ fmt }}" {{ 'selected' if fmt == fmt_sel }}>{{ 'Automático (melhor por arquivo)' if fmt == 'auto' else format_label(fmt) }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            {{ device_select(profiles, id='text-profile', selected=prof_sel, label='Dispositivo') }}
+          </div>
+        </div>
+        <div class="switch-stack mt4">
+          {{ toggle('keep_original', 'Manter o arquivo original', checked=keep,
+                    hint='Desligado, o TXT é removido depois que a conversão termina.') }}
+        </div>
+      </fieldset>
+
+      <button class="button lg" type="submit">{{ icon('edit', 16) }} Importar texto</button>
     </form>
   </div>
 

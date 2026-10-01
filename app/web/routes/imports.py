@@ -128,6 +128,101 @@ async def upload(
     return render(request, "import.html", context)
 
 
+@router.post("/text")
+def import_from_text(
+    request: Request,
+    title: str = Form(""),
+    author: str = Form(""),
+    text: str = Form(""),
+    category: str = Form(""),
+    convert: str = Form(""),
+    target_format: str = Form("auto"),
+    device_profile: str = Form("generic_epub"),
+    keep_original: str = Form(""),
+    session: Session = Depends(get_session),
+):
+    """Importa um texto colado no formulário como livro TXT, já convertendo.
+
+    O texto é gravado como um arquivo ``.txt`` no inbox e segue o mesmo caminho
+    do upload (detecção, dedup por hash, capa, fila de conversão).
+    """
+    name = (title or "").strip()
+    body = (text or "").strip()
+    eco = {
+        "text_title": name,
+        "text_author": (author or "").strip(),
+        "text_body": text or "",
+        "category": category.strip(),
+        "target_format": target_format,
+        "device_profile": device_profile,
+        "keep_original": bool(keep_original),
+        "convert": bool(convert),
+    }
+    if not name:
+        return _page_error(request, session, "Informe um título para o texto.", eco)
+    if not body:
+        return _page_error(request, session, "Cole o texto antes de importar.", eco)
+    if not category.strip():
+        return _page_error(
+            request,
+            session,
+            "Escolha uma categoria (ou digite uma nova) antes de importar.",
+            eco,
+        )
+
+    settings = get_settings()
+    settings.inbox_dir.mkdir(parents=True, exist_ok=True)
+    max_bytes = settings.max_upload_mb * 1024 * 1024
+    payload = body.encode("utf-8")
+    if len(payload) > max_bytes:
+        return _page_error(request, session, "O texto passa do limite de upload.", eco)
+
+    base = safe_filename(name) or "texto"
+    target = settings.inbox_dir / f"{base}.txt"
+    counter = 1
+    while target.exists():
+        target = settings.inbox_dir / f"{base} ({counter}).txt"
+        counter += 1
+    try:
+        target.write_bytes(payload)
+    except OSError:
+        logger.exception("text import failed to stage file")
+        return _page_error(request, session, "Não foi possível gravar o texto.", eco)
+
+    size = target.stat().st_size
+    detection = detect(target)
+    outcome = import_file(
+        session,
+        target,
+        category=category.strip(),
+        source=SourceKind.UPLOAD.value,
+        move=True,
+        title_override=name,
+    )
+    if outcome.status == STATUS_IMPORTED and outcome.book is not None:
+        wanted = (author or "").strip()
+        if wanted and not outcome.book.author:
+            outcome.book.author = wanted
+            session.commit()
+
+    item = _result(
+        session, target.name, outcome, detection, size,
+        convert, target_format, device_profile, keep_original,
+    )
+    context = _base_context(session)
+    context.update(
+        {
+            "results": [item],
+            "category": category.strip(),
+            "convert": bool(convert),
+            "target_format": target_format,
+            "device_profile": device_profile,
+            "keep_original": bool(keep_original),
+        }
+    )
+    return render(request, "import.html", context)
+
+
 @router.post("/url")
 def import_from_url(
     request: Request,
