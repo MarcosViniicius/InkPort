@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     )
 
     # --- App -----------------------------------------------------------------
-    app_name: str = "OPDS Server"
+    app_name: str = "InkPort"
     debug: bool = False
 
     # Interface to bind. "0.0.0.0" = every interface on the network.

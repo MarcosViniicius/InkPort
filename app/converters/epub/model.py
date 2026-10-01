@@ -51,7 +51,7 @@ class EpubMeta:
     reading_direction: str = "ltr"
     cover_image: Path | None = None
     fixed_layout: bool = False
-    generator: str = "opds-server"
+    generator: str = "inkport"
     #: Publication date as text (``YYYY-MM-DD`` or a full timestamp).
     date: str | None = None
 

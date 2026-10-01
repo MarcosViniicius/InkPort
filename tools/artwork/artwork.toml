@@ -9,7 +9,7 @@
 # ---------------------------------------------------------------------------
 
 [project]
-name = "OPDS Server"
+name = "InkPort"
 tagline = "Servidor OPDS 1.2 / 2.0 para leitores e-ink — painel, biblioteca e conversão"
 repo = "MarcosViniicius/eink-opds-server"
 # version = "0.2.0"   # descomente para fixar; vazio = le de app/__init__.py
@@ -58,7 +58,7 @@ label = "docker"
 value = "compose"
 
 [diagram]
-title = "Arquitetura do eink-opds-server"
+title = "Arquitetura do InkPort"
 width = 1200
 # Um rotulo por seta, na ordem: entre o tier 1->2, 2->3, 3->4...
 arrows = [

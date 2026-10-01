@@ -199,7 +199,7 @@ class EpubToFb2Converter(BaseConverter):
             f"<last-name>{last}</last-name></author><book-title>{title}</book-title>"
             f"<lang>{escape(meta.language or document.language or 'pt')}</lang>"
             "</title-info>"
-            f"<document-info><program-used>opds-server</program-used></document-info>"
+            f"<document-info><program-used>inkport</program-used></document-info>"
             "</description>\n"
             f"<body>{''.join(body)}</body>\n"
             "</FictionBook>\n"

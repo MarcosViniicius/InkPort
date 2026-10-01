@@ -37,10 +37,10 @@ subagente).
 python tools/devops/container_report.py
 
 # explícito
-python tools/devops/container_report.py opds-server:latest opds-server
+python tools/devops/container_report.py inkport:latest inkport
 
 # resumo legível por máquina (para diff antes/depois)
-python tools/devops/container_report.py opds-server:latest opds-server --json
+python tools/devops/container_report.py inkport:latest inkport --json
 
 # podman
 CONTAINER_RUNTIME=podman python tools/devops/container_report.py
@@ -65,7 +65,7 @@ usa `run --rm --network none` para inspecionar o conteúdo da imagem.
 ## Linha de base (este repositório)
 
 Medida em 2026-09-29 com
-`python tools/devops/container_report.py opds-server:latest opds-baseline`
+`python tools/devops/container_report.py inkport:latest inkport-baseline`
 (Docker Desktop 29.6.2, linux/amd64, base `python:3.12-slim` / Debian trixie).
 Preencha de novo depois de cada mudança e compare — os números ficam aqui.
 

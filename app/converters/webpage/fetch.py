@@ -8,7 +8,7 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-USER_AGENT = "opds-server/0.1 (+webpage-to-epub)"
+USER_AGENT = "inkport/0.1 (+webpage-to-epub)"
 DEFAULT_MAX_BYTES = 12 * 1024 * 1024
 
 

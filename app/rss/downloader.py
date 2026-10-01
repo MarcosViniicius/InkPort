@@ -14,7 +14,7 @@ from app.storage.paths import safe_filename
 
 logger = logging.getLogger(__name__)
 
-USER_AGENT = "opds-server/0.1 (+https://github.com/) rss-worker"
+USER_AGENT = "inkport/0.1 (+https://github.com/) rss-worker"
 CHUNK = 64 * 1024
 
 #: Fallback extension when the URL has none, keyed by the response Content-Type.

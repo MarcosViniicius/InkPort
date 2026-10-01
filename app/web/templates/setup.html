@@ -7,14 +7,14 @@
   <meta name="robots" content="noindex">
   <meta name="description" content="Primeiro acesso: crie a senha e ajuste o essencial da sua biblioteca.">
   <title>Primeiro acesso · {{ app_name }}</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%231f6f5c'/><path d='M18 46V20h6.6l7.4 12 7.4-12H46v26h-6V31l-6.4 10h-2.6L24 31v15z' fill='%23fff'/></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%231f6f5c'/><path d='M22 20h20v7H22z M28.5 27h7v10h-7z M22 37h20v7H22z' fill='%23fff'/></svg>">
   <link rel="stylesheet" href="{{ static_url('style.css') }}">
 </head>
 <body>
   <main class="auth">
     <div class="panel wide">
       <div class="card">
-        <span class="mark" aria-hidden="true">M</span>
+        <span class="mark" aria-hidden="true">I</span>
         <h1>Primeiro acesso</h1>
         <p class="muted">
           Crie a senha do painel e ajuste o essencial. <strong>Tudo fica no banco
@@ -42,10 +42,10 @@
             </p>
             <p class="hint">
               Onde encontrar: no bloco <strong>PRIMEIRO ACESSO</strong> que o
-              servidor imprime ao iniciar — <code>docker logs opds-server</code>,
-              <code>journalctl -u opds-server</code> ou o próprio terminal — e
+              servidor imprime ao iniciar — <code>docker logs inkport</code>,
+              <code>journalctl -u inkport</code> ou o próprio terminal — e
               também no arquivo <code>data/setup.token</code>
-              (<code>docker exec opds-server cat /data/setup.token</code>).
+              (<code>docker exec inkport cat /data/setup.token</code>).
               Reiniciar o servidor mostra um token novo.
             </p>
           </div>

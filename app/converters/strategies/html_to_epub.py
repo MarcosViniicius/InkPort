@@ -68,7 +68,7 @@ class HtmlToEpubConverter(BaseConverter):
             date=request.metadata.published or page.date,
             subjects=list(request.metadata.tags or []) or list(page.tags),
             identifier=page.identifier or page_url,
-            generator="opds-server (webpage-to-epub)",
+            generator="inkport (webpage-to-epub)",
         )
 
         out = request.workdir / "output.epub"

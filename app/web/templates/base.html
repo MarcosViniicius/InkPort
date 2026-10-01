@@ -11,7 +11,7 @@
   <meta property="og:description" content="Sua biblioteca, no seu leitor.">
   <meta property="og:type" content="website">
   <title>{% block title %}{{ app_name }}{% endblock %}</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%231f6f5c'/><path d='M18 46V20h6.6l7.4 12 7.4-12H46v26h-6V31l-6.4 10h-2.6L24 31v15z' fill='%23fff'/></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%231f6f5c'/><path d='M22 20h20v7H22z M28.5 27h7v10h-7z M22 37h20v7H22z' fill='%23fff'/></svg>">
   <link rel="stylesheet" href="{{ static_url('style.css') }}">
   <script defer src="{{ static_url('app.js') }}"></script>
   {% block head %}{% endblock %}
@@ -24,7 +24,7 @@
     {% from "partials/icons.html" import icon %}
     <aside class="sidebar" id="sidebar" aria-label="Navegação principal">
       <a class="brand" href="/">
-        <span class="mark" aria-hidden="true">M</span>
+        <span class="mark" aria-hidden="true">I</span>
         <span>
           <span class="word">{{ app_name }}</span>
           <span class="tag">para leitores e-ink</span>
@@ -60,7 +60,7 @@
       <header class="topbar">
         <button class="burger" type="button" data-nav-toggle aria-controls="sidebar" aria-expanded="false" aria-label="Abrir menu"><span></span></button>
         <a class="brand" href="/">
-          <span class="mark" aria-hidden="true">M</span>
+          <span class="mark" aria-hidden="true">I</span>
           <span class="word">{{ app_name }}</span>
         </a>
         <span class="spacer"></span>

@@ -327,6 +327,23 @@ def _rewrite_refs(
     return _REF_RE.sub(repl, text)
 
 
+def repair_app_name(session: Session) -> int:
+    """Rename the stored app name on rebrand (one-time, opt-out by customizing).
+
+    Installations that saved settings when the project was called "OPDS Server"
+    keep showing the old name, because the database overrides the code default.
+    Only the exact old default is migrated; a custom name is left alone.
+    """
+    from app.security import runtime, settings_store
+
+    if settings_store.get(session, "app_name") != "OPDS Server":
+        return 0
+    settings_store.set_value(session, "app_name", "InkPort")
+    session.commit()
+    runtime.load(session)  # the cache was filled before the repairs ran
+    return 1
+
+
 def run_repairs(session: Session) -> dict[str, int]:
     """Run every repair; returns a small report."""
     report = {
@@ -337,6 +354,7 @@ def run_repairs(session: Session) -> dict[str, int]:
         "epub_images_fixed": repair_epub_image_paths(session),
         "covers_generated": repair_missing_covers(session),
         "orphan_covers_removed": cleanup_orphan_covers(session),
+        "app_name_rebranded": repair_app_name(session),
     }
     if any(report.values()):
         logger.info("library repairs applied", extra=report)

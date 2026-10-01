@@ -107,7 +107,7 @@ class Fb2ToEpubConverter(BaseConverter):
                 author=author,
                 language=language or "pt",
                 identifier=request.source.name,
-                generator="opds-server (fb2)",
+                generator="inkport (fb2)",
             ),
             chapters=chapters,
             images=images,
@@ -287,7 +287,7 @@ def _meta(request: ConversionRequest, *, title: str) -> EpubMeta:
         date=metadata.published or None,
         subjects=list(metadata.tags or []),
         identifier=request.source.name,
-        generator="opds-server",
+        generator="inkport",
     )
 
 

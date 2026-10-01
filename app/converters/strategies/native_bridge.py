@@ -55,7 +55,7 @@ class PdfToEpubTextConverter(BaseConverter):
             date=metadata.published or None,
             subjects=list(metadata.tags or []),
             identifier=request.source.name,
-            generator="opds-server (pdf-reflow)",
+            generator="inkport (pdf-reflow)",
         )
         out = request.workdir / "output.epub"
         write_text_epub(

@@ -1,6 +1,6 @@
-# OPDS Server
+# InkPort
 
-![OPDS Server: servidor OPDS 1.2 / 2.0 para leitores e-ink](docs/images/banner.svg)
+![InkPort: servidor OPDS 1.2 / 2.0 para leitores e-ink](docs/images/banner.svg)
 
 ![versão](docs/images/badges/version.svg)
 ![python](docs/images/badges/python.svg)
@@ -212,7 +212,7 @@ Login inicial: usuário e senha do `.env` (padrão `admin` / `admin` — **troqu
 ### Liberar a porta no firewall (Windows)
 
 ```powershell
-New-NetFirewallRule -DisplayName "OPDS Server" -Direction Inbound `
+New-NetFirewallRule -DisplayName "InkPort" -Direction Inbound `
   -LocalPort 8080 -Protocol TCP -Action Allow
 ```
 

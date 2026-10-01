@@ -1,5 +1,5 @@
 # ===========================================================================
-# OPDS Server - arquivos que NAO devem ir para o repositorio.
+# InkPort - arquivos que NAO devem ir para o repositorio.
 # Regra de ouro: dados do usuario, segredos e artefatos gerados ficam de fora.
 # ===========================================================================
 

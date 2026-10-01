@@ -1,5 +1,5 @@
 [project]
-name = "opds-server"
+name = "inkport"
 version = "0.1.0"
 description = "Servidor OPDS 1.2/2.0 leve com painel web, biblioteca e conversão para e-readers."
 requires-python = ">=3.11"

@@ -1,8 +1,8 @@
 services:
   opds:
     build: .
-    image: opds-server:latest
-    container_name: opds-server
+    image: inkport:latest
+    container_name: inkport
     restart: unless-stopped
     ports:
       - "8080:8080"

@@ -22,7 +22,7 @@ switch ($Task) {
     }
     "firewall"         {
         $port = (& $python -c "from app.config import get_settings; print(get_settings().port)").Trim()
-        Start-Process powershell -Verb RunAs -ArgumentList "-Command", "New-NetFirewallRule -DisplayName 'OPDS Server' -Direction Inbound -LocalPort $port -Protocol TCP -Action Allow"
+        Start-Process powershell -Verb RunAs -ArgumentList "-Command", "New-NetFirewallRule -DisplayName 'InkPort' -Direction Inbound -LocalPort $port -Protocol TCP -Action Allow"
     }
     "clean"            {
         Get-ChildItem -Recurse -Directory -Filter "__pycache__" | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue

@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="300" viewBox="0 0 1280 300" role="img" aria-label="OPDS Server — Servidor OPDS 1.2 / 2.0 para leitores e-ink — painel, biblioteca e conversão">
-  <title>OPDS Server — Servidor OPDS 1.2 / 2.0 para leitores e-ink — painel, biblioteca e conversão</title>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="300" viewBox="0 0 1280 300" role="img" aria-label="InkPort — Servidor OPDS 1.2 / 2.0 para leitores e-ink — painel, biblioteca e conversão">
+  <title>InkPort — Servidor OPDS 1.2 / 2.0 para leitores e-ink — painel, biblioteca e conversão</title>
   <desc>Banner gerado por tools/artwork (rode o gerador após mudar o tema).</desc>
   <rect x="0" y="0" width="1280" height="300" fill="#14161a"/>
   <rect x="0.5" y="0.5" width="1279" height="299" fill="none" rx="14" stroke="#2c3138"/>
   <rect x="80" y="94" width="74" height="74" fill="#63b39d" rx="17.76"/>
   <svg x="94.06" y="108.06" width="45.88" height="45.88" viewBox="0 0 24 24" fill="none" stroke="#0f1c18" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M8 3v15"/></svg>
-  <text x="182" y="140" font-family="'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, ui-serif, serif" font-size="54" fill="#ecebe7" font-weight="600">OPDS Server</text>
-  <rect x="538.1" y="108" width="67" height="28" fill="#1b1e23" rx="8" stroke="#63b39d" stroke-opacity="0.55"/>
-  <text x="550.1" y="126.68" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" fill="#8fd0be">v0.1.0</text>
+  <text x="182" y="140" font-family="'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, ui-serif, serif" font-size="54" fill="#ecebe7" font-weight="600">InkPort</text>
+  <rect x="404.2" y="108" width="67" height="28" fill="#1b1e23" rx="8" stroke="#63b39d" stroke-opacity="0.55"/>
+  <text x="416.2" y="126.68" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" fill="#8fd0be">v0.1.0</text>
   <text x="184" y="174" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="18" fill="#9a978f">Servidor OPDS 1.2 / 2.0 para leitores e-ink — painel, biblioteca e conversão</text>
   <rect x="182" y="198" width="139" height="32" fill="#1b1e23" rx="8" stroke="#63b39d" stroke-opacity="0.55"/>
   <text x="198" y="219.04" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="14" fill="#8fd0be">OPDS 1.2 · 2.0</text>
