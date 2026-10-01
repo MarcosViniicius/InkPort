@@ -49,7 +49,60 @@ def import_page(request: Request, session: Session = Depends(get_session)):
     echoed = (request.query_params.get("category") or "").strip()
     if echoed:
         context["category"] = echoed
+    kind = (request.query_params.get("kind") or "").strip().lower()
+    if kind in {"files", "text", "url", "scan"}:
+        context["kind"] = kind
     return render(request, "import.html", context)
+
+
+@router.post("/submit")
+async def submit(
+    request: Request,
+    kind: str = Form("files"),
+    files: list[UploadFile] = File(default=[]),
+    title: str = Form(""),
+    author: str = Form(""),
+    text: str = Form(""),
+    url: str = Form(""),
+    path: str = Form(""),
+    recursive: str = Form(""),
+    move: str = Form(""),
+    category: str = Form(""),
+    convert: str = Form(""),
+    target_format: str = Form("auto"),
+    device_profile: str = Form("generic_epub"),
+    keep_original: str = Form(""),
+    session: Session = Depends(get_session),
+):
+    """Single entry point for the unified import form.
+
+    Dispatches on ``kind`` to the same handlers the individual endpoints use,
+    so the old routes keep working untouched (panel tests and integrations).
+    """
+    kind = (kind or "files").strip().lower()
+    if kind == "text":
+        return _handle_text(
+            request, session, title, author, text,
+            category, convert, target_format, device_profile, keep_original,
+        )
+    if kind == "url":
+        return _handle_url(
+            request, session, url,
+            category, convert, target_format, device_profile, keep_original,
+        )
+    if kind == "scan":
+        return _handle_scan(
+            request, session, path, recursive, move,
+            category, convert, target_format, device_profile, keep_original,
+        )
+    if kind == "files":
+        return await _handle_upload(
+            request, session, files,
+            category, convert, target_format, device_profile, keep_original,
+        )
+    context = _base_context(session)
+    context["err"] = "Tipo de importação desconhecido."
+    return render(request, "import.html", context, status_code=400)
 
 
 @router.post("/upload")
@@ -63,6 +116,22 @@ async def upload(
     keep_original: str = Form(""),
     session: Session = Depends(get_session),
 ):
+    return await _handle_upload(
+        request, session, files,
+        category, convert, target_format, device_profile, keep_original,
+    )
+
+
+async def _handle_upload(
+    request: Request,
+    session: Session,
+    files: list[UploadFile],
+    category: str,
+    convert: str,
+    target_format: str,
+    device_profile: str,
+    keep_original: str,
+):
     settings = get_settings()
     settings.inbox_dir.mkdir(parents=True, exist_ok=True)
     max_bytes = settings.max_upload_mb * 1024 * 1024
@@ -75,6 +144,7 @@ async def upload(
         context.update(
             {
                 "err": "Escolha uma categoria (ou digite uma nova) antes de importar.",
+                "kind": "files",
                 "category": category.strip(),
                 "target_format": target_format,
                 "device_profile": device_profile,
@@ -122,6 +192,7 @@ async def upload(
 
     context = _base_context(session)
     context.update({"results": results, "convert": bool(convert),
+                    "kind": "files",
                     "category": category.strip(),
                     "target_format": target_format, "device_profile": device_profile,
                     "keep_original": bool(keep_original)})
@@ -141,6 +212,24 @@ def import_from_text(
     keep_original: str = Form(""),
     session: Session = Depends(get_session),
 ):
+    return _handle_text(
+        request, session, title, author, text,
+        category, convert, target_format, device_profile, keep_original,
+    )
+
+
+def _handle_text(
+    request: Request,
+    session: Session,
+    title: str,
+    author: str,
+    text: str,
+    category: str,
+    convert: str,
+    target_format: str,
+    device_profile: str,
+    keep_original: str,
+):
     """Importa um texto colado no formulário como livro TXT, já convertendo.
 
     O texto é gravado como um arquivo ``.txt`` no inbox e segue o mesmo caminho
@@ -149,6 +238,7 @@ def import_from_text(
     name = (title or "").strip()
     body = (text or "").strip()
     eco = {
+        "kind": "text",
         "text_title": name,
         "text_author": (author or "").strip(),
         "text_body": text or "",
@@ -213,6 +303,7 @@ def import_from_text(
     context.update(
         {
             "results": [item],
+            "kind": "text",
             "category": category.strip(),
             "convert": bool(convert),
             "target_format": target_format,
@@ -234,6 +325,22 @@ def import_from_url(
     keep_original: str = Form(""),
     session: Session = Depends(get_session),
 ):
+    return _handle_url(
+        request, session, url,
+        category, convert, target_format, device_profile, keep_original,
+    )
+
+
+def _handle_url(
+    request: Request,
+    session: Session,
+    url: str,
+    category: str,
+    convert: str,
+    target_format: str,
+    device_profile: str,
+    keep_original: str,
+):
     """Baixa uma página da web e a importa como livro, já convertendo.
 
     Guardar o endereço em ``source_url`` é o que faz o conversor de páginas
@@ -243,6 +350,7 @@ def import_from_url(
     """
     endereco = url.strip()
     eco = {
+        "kind": "url",
         "url": endereco,
         "category": category.strip(),
         "target_format": target_format,
@@ -313,6 +421,7 @@ def import_from_url(
     context.update(
         {
             "results": [item],
+            "kind": "url",
             "category": category.strip(),
             "convert": bool(convert),
             "target_format": target_format,
@@ -336,6 +445,24 @@ def scan(
     keep_original: str = Form(""),
     session: Session = Depends(get_session),
 ):
+    return _handle_scan(
+        request, session, path, recursive, move,
+        category, convert, target_format, device_profile, keep_original,
+    )
+
+
+def _handle_scan(
+    request: Request,
+    session: Session,
+    path: str,
+    recursive: str,
+    move: str,
+    category: str,
+    convert: str,
+    target_format: str,
+    device_profile: str,
+    keep_original: str,
+):
     root = Path(path).expanduser()
     if not root.exists():
         raise HTTPException(status_code=404, detail="Caminho não encontrado")
@@ -344,7 +471,7 @@ def scan(
 
         return RedirectResponse(
             f"/import?err={quote('Escolha uma categoria (ou digite uma nova) antes de varrer a pasta.')}"
-            f"&category={quote(category.strip())}",
+            f"&category={quote(category.strip())}&kind=scan",
             status_code=303,
         )
     report = scan_directory(
@@ -364,6 +491,7 @@ def scan(
 
     context = _base_context(session)
     context.update({"report": report, "queued": queued, "convert": bool(convert),
+                    "kind": "scan",
                     "category": category.strip(),
                     "target_format": target_format, "device_profile": device_profile,
                     "keep_original": bool(keep_original)})
@@ -406,6 +534,7 @@ def _base_context(session: Session) -> dict:
     settings = get_settings()
     return {
         "active": "import",
+        "kind": "files",
         "categories": repository.categories(session),
         "category": "",
         "profiles": all_profiles(session),

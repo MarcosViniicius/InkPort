@@ -380,6 +380,20 @@ def _text_import_checks(client) -> None:
         str(repetido.status_code),
     )
 
+    # O formulário único despacha pelo `kind` para os mesmos caminhos.
+    via_submit = client.post("/import/submit", data=dict(base, kind="text"))
+    check(
+        "/import/submit com kind=text importa",
+        via_submit.status_code == 200 and "Já existe" in via_submit.text,
+        str(via_submit.status_code),
+    )
+    desconhecido = client.post("/import/submit", data={"kind": "fax"})
+    check(
+        "/import/submit com kind desconhecido avisa (não 500)",
+        desconhecido.status_code == 400 and "Tipo de importação" in desconhecido.text,
+        str(desconhecido.status_code),
+    )
+
     if livro_id:
         client.post(f"/library/{livro_id}/delete", data={"delete_files": "on"})
         with session_scope() as session:

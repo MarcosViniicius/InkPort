@@ -79,17 +79,23 @@ já traz um atalho para importar quando a biblioteca está vazia.
 
 ## Importar (`/import`)
 
-Quatro blocos:
+Um card único com seletor de tipo — **Arquivos**, **Texto**, **URL** ou
+**Pasta do servidor**. Só os campos do tipo escolhido aparecem (sem JS, todos
+aparecem e o servidor valida pelo tipo enviado). Todos os tipos passam pela
+mesma categoria e pelas mesmas **Opções avançadas** (conversão, formato,
+dispositivo, manter o original):
 
-1. **Enviar arquivos** — selecione ou arraste **vários arquivos**. Aceita EPUB,
+1. **Arquivos** — selecione ou arraste **vários arquivos**. Aceita EPUB,
    PDF, CBZ/CBR, MOBI/AZW3, DOCX, FB2, TXT, imagens e compactados.
-2. **Baixar de uma URL** — o servidor baixa uma **página da web** e a importa
+2. **Texto** — cole um texto para guardar como livro TXT (título obrigatório,
+   autor opcional).
+3. **URL** — o servidor baixa uma **página da web** e a importa
    como livro HTML (com o endereço guardado em *origem*), já convertendo para
    EPUB pelo conversor de páginas: o título e o autor saem da própria página e as
    imagens entram no livro. Também aceita o endereço de um arquivo suportado
    (PDF, EPUB, imagem…). Páginas que só montam o conteúdo com JavaScript podem
    vir incompletas.
-3. **Varrer pasta do servidor** — informe um caminho do próprio servidor, marque
+3. **Pasta do servidor** — informe um caminho do próprio servidor, marque
    *recursivo* se quiser subpastas e *mover* para tirar os arquivos do lugar de
    origem.
 4. **Inspecionar** — veja o que o servidor entende de um arquivo antes de

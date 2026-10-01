@@ -183,6 +183,43 @@
     sync();
   });
 
+  /* --- import type switch (one panel at a time) ------------------------ */
+  /* The unified import form shows only the fields for the chosen kind. Without
+     JS every panel stays visible and the server validates by `kind`, so nothing
+     breaks. `data-required` marks kind-specific fields: required only while
+     their panel is active (a hidden required field would block the submit). */
+  document.querySelectorAll("[data-import-form]").forEach(function (form) {
+    var submitLabels = {
+      files: "Importar", text: "Importar texto",
+      url: "Baixar e importar", scan: "Escanear e importar"
+    };
+    function current() {
+      var checked = form.querySelector('input[name="kind"]:checked');
+      return checked ? checked.value : "files";
+    }
+    function sync() {
+      var kind = current();
+      form.querySelectorAll("[data-import-panel]").forEach(function (panel) {
+        var on = panel.getAttribute("data-import-panel") === kind;
+        panel.hidden = !on;
+        panel.querySelectorAll("input, select, textarea").forEach(function (el) {
+          if (el.name === "kind") return;
+          el.disabled = !on;
+          if (el.hasAttribute("data-required")) {
+            if (on) el.setAttribute("required", "");
+            else el.removeAttribute("required");
+          }
+        });
+      });
+      var label = form.querySelector("[data-import-submit-label]");
+      if (label && submitLabels[kind]) label.textContent = submitLabels[kind];
+    }
+    form.querySelectorAll('input[name="kind"]').forEach(function (radio) {
+      radio.addEventListener("change", sync);
+    });
+    sync();
+  });
+
   /* --- library view toggle (grid/list) --------------------------------- */
   var toggle = document.querySelector("[data-view-toggle]");
   if (toggle) {

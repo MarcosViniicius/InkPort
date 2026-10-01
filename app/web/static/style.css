@@ -302,6 +302,35 @@ select { appearance: none; background-image: linear-gradient(45deg, transparent 
 .period > input { flex: 1 1 6rem; min-width: 0; }
 .period > select { flex: 0 0 auto; width: auto; min-width: 8.5rem; }
 
+/* Import type picker: one card per source (radio stays in the DOM, no JS needed
+   to choose; app.js only swaps the visible panel). Same pattern as .segmented. */
+.import-type {
+  display: grid; gap: var(--s2); margin: 0 0 var(--s4); padding: 0; border: 0;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+.import-type > legend {
+  display: flex; align-items: center; gap: var(--s2); padding: 0; margin-bottom: var(--s3);
+  font-size: .95rem; font-weight: 600;
+}
+.import-opt { position: relative; min-width: 0; cursor: pointer; }
+.import-opt input { position: absolute; width: 1px; height: 1px; opacity: 0; margin: 0; }
+.import-opt .box {
+  display: flex; gap: var(--s3); align-items: flex-start; height: 100%;
+  padding: var(--s3) var(--s4); border: 1.5px solid var(--border-strong);
+  border-radius: var(--r); background: var(--surface);
+  transition: border-color .16s var(--ease), background .16s var(--ease);
+}
+.import-opt .box:hover { border-color: var(--muted); }
+.import-opt input:checked + .box { border-color: var(--accent); background: var(--accent-soft); }
+.import-opt input:focus-visible + .box { box-shadow: var(--ring); }
+.import-opt .pic { flex: none; color: var(--accent-ink); margin-top: 2px; }
+.import-opt .txt { min-width: 0; display: grid; gap: 1px; }
+.import-opt .txt strong { font-size: .9rem; color: var(--ink); }
+.import-opt .txt em { font-style: normal; font-size: .76rem; color: var(--muted); }
+
+/* One import panel at a time (app.js hides the rest; without JS all show). */
+[data-import-panel] { margin-bottom: var(--s4); }
+
 /* Field with a button attached (e.g. "Testar feed"). */
 .input-with-action { display: flex; gap: var(--s2); align-items: center; }
 .input-with-action > input { flex: 1 1 auto; min-width: 0; }
@@ -355,21 +384,6 @@ fieldset > legend { font-size: .76rem; font-weight: 600; text-transform: upperca
   background: var(--surface); border: 1px solid var(--border-strong); color: var(--accent);
   font-weight: 600; font-size: .78rem; display: grid; place-items: center;
 }
-
-/* Horizontal "how it works" steps (import flow). */
-.flow { display: flex; flex-wrap: wrap; gap: var(--s3); margin: 0 0 var(--s5); padding: 0; list-style: none; }
-.flow li {
-  display: flex; gap: var(--s3); align-items: flex-start; flex: 1 1 220px;
-  padding: var(--s3) var(--s4); background: var(--surface);
-  border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow-sm);
-}
-.flow .n {
-  flex: none; display: grid; place-items: center; width: 26px; height: 26px;
-  border-radius: 50%; background: var(--accent-soft); color: var(--accent-ink);
-  font-weight: 600; font-size: .8rem;
-}
-.flow strong { display: block; font-size: .88rem; }
-.flow em { display: block; font-style: normal; font-size: .78rem; color: var(--muted); }
 
 /* A short inline hint right under a form action. */
 .form-note { display: flex; align-items: center; gap: var(--s2); font-size: .78rem; color: var(--muted); margin: var(--s3) 0 0; }
