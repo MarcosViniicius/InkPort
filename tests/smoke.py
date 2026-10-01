@@ -684,7 +684,7 @@ def _import_category_checks(client) -> None:
         response.headers.get("location", "")[:60],
     )
     page = client.get("/import").text
-    check("o formulário marca a categoria como obrigatória", "category-list\" required" in page)
+    check("o formulário marca a categoria como obrigatória", "data-catselect" in page)
 
 
 def _opds_checks(client) -> None:

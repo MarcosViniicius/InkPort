@@ -1,0 +1,40 @@
+{#- Reusable category tree-select (used by the 3 import cards).
+
+    Progressive enhancement: the plain text input + datalist works without JS.
+    With JS, app.js hides the fallback and shows the tree dropdown; the
+    fallback input stays the submitted field, so the server contract
+    (``category`` as a "/"-separated string) never changes.
+
+    Usage:
+      {% from "partials/category_select.html" import category_select %}
+      {{ category_select('category', categories, selected=selected_category) }}
+-#}
+{% from "partials/icons.html" import icon %}
+{% macro category_select(id, categories, selected='', label='Categoria / pasta de destino', required=true) %}
+<div class="field catselect-field" data-catselect>
+  <label class="lbl" id="{{ id }}-label" for="{{ id }}">{{ label }} <span class="text-danger">*</span></label>
+  <input id="{{ id }}" name="category" class="catselect-fallback" list="{{ id }}-list"
+         value="{{ selected|e }}" placeholder="Escolher categoria…" autocomplete="off"
+         {{ 'required' if required }}>
+  <datalist id="{{ id }}-list">{% for row in categories %}<option value="{{ row.category.name }}">{% endfor %}</datalist>
+  <div class="catselect-js" data-catselect-js hidden>
+    <button type="button" class="catselect-trigger" data-catselect-trigger
+            aria-haspopup="tree" aria-expanded="false" aria-labelledby="{{ id }}-label">
+      <span class="catselect-ico" aria-hidden="true">{{ icon('folder', 16) }}</span>
+      <span class="catselect-label{{ '' if selected else ' is-placeholder' }}" data-catselect-label>{{ selected if selected else 'Escolher categoria…' }}</span>
+      <span class="catselect-chev" aria-hidden="true">{{ icon('chevron', 16) }}</span>
+    </button>
+    <div class="catselect-menu" data-catselect-menu hidden>
+      <div class="catselect-search-wrap">
+        <input type="search" placeholder="Pesquisar…" aria-label="Pesquisar categorias"
+               data-catselect-search autocomplete="off">
+      </div>
+      <div class="catselect-tree" role="tree" aria-label="Categorias" data-catselect-tree></div>
+      <div class="catselect-empty" data-catselect-empty hidden>Nenhuma categoria encontrada.</div>
+      <div class="catselect-foot">
+        <button type="button" class="button ghost small block" data-catselect-new-root>{{ icon('plus', 14) }} Criar pasta raiz</button>
+      </div>
+    </div>
+  </div>
+</div>
+{%- endmacro %}

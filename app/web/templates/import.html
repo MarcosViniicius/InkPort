@@ -2,13 +2,16 @@
 {% from "partials/icons.html" import icon %}
 {% from "partials/device_select.html" import device_select %}
 {% from "partials/toggle.html" import toggle %}
+{% from "partials/category_select.html" import category_select %}
 {% block title %}Importar · {{ app_name }}{% endblock %}
 {% block content %}
 {#- Eco do que o usuário já escolheu (o servidor devolve no erro). -#}
 {% set conv = convert if convert is defined else true %}
-{% set keep = keep_original if keep_original is defined else true %}
+{% set keep = keep_original if keep_original is defined else false %}
 {% set fmt_sel = target_format|default('auto') %}
 {% set prof_sel = device_profile|default('generic_epub') %}
+{% set selected_category = category|default('') %}
+<script type="application/json" id="category-data">{{ categories|map(attribute='category.name')|list|tojson }}</script>
 
 <div class="page-head">
   <div>
@@ -36,17 +39,7 @@
         <input type="file" name="files" multiple required aria-label="Escolher arquivos">
       </div>
 
-      <div class="field mt4">
-        <label for="category">Categoria / pasta de destino <span class="text-danger">*</span></label>
-        <input id="category" name="category" list="category-list" required
-               placeholder="escolha uma existente ou digite uma nova">
-        <datalist id="category-list">{% for row in categories %}<option value="{{ row.category.name }}">{% endfor %}</datalist>
-        <p class="hint">
-          Obrigatório: é o que organiza a biblioteca e o catálogo OPDS.
-          Escolha uma categoria existente na lista ou digite um nome novo para criá-la.
-          Use <code>rss/nome</code> para pastas aninhadas.
-        </p>
-      </div>
+      {{ category_select('category', categories, selected=selected_category) }}
 
       <fieldset>
         <legend>Conversão</legend>
@@ -82,9 +75,7 @@
   <details class="card" data-collapse-sm open>
     <summary>{{ icon('globe', 17) }} Baixar de uma URL</summary>
     <p class="hint">
-      O servidor baixa a página, guarda como livro HTML e converte com o
-      <strong>conversor de páginas</strong> (as imagens da página entram no EPUB).
-      Também aceita o endereço de um arquivo suportado (PDF, EPUB, imagem…).
+      O servidor baixa a página e guarda como livro HTML.
       Páginas que só montam o conteúdo com JavaScript podem vir incompletas.
     </p>
     <form method="post" action="/import/url">
@@ -93,11 +84,7 @@
         <input id="url" name="url" type="url" inputmode="url" required
                value="{{ url or '' }}" placeholder="https://exemplo.com/artigo">
       </div>
-      <div class="field">
-        <label for="url-category">Categoria / pasta de destino <span class="text-danger">*</span></label>
-        <input id="url-category" name="category" list="category-list" required
-               placeholder="escolha uma existente ou digite uma nova">
-      </div>
+      {{ category_select('url-category', categories, selected=selected_category) }}
       <fieldset>
         <legend>Conversão</legend>
         <div class="switch-stack mb3">
@@ -135,11 +122,7 @@
         <label for="path">Caminho no servidor</label>
         <input id="path" name="path" placeholder="C:\livros  ou  /home/user/livros" required>
       </div>
-      <div class="field">
-        <label for="scan-category">Categoria / pasta de destino <span class="text-danger">*</span></label>
-        <input id="scan-category" name="category" list="category-list" required
-               placeholder="escolha uma existente ou digite uma nova">
-      </div>
+      {{ category_select('scan-category', categories, selected=selected_category) }}
       <div class="switch-stack my3">
         {{ toggle('recursive', 'Incluir subpastas', checked=true) }}
         {{ toggle('move', 'Mover em vez de copiar', hint='O original sai da pasta escolhida.') }}

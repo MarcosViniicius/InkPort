@@ -828,6 +828,72 @@ td .sub { display: block; font-size: .76rem; color: var(--muted); }
 
 @media (hover: none) { .tile .check { opacity: 1; } }
 
+/* --- category tree-select (import cards) --------------------------------- */
+/* Reusable dropdown: closed it reads like a select (folder icon + full path
+   + chevron); open it shows a searchable hierarchy with inline creation. */
+.catselect-field { margin-bottom: var(--s4); }
+.catselect-js { position: relative; }
+.catselect-trigger {
+  width: 100%; display: flex; align-items: center; gap: var(--s2);
+  padding: 9px 11px; border: 1px solid var(--border-strong); border-radius: var(--r-sm);
+  background: var(--surface); color: var(--ink); font: inherit; cursor: pointer;
+  transition: border-color .16s var(--ease), box-shadow .16s var(--ease);
+}
+.catselect-trigger:hover { border-color: var(--muted); }
+.catselect-trigger:focus-visible { outline: none; border-color: var(--accent); box-shadow: var(--ring); }
+.catselect-trigger[aria-expanded="true"] { border-color: var(--accent); box-shadow: var(--ring); }
+.catselect-trigger.is-error { border-color: var(--danger); }
+.catselect-ico { flex: none; display: grid; place-items: center; color: var(--muted); }
+.catselect-label {
+  flex: 1 1 auto; min-width: 0; text-align: left;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.catselect-label.is-placeholder { color: var(--muted); }
+.catselect-chev { flex: none; display: grid; place-items: center; color: var(--muted); transition: transform .18s var(--ease); }
+.catselect-trigger[aria-expanded="true"] .catselect-chev { transform: rotate(180deg); }
+.catselect-menu {
+  position: absolute; z-index: 60; top: calc(100% + 6px); left: 0; right: 0;
+  display: flex; flex-direction: column; max-height: 320px;
+  background: var(--surface); border: 1px solid var(--border-strong);
+  border-radius: var(--r); box-shadow: var(--shadow-lg); overflow: hidden;
+}
+.catselect-search-wrap { padding: var(--s2); border-bottom: 1px solid var(--border); }
+.catselect-search-wrap > input { margin: 0; }
+.catselect-tree { overflow-y: auto; padding: var(--s1); min-height: 44px; }
+.catselect-row { display: flex; align-items: center; gap: 2px; border-radius: var(--r-sm); }
+.catselect-row:hover, .catselect-row:focus-within { background: var(--hover); }
+.catselect-row.is-selected { background: var(--accent-soft); }
+.catselect-toggle {
+  flex: none; width: 26px; height: 30px; display: grid; place-items: center;
+  background: none; border: 0; color: var(--muted); cursor: pointer; border-radius: var(--r-sm);
+}
+.catselect-toggle .tw { display: inline-block; transition: transform .16s var(--ease); font-size: .8rem; }
+.catselect-toggle[aria-expanded="true"] .tw { transform: rotate(90deg); }
+.catselect-toggle.no-kids { visibility: hidden; }
+.catselect-name {
+  flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: var(--s2);
+  background: none; border: 0; color: var(--ink); cursor: pointer;
+  padding: 7px var(--s2); border-radius: var(--r-sm); font: inherit; text-align: left;
+}
+.catselect-name:hover { color: var(--accent-ink); }
+.catselect-name .nm { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.catselect-name .fi { flex: none; display: grid; place-items: center; color: var(--muted); }
+.catselect-add {
+  flex: none; width: 28px; height: 28px; display: grid; place-items: center;
+  background: none; border: 1px solid transparent; border-radius: var(--r-sm);
+  color: var(--muted); cursor: pointer; font-size: 1rem; line-height: 1;
+  opacity: 0; transition: opacity .15s var(--ease), border-color .15s var(--ease);
+}
+.catselect-row:hover .catselect-add, .catselect-row:focus-within .catselect-add { opacity: 1; }
+.catselect-add:hover { color: var(--accent-ink); border-color: var(--border-strong); }
+.catselect-newline { padding: 4px 6px; }
+.catselect-newline > input { margin: 0; padding: 7px 9px; }
+.catselect-empty { padding: var(--s3); font-size: .84rem; color: var(--muted); text-align: center; }
+.catselect-foot { padding: var(--s2); border-top: 1px solid var(--border); background: var(--surface); }
+@media (hover: none) {
+  .catselect-add { opacity: .65; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; scroll-behavior: auto !important; }
   .tile:hover .cover { transform: none; }

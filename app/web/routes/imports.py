@@ -43,7 +43,13 @@ OUTPUT_FORMATS = ["auto", "epub", "cbz", "pdf", "mobi", "azw3", "kepub"]
 
 @router.get("")
 def import_page(request: Request, session: Session = Depends(get_session)):
-    return render(request, "import.html", _base_context(session))
+    context = _base_context(session)
+    # After a scan without category we redirect back with ?err=…&category=…;
+    # keep the typed value so the user does not lose it.
+    echoed = (request.query_params.get("category") or "").strip()
+    if echoed:
+        context["category"] = echoed
+    return render(request, "import.html", context)
 
 
 @router.post("/upload")
@@ -54,7 +60,7 @@ async def upload(
     convert: str = Form(""),
     target_format: str = Form("auto"),
     device_profile: str = Form("generic_epub"),
-    keep_original: str = Form("on"),
+    keep_original: str = Form(""),
     session: Session = Depends(get_session),
 ):
     settings = get_settings()
@@ -69,6 +75,7 @@ async def upload(
         context.update(
             {
                 "err": "Escolha uma categoria (ou digite uma nova) antes de importar.",
+                "category": category.strip(),
                 "target_format": target_format,
                 "device_profile": device_profile,
                 "keep_original": bool(keep_original),
@@ -115,6 +122,7 @@ async def upload(
 
     context = _base_context(session)
     context.update({"results": results, "convert": bool(convert),
+                    "category": category.strip(),
                     "target_format": target_format, "device_profile": device_profile,
                     "keep_original": bool(keep_original)})
     return render(request, "import.html", context)
@@ -128,7 +136,7 @@ def import_from_url(
     convert: str = Form(""),
     target_format: str = Form("auto"),
     device_profile: str = Form("generic_epub"),
-    keep_original: str = Form("on"),
+    keep_original: str = Form(""),
     session: Session = Depends(get_session),
 ):
     """Baixa uma página da web e a importa como livro, já convertendo.
@@ -141,6 +149,7 @@ def import_from_url(
     endereco = url.strip()
     eco = {
         "url": endereco,
+        "category": category.strip(),
         "target_format": target_format,
         "device_profile": device_profile,
         "keep_original": bool(keep_original),
@@ -209,6 +218,7 @@ def import_from_url(
     context.update(
         {
             "results": [item],
+            "category": category.strip(),
             "convert": bool(convert),
             "target_format": target_format,
             "device_profile": device_profile,
@@ -228,7 +238,7 @@ def scan(
     convert: str = Form(""),
     target_format: str = Form("auto"),
     device_profile: str = Form("generic_epub"),
-    keep_original: str = Form("on"),
+    keep_original: str = Form(""),
     session: Session = Depends(get_session),
 ):
     root = Path(path).expanduser()
@@ -238,7 +248,8 @@ def scan(
         from urllib.parse import quote
 
         return RedirectResponse(
-            f"/import?err={quote('Escolha uma categoria (ou digite uma nova) antes de varrer a pasta.')}",
+            f"/import?err={quote('Escolha uma categoria (ou digite uma nova) antes de varrer a pasta.')}"
+            f"&category={quote(category.strip())}",
             status_code=303,
         )
     report = scan_directory(
@@ -258,6 +269,7 @@ def scan(
 
     context = _base_context(session)
     context.update({"report": report, "queued": queued, "convert": bool(convert),
+                    "category": category.strip(),
                     "target_format": target_format, "device_profile": device_profile,
                     "keep_original": bool(keep_original)})
     return render(request, "import.html", context)
@@ -300,13 +312,14 @@ def _base_context(session: Session) -> dict:
     return {
         "active": "import",
         "categories": repository.categories(session),
+        "category": "",
         "profiles": all_profiles(session),
         "output_formats": OUTPUT_FORMATS,
         "max_upload_mb": settings.max_upload_mb,
         "inbox_dir": str(settings.inbox_dir),
         "device_profile": "generic_epub",
         "target_format": "auto",
-        "keep_original": True,
+        "keep_original": False,
     }
 
 

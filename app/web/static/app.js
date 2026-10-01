@@ -325,6 +325,373 @@
 
     sync();
   })();
+  /* --- category tree-select (import cards) ------------------------------- */
+  /* Progressive enhancement: without JS the plain input + datalist is used.
+     With JS the fallback becomes the submitted store and the dropdown tree
+     is the visible control. New folders are client-side until the form is
+     submitted (the server creates them via ensure_category). */
+  (function () {
+    var boxes = document.querySelectorAll("[data-catselect]");
+    if (!boxes.length) return;
+    var dataEl = document.getElementById("category-data");
+    var globalPaths = [];
+    if (dataEl) {
+      try { globalPaths = JSON.parse(dataEl.textContent || "[]") || []; }
+      catch (e) { globalPaths = []; }
+    }
+    var FOLDER_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none"'
+      + ' stroke="currentColor" stroke-width="1.7" stroke-linecap="round"'
+      + ' stroke-linejoin="round" aria-hidden="true"><path d="M3 6.5A2 2 0 0 1 5 4.5h3.6l1.8 2.2H19a2 2 0 0 1 2 2v8.3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>';
+
+    function normalizePath(raw) {
+      if (!raw) return "";
+      var parts = String(raw).split("/").map(function (s) { return s.trim(); })
+        .filter(function (s) { return s.length > 0; });
+      return parts.join("/");
+    }
+    function displayPath(path) {
+      return String(path).split("/").map(function (s) { return s.trim(); })
+        .filter(function (s) { return s.length > 0; }).join(" / ");
+    }
+    function cleanSegment(raw) {
+      var s = String(raw || "").replace(/[\\/]+/g, " ").replace(/\s+/g, " ").trim();
+      return s.slice(0, 80);
+    }
+
+    function closeAll(except) {
+      boxes.forEach(function (box) {
+        if (box === except) return;
+        var m = box.querySelector("[data-catselect-menu]");
+        var t = box.querySelector("[data-catselect-trigger]");
+        if (m) m.hidden = true;
+        if (t) t.setAttribute("aria-expanded", "false");
+      });
+    }
+
+    boxes.forEach(function (box) {
+      var fallback = box.querySelector(".catselect-fallback");
+      var jsBox = box.querySelector("[data-catselect-js]");
+      var trigger = box.querySelector("[data-catselect-trigger]");
+      var menu = box.querySelector("[data-catselect-menu]");
+      var labelEl = box.querySelector("[data-catselect-label]");
+      var search = box.querySelector("[data-catselect-search]");
+      var treeEl = box.querySelector("[data-catselect-tree]");
+      var emptyEl = box.querySelector("[data-catselect-empty]");
+      var newRootBtn = box.querySelector("[data-catselect-new-root]");
+      if (!fallback || !jsBox || !trigger || !menu) return;
+
+      var paths = new Set();
+      globalPaths.forEach(function (p) {
+        var n = normalizePath(p);
+        if (n) paths.add(n);
+      });
+      // Datalist may carry fresher data than the JSON (same content normally).
+      var list = document.getElementById(fallback.getAttribute("list") || "");
+      if (list) {
+        list.querySelectorAll("option").forEach(function (opt) {
+          var n = normalizePath(opt.value);
+          if (n) paths.add(n);
+        });
+      }
+      var expanded = new Set();
+      function markExpanded() {
+        expanded = new Set();
+        paths.forEach(function (p) {
+          var parts = p.split("/");
+          for (var i = 1; i < parts.length; i++) {
+            expanded.add(parts.slice(0, i).join("/"));
+          }
+        });
+      }
+
+      // Become the visible control; the fallback stays as the submitted store.
+      jsBox.hidden = false;
+      fallback.hidden = true;
+      fallback.tabIndex = -1;
+      fallback.removeAttribute("required");
+      fallback.value = normalizePath(fallback.value);
+      if (fallback.value && !paths.has(fallback.value)) paths.add(fallback.value);
+      markExpanded();
+      syncLabel();
+
+      function syncLabel() {
+        var v = normalizePath(fallback.value);
+        labelEl.textContent = v ? displayPath(v) : "Escolher categoria…";
+        labelEl.classList.toggle("is-placeholder", !v);
+        treeEl.querySelectorAll(".catselect-row").forEach(function (row) {
+          row.classList.toggle("is-selected", normalizePath(row.getAttribute("data-path")) === v);
+        });
+      }
+
+      function openMenu() {
+        closeAll(box);
+        menu.hidden = false;
+        trigger.setAttribute("aria-expanded", "true");
+        trigger.classList.remove("is-error");
+        search.value = "";
+        render();
+        search.focus();
+      }
+      function closeMenu() {
+        menu.hidden = true;
+        trigger.setAttribute("aria-expanded", "false");
+      }
+
+      function makeRow(full, depth, hasKids) {
+        var row = document.createElement("div");
+        row.className = "catselect-row";
+        row.setAttribute("data-path", full);
+        row.style.paddingLeft = (depth * 16) + "px";
+
+        var toggle = document.createElement("button");
+        toggle.type = "button";
+        toggle.className = "catselect-toggle" + (hasKids ? "" : " no-kids");
+        toggle.setAttribute("aria-label", hasKids ? "Expandir " + full : "");
+        toggle.setAttribute("aria-expanded", hasKids && expanded.has(full) ? "true" : "false");
+        toggle.tabIndex = hasKids ? 0 : -1;
+        var tw = document.createElement("span");
+        tw.className = "tw";
+        tw.textContent = "›";
+        toggle.appendChild(tw);
+        if (hasKids) {
+          toggle.addEventListener("click", function (event) {
+            event.stopPropagation();
+            if (expanded.has(full)) expanded.delete(full);
+            else expanded.add(full);
+            render();
+          });
+        }
+
+        var name = document.createElement("button");
+        name.type = "button";
+        name.className = "catselect-name";
+        name.setAttribute("role", "treeitem");
+        name.setAttribute("aria-selected", normalizePath(fallback.value) === full ? "true" : "false");
+        var fi = document.createElement("span");
+        fi.className = "fi";
+        fi.innerHTML = FOLDER_SVG;
+        var nm = document.createElement("span");
+        nm.className = "nm";
+        var part = full.split("/").pop();
+        nm.textContent = part;
+        nm.title = displayPath(full);
+        name.appendChild(fi);
+        name.appendChild(nm);
+        name.addEventListener("click", function () { select(full); });
+
+        var add = document.createElement("button");
+        add.type = "button";
+        add.className = "catselect-add";
+        add.textContent = "+";
+        add.title = "Criar subpasta em " + displayPath(full);
+        add.setAttribute("aria-label", "Criar subpasta em " + displayPath(full));
+        add.addEventListener("click", function (event) {
+          event.stopPropagation();
+          openEditor(row, full);
+        });
+
+        row.appendChild(toggle);
+        row.appendChild(name);
+        row.appendChild(add);
+        if (normalizePath(fallback.value) === full) row.classList.add("is-selected");
+        return row;
+      }
+
+      function openEditor(afterRow, parentFull) {
+        closeEditor();
+        var wrap = document.createElement("div");
+        wrap.className = "catselect-newline";
+        wrap.setAttribute("data-catselect-editor", "1");
+        var input = document.createElement("input");
+        input.type = "text";
+        input.placeholder = parentFull ? "Nome da subpasta…" : "Nome da nova pasta…";
+        input.setAttribute("aria-label", parentFull
+          ? "Nome da subpasta de " + displayPath(parentFull) : "Nome da nova pasta raiz");
+        input.maxLength = 80;
+        wrap.appendChild(input);
+        if (afterRow && afterRow.parentNode) {
+          afterRow.parentNode.insertBefore(wrap, afterRow.nextSibling);
+        } else {
+          treeEl.prepend(wrap);
+        }
+        input.focus();
+        var done = false;
+        function commit() {
+          if (done) return;
+          done = true;
+          var clean = cleanSegment(input.value);
+          closeEditor();
+          if (!clean) return;
+          var target = parentFull ? parentFull + "/" + clean : clean;
+          createAndSelect(normalizePath(target));
+        }
+        function cancel() {
+          if (done) return;
+          done = true;
+          closeEditor();
+        }
+        input.addEventListener("keydown", function (event) {
+          if (event.key === "Enter") { event.preventDefault(); commit(); }
+          else if (event.key === "Escape") { event.preventDefault(); cancel(); }
+          event.stopPropagation();
+        });
+        input.addEventListener("blur", function () {
+          setTimeout(function () {
+            if (!done) {
+              if (cleanSegment(input.value)) commit();
+              else cancel();
+            }
+          }, 120);
+        });
+      }
+      function closeEditor() {
+        treeEl.querySelectorAll("[data-catselect-editor]").forEach(function (el) { el.remove(); });
+      }
+
+      function createAndSelect(path) {
+        if (!path) return;
+        var exists = Array.prototype.some.call(Array.from(paths), function (p) {
+          return p.toLowerCase() === path.toLowerCase();
+        });
+        if (!exists) {
+          window.dispatchEvent(new CustomEvent("catselect:created", { detail: { path: path } }));
+        }
+        select(path);
+      }
+
+      function select(path) {
+        fallback.value = path;
+        syncLabel();
+        closeMenu();
+        trigger.focus();
+      }
+
+      function render() {
+        closeEditor();
+        treeEl.innerHTML = "";
+        var q = search.value.trim().toLowerCase();
+        if (q) {
+          var matches = Array.from(paths).filter(function (p) {
+            return p.toLowerCase().indexOf(q) !== -1
+              || displayPath(p).toLowerCase().indexOf(q) !== -1;
+          }).sort(function (a, b) {
+            return a.toLowerCase().localeCompare(b.toLowerCase());
+          });
+          emptyEl.hidden = matches.length > 0;
+          matches.forEach(function (p) {
+            var row = makeRow(p, 0, false);
+            var nm = row.querySelector(".nm");
+            if (nm) nm.textContent = displayPath(p);
+            treeEl.appendChild(row);
+          });
+          return;
+        }
+        if (!paths.size) {
+          emptyEl.hidden = false;
+          emptyEl.textContent = "Nenhuma categoria ainda. Use o botão abaixo para criar a primeira.";
+          return;
+        }
+        emptyEl.hidden = true;
+        // Build a sorted hierarchy from the "/"-separated names.
+        var root = new Map();
+        Array.from(paths).sort(function (a, b) {
+          return a.toLowerCase().localeCompare(b.toLowerCase());
+        }).forEach(function (p) {
+          var node = root;
+          var acc = [];
+          p.split("/").forEach(function (part) {
+            acc.push(part);
+            var full = acc.join("/");
+            if (!node.has(part)) node.set(part, { full: full, kids: new Map() });
+            node = node.get(part).kids;
+          });
+        });
+        (function walk(node, depth, container) {
+          node.forEach(function (entry) {
+            var hasKids = entry.kids.size > 0;
+            container.appendChild(makeRow(entry.full, depth, hasKids));
+            if (hasKids && expanded.has(entry.full)) {
+              var sub = document.createElement("div");
+              sub.setAttribute("data-catselect-group", entry.full);
+              container.appendChild(sub);
+              walk(entry.kids, depth + 1, sub);
+            }
+          });
+        })(root, 0, treeEl);
+      }
+
+      trigger.addEventListener("click", function () {
+        if (menu.hidden) openMenu();
+        else closeMenu();
+      });
+      search.addEventListener("input", render);
+      search.addEventListener("keydown", function (event) {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+          closeMenu();
+          trigger.focus();
+        }
+        event.stopPropagation();
+      });
+      menu.addEventListener("keydown", function (event) {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          closeMenu();
+          trigger.focus();
+        }
+      });
+      if (newRootBtn) {
+        newRootBtn.addEventListener("click", function () {
+          search.value = "";
+          render();
+          openEditor(null, "");
+        });
+      }
+      window.addEventListener("catselect:created", function (event) {
+        var p = event.detail && normalizePath(event.detail.path);
+        if (!p || paths.has(p)) return;
+        paths.add(p);
+        markExpanded();
+        if (list) {
+          var opt = document.createElement("option");
+          opt.value = p;
+          list.appendChild(opt);
+        }
+        if (!menu.hidden) render();
+        else syncLabel();
+      });
+
+      var form = box.closest("form");
+      if (form && !form.dataset.catselectBound) {
+        form.dataset.catselectBound = "1";
+        form.addEventListener("submit", function (event) {
+          var missing = [];
+          form.querySelectorAll("[data-catselect]").forEach(function (b) {
+            var fb = b.querySelector(".catselect-fallback");
+            var tg = b.querySelector("[data-catselect-trigger]");
+            if (fb && !normalizePath(fb.value)) missing.push(tg);
+          });
+          if (missing.length) {
+            event.preventDefault();
+            missing[0].classList.add("is-error");
+            boxes.forEach(function (b) {
+              var t = b.querySelector("[data-catselect-trigger]");
+              if (t === missing[0]) openMenu();
+            });
+          }
+        });
+      }
+    });
+
+    document.addEventListener("click", function (event) {
+      if (!event.target.closest("[data-catselect]")) closeAll(null);
+    });
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape") closeAll(null);
+    });
+  })();
+
   /* --- layout debug (only with ?debug=layout) --------------------------- */
   if (location.search.indexOf("debug=layout") !== -1) {
     var worst = null;
