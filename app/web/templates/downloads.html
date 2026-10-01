@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
+{% block title %}Downloads · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Downloads</h1>
+    <p class="lead">
+      O que foi entregue aos leitores: quantas vezes, quando e em que situação está
+      cada arquivo. O rastreio é por entrega, não por acesso ao catálogo.
+    </p>
+  </div>
+</div>
+
+<div class="grid stats">
+  <div class="stat"><div class="value num">{{ overview.by_state.available }}</div><div class="label">Disponíveis</div></div>
+  <div class="stat {{ 'accent' if overview.by_state.downloaded }}"><div class="value num">{{ overview.by_state.downloaded }}</div><div class="label">Baixados</div></div>
+  <div class="stat"><div class="value num">{{ overview.by_state.blocked }}</div><div class="label">Bloqueados</div></div>
+  <div class="stat"><div class="value num">{{ overview.by_state.deleted }}</div><div class="label">Excluídos</div></div>
+  <div class="stat {{ 'accent' if overview.active }}"><div class="value num" id="dl-active">{{ overview.active }}</div><div class="label">Baixando agora</div></div>
+  <div class="stat"><div class="value num">{{ overview.downloads }}</div><div class="label">Downloads totais</div></div>
+</div>
+
+{% set back = '/downloads' ~ ('?' ~ request.url.query if request.url.query else '') %}
+<div class="card-head mt4 tight-head">
+  <form class="row" method="get" action="/downloads">
+    <input name="q" value="{{ filters.q }}" placeholder="arquivo ou livro" class="grow" aria-label="Buscar arquivo ou livro">
+    {% if filters.state %}<input type="hidden" name="state" value="{{ filters.state }}">{% endif %}
+    <button class="button" type="submit">{{ icon('search', 15) }} Buscar</button>
+    {% if filters.q or filters.state %}<a class="button ghost" href="/downloads">Limpar</a>{% endif %}
+  </form>
+  <div class="tabs" role="group" aria-label="Filtrar por situação">
+    <a href="/downloads" class="{{ 'on' if not filters.state }}" {{ 'aria-current=page' if not filters.state }}>Todos<span class="count">{{ overview.total }}</span></a>
+    {% for st in state_order %}
+    <a href="/downloads?state={{ st }}" class="{{ 'on' if filters.state == st }}" {{ 'aria-current=page' if filters.state == st }}>{{ download_state_label(st) }}<span class="count">{{ overview.by_state[st] }}</span></a>
+    {% endfor %}
+  </div>
+</div>
+
+{% if data.rows %}
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>Arquivo</th><th>Situação</th><th>Downloads</th><th class="hide-sm">Último</th><th></th></tr>
+    </thead>
+    <tbody>
+    {% for row in data.rows %}
+      <tr>
+        <td data-label="Arquivo">
+          {% if row.book_id %}<a href="/library/{{ row.book_id }}">{{ row.title }}</a>{% else %}{{ row.title }}{% endif %}
+          <span class="sub">
+            {{ row.file_name }} · {{ human_size(row.size_bytes) }}
+            {%- if row.active_downloads %} · {{ row.active_downloads }} em andamento{% endif %}
+          </span>
+        </td>
+        <td data-label="Situação">
+          <span class="badge {{ 'ok' if row.state == 'downloaded' else 'err' if row.state in ['blocked', 'deleted'] else 'info' }}">{{ download_state_label(row.state) }}</span>
+        </td>
+        <td data-label="Downloads" class="num">{{ row.download_count }}</td>
+        <td data-label="Último" class="muted small hide-sm">{{ row.last_download_at|relative }}</td>
+        <td data-label="">
+          <div class="button-row">
+            {% if row.state == 'blocked' %}
+            <form method="post" action="/downloads/{{ row.id }}/state">
+              <input type="hidden" name="action" value="unblock">
+              <input type="hidden" name="back" value="{{ back }}">
+              <button class="button ghost small" type="submit" title="Voltar a oferecer no catálogo OPDS">Liberar</button>
+            </form>
+            {% elif row.state != 'deleted' %}
+            <form method="post" action="/downloads/{{ row.id }}/state">
+              <input type="hidden" name="action" value="block">
+              <input type="hidden" name="back" value="{{ back }}">
+              <button class="button ghost small" type="submit" title="Tirar do catálogo OPDS">Bloquear</button>
+            </form>
+            {% endif %}
+            {% if row.state == 'deleted' %}
+            <form method="post" action="/downloads/{{ row.id }}/forget"
+                  data-confirm="Remover do histórico?"
+                  data-confirm-msg="O registro e os eventos deste arquivo são apagados. O arquivo já não está no servidor."
+                  data-confirm-ok="Remover"
+                  onsubmit="return confirm('Remover este registro do histórico?')">
+              <input type="hidden" name="back" value="{{ back }}">
+              <button class="button ghost small" type="submit">Remover do histórico</button>
+            </form>
+            {% else %}
+            <form method="post" action="/downloads/{{ row.id }}/delete"
+                  data-confirm="Apagar o arquivo do servidor?"
+                  data-confirm-msg="O arquivo sai do disco e o livro sai da biblioteca. O histórico de downloads é mantido."
+                  data-confirm-ok="Apagar"
+                  data-confirm-danger
+                  onsubmit="return confirm('Apagar este arquivo do disco?')">
+              <input type="hidden" name="back" value="{{ back }}">
+              <button class="button ghost small danger" type="submit" title="Apagar do disco mantendo o histórico">Apagar</button>
+            </form>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% set pages = (data.total / data.per_page)|round(0, 'ceil')|int %}
+{% if pages > 1 %}
+<nav class="pager" aria-label="Paginação">
+  {% if data.page > 1 %}<a href="/downloads?page={{ data.page - 1 }}{% if filters.state %}&amp;state={{ filters.state }}{% endif %}{% if filters.q %}&amp;q={{ filters.q|urlencode }}{% endif %}">‹ Anterior</a>{% endif %}
+  <span class="current">{{ data.page }} / {{ pages }}</span>
+  {% if data.page < pages %}<a href="/downloads?page={{ data.page + 1 }}{% if filters.state %}&amp;state={{ filters.state }}{% endif %}{% if filters.q %}&amp;q={{ filters.q|urlencode }}{% endif %}">Próxima ›</a>{% endif %}
+</nav>
+{% endif %}
+{% else %}
+<div class="empty mt4">
+  <div class="glyph">{{ icon('download', 36) }}</div>
+  <h3>Nenhum download por aqui</h3>
+  <p>
+    {% if filters.q or filters.state %}
+      Nenhum arquivo bate com esse filtro.
+    {% else %}
+      Os downloads aparecem assim que um leitor baixa um arquivo do catálogo.
+    {% endif %}
+  </p>
+  {% if filters.q or filters.state %}<a class="button ghost" href="/downloads">Limpar filtros</a>{% endif %}
+</div>
+{% endif %}
+
+<h2 class="mt4">Últimos downloads</h2>
+{% if events %}
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>Quando</th><th>Arquivo</th><th>Status</th><th class="hide-sm">Cliente</th><th class="hide-sm">Bytes</th></tr>
+    </thead>
+    <tbody>
+    {% for ev in events %}
+      <tr>
+        <td data-label="Quando" class="muted small">{{ ev.started_at|relative }}</td>
+        <td data-label="Arquivo">{{ ev.title }}<span class="sub">{{ ev.file_name }}</span></td>
+        <td data-label="Status">
+          <span class="badge {{ 'ok' if ev.status == 'completed' else 'err' if ev.status == 'error' else 'warn' if ev.status == 'interrupted' else 'info' }}">{{ download_status_label(ev.status) }}</span>
+        </td>
+        <td data-label="Cliente" class="muted small hide-sm">{{ ev.client or '—' }}{% if ev.resume %} · retomada{% endif %}</td>
+        <td data-label="Bytes" class="muted small hide-sm num">{{ human_size(ev.bytes_sent) }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="muted small">Nenhum download registrado ainda.</p>
+{% endif %}
+{% endblock %}

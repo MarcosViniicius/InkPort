@@ -82,6 +82,7 @@ def main() -> int:
         Book,
         DownloadEvent,
         DownloadStatus,
+        FileRecord,
         FileState,
         utcnow,
     )
@@ -203,6 +204,50 @@ def main() -> int:
             check("painel: bloqueio gravado", downloads.get_record(session, book_id).state == FileState.BLOCKED.value)
         client.post(f"/library/{book_id}/download-state", data={"action": "unblock"})
 
+        print("\n[tela de downloads]")
+        ui_id = _make_book(
+            book_id="bkdwn00000000000000000000000003",
+            title="Livro da tela",
+            name="tela.epub",
+        )
+        with session_scope() as session:
+            ui_record = downloads.ensure_record(session, session.get(Book, ui_id))
+            session.commit()
+            ui_record_id = ui_record.id
+
+        page = client.get("/downloads")
+        check("a tela abre", page.status_code == 200 and "Últimos downloads" in page.text)
+        check("a tela lista os arquivos rastreados", "Livro de teste" in page.text, page.status_code)
+        check("filtro por situação responde", client.get("/downloads?state=downloaded").status_code == 200)
+        check("busca na tela responde", client.get("/downloads?q=tela").status_code == 200)
+
+        response = client.post(
+            f"/downloads/{ui_record_id}/state",
+            data={"action": "block", "back": "/downloads"},
+            follow_redirects=False,
+        )
+        check("tela bloqueia (303)", response.status_code == 303, str(response.status_code))
+        with session_scope() as session:
+            check("bloqueio gravado pela tela", downloads.get_record(session, ui_id).state == FileState.BLOCKED.value)
+        client.post(f"/downloads/{ui_record_id}/state", data={"action": "unblock", "back": "/downloads"})
+
+        response = client.post(
+            f"/downloads/{ui_record_id}/delete", data={"back": "/downloads"}, follow_redirects=False
+        )
+        check("tela apaga o arquivo (303)", response.status_code == 303, str(response.status_code))
+        from app.config import get_settings as _settings
+
+        check("arquivo apagado saiu do disco", not (_settings().library_dir / "testes" / "tela.epub").exists())
+        with session_scope() as session:
+            check("registro vira excluído", session.get(FileRecord, ui_record_id).state == FileState.DELETED.value)
+
+        response = client.post(
+            f"/downloads/{ui_record_id}/forget", data={"back": "/downloads"}, follow_redirects=False
+        )
+        check("remover do histórico (303)", response.status_code == 303, str(response.status_code))
+        with session_scope() as session:
+            check("registro some do banco", session.get(FileRecord, ui_record_id) is None)
+
     print("\n[downloads simultâneos]")
     with session_scope() as session:
         book = session.get(Book, book_id)
@@ -245,7 +290,6 @@ def main() -> int:
     from datetime import timedelta
 
     from app.config import get_settings
-    from app.database.models import FileRecord
     from app.downloads import cleanup as cleanup_mod
 
     converted_id = _make_book(

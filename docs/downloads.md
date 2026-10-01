@@ -148,6 +148,24 @@ rotina roda na manutenção periódica (a cada ~15 min, quando ligada) e há um
 **Limpar agora** em *Configurações → Manutenção*, que mostra antes quantos
 arquivos seriam removidos e quanto espaço isso libera.
 
+## Tela de Downloads (`/downloads`)
+
+No menu, em **Automação → Downloads**. É a visão resumida do rastreio:
+
+- **Resumo** no topo: disponíveis, baixados, bloqueados, excluídos, **baixando
+  agora** e o total de downloads.
+- **Filtro por situação** (abas com contagem) e **busca** por arquivo ou livro.
+- **Tabela por arquivo**: livro, nome do arquivo + tamanho, situação, quantas
+  vezes foi baixado, último download e quantos estão em andamento — com as
+  ações:
+  - **Bloquear** / **Liberar** (entra/sai do catálogo OPDS);
+  - **Apagar** — tira o arquivo do disco e o livro da biblioteca, mantendo o
+    histórico (o registro vira `deleted`);
+  - **Remover do histórico** — apaga o registro e os eventos (aparece só para
+    excluídos).
+- **Últimos downloads**: uma linha por tentativa, com status (concluído,
+  interrompido, erro, iniciado), cliente e bytes.
+
 ## API (base para a gerência futura)
 
 | Rota | Efeito |
@@ -191,6 +209,7 @@ Criados:
   `app/downloads/response.py` — domínio + resposta instrumentada.
 - `app/api/downloads.py` — API de leitura e estados.
 - `app/downloads/cleanup.py` — limpeza automática configurável.
+- `app/web/routes/downloads.py` + `app/web/templates/downloads.html` — a tela.
 - `tests/downloads.py`, `docs/downloads.md`.
 
 Alterados:

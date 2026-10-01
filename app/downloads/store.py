@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 from hashlib import sha256
 
-from sqlalchemy import case, func, select, update
+from sqlalchemy import case, func, or_, select, update
 
 from app.database import session_scope
 from app.database.models import (
@@ -346,6 +346,130 @@ def should_offer(session, book_id: str) -> bool:
     return record.state not in (FileState.BLOCKED.value, FileState.DELETED.value)
 
 
+def set_state_by_id(session, record_id: str, state: str) -> FileRecord | None:
+    """Like ``set_state`` but keyed by the record (works for orphan records)."""
+    record = session.get(FileRecord, record_id)
+    if record is None:
+        return None
+    record.state = state
+    session.commit()
+    return record
+
+
+def forget(session, record_id: str) -> bool:
+    """Drop a record and its events (used by "remove from history")."""
+    record = session.get(FileRecord, record_id)
+    if record is None:
+        return False
+    session.delete(record)
+    session.commit()
+    return True
+
+
+def overview(session) -> dict:
+    """Counts for the downloads screen header."""
+    by_state = {state.value: 0 for state in FileState}
+    for state, count in session.execute(
+        select(FileRecord.state, func.count(FileRecord.id)).group_by(FileRecord.state)
+    ).all():
+        by_state[state] = int(count)
+    totals = session.execute(
+        select(
+            func.count(FileRecord.id),
+            func.coalesce(func.sum(FileRecord.size_bytes), 0),
+            func.coalesce(func.sum(FileRecord.download_count), 0),
+            func.coalesce(func.sum(FileRecord.active_downloads), 0),
+        )
+    ).one()
+    return {
+        "total": int(totals[0] or 0),
+        "size_bytes": int(totals[1] or 0),
+        "downloads": int(totals[2] or 0),
+        "active": int(totals[3] or 0),
+        "by_state": by_state,
+    }
+
+
+def list_records(
+    session,
+    *,
+    state: str | None = None,
+    query: str | None = None,
+    page: int = 1,
+    per_page: int = 50,
+) -> dict:
+    """Paginated, filterable list for the downloads screen."""
+    from app.database.models import Book
+
+    page = max(1, page)
+    per_page = min(200, max(1, per_page))
+    conditions = []
+    if state:
+        conditions.append(FileRecord.state == state)
+    if query and query.strip():
+        pattern = f"%{query.strip().lower()}%"
+        conditions.append(
+            or_(
+                func.lower(FileRecord.file_name).like(pattern),
+                func.lower(func.coalesce(Book.title, "")).like(pattern),
+            )
+        )
+
+    base = select(FileRecord, Book).outerjoin(Book, Book.id == FileRecord.book_id)
+    counting = (
+        select(func.count(FileRecord.id))
+        .outerjoin(Book, Book.id == FileRecord.book_id)
+        .where(*conditions)
+    )
+    total = int(session.scalar(counting) or 0)
+    statement = (
+        base.where(*conditions)
+        .order_by(func.coalesce(FileRecord.last_download_at, FileRecord.updated_at).desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+    )
+    rows = []
+    for record, book in session.execute(statement).all():
+        item = summary(record) or {}
+        item["title"] = book.title if book is not None else (record.file_name or "arquivo")
+        item["author"] = book.author if book is not None else None
+        item["format"] = book.format if book is not None else record.file_ext
+        rows.append(item)
+    # ``rows`` (not ``items``): Jinja would resolve ``data.items`` to the dict method.
+    return {"rows": rows, "total": total, "page": page, "per_page": per_page}
+
+
+def recent_events(session, *, limit: int = 30) -> list[dict]:
+    """Latest attempts, for the history table."""
+    from app.database.models import Book
+
+    statement = (
+        select(DownloadEvent, FileRecord, Book)
+        .join(FileRecord, FileRecord.id == DownloadEvent.file_id)
+        .outerjoin(Book, Book.id == FileRecord.book_id)
+        .order_by(DownloadEvent.started_at.desc())
+        .limit(max(1, limit))
+    )
+    rows = []
+    for event, record, book in session.execute(statement).all():
+        rows.append(
+            {
+                "id": event.id,
+                "title": book.title if book is not None else (record.file_name or "arquivo"),
+                "file_name": record.file_name,
+                "status": event.status,
+                "client": event.client,
+                "resume": event.resume,
+                "range_request": event.range_request,
+                "bytes_sent": event.bytes_sent,
+                "bytes_total": event.bytes_total,
+                "started_at": event.started_at,
+                "finished_at": event.finished_at,
+            }
+        )
+    return rows
+
+
 def cleanup_candidates(
     session,
     *,
@@ -403,10 +527,15 @@ __all__ = [
     "ensure_record",
     "extract_extension",
     "finish_download",
+    "forget",
     "get_record",
     "hidden_book_ids",
+    "list_records",
     "mark_downloaded",
+    "overview",
     "prune_events",
+    "recent_events",
+    "set_state_by_id",
     "range_flags",
     "records_for",
     "recover_interrupted",
