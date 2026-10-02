@@ -1,0 +1,29 @@
+{#- Modo de tratamento dos textos de mangá/quadrinhos.
+
+    Quatro níveis: desligado, experimental (sem OCR), OCR (usa as palavras
+    reconhecidas e mantém o traço original) e OCR + fonte (reescreve o texto,
+    mais nítido). O modo OCR precisa do extra opcional instalado; o painel
+    mostra o status em Dispositivos/Capacidades.
+
+    Uso:
+      {% from "partials/manga_mode.html" import manga_mode %}
+      {{ manga_mode(mode) }}
+-#}
+{% macro manga_mode(mode='off', name='manga_text_mode', id='manga_text_mode', label='Textos de mangá/quadrinhos', hint='') -%}
+<div class="field">
+  {% if label %}<label for="{{ id }}">{{ label }}</label>{% endif %}
+  <select id="{{ id }}" name="{{ name }}">
+    <option value="off" {{ 'selected' if mode in ['', 'off'] }}>Não mexer nos textos</option>
+    <option value="experimental" {{ 'selected' if mode == 'experimental' }}>Experimental — sem OCR (só geometria)</option>
+    <option value="ocr" {{ 'selected' if mode == 'ocr' }}>Preciso — OCR, mantém o traço original</option>
+    <option value="ocr_font" {{ 'selected' if mode == 'ocr_font' }}>Preciso — OCR e reescreve com fonte</option>
+  </select>
+  <p class="hint">
+    {% if hint %}{{ hint }}{% else %}
+    Os modos «Preciso» usam OCR opcional instalado à parte; sem ele a conversão
+    volta ao modo experimental. «Reescreve com fonte» é o mais nítido, mas
+    depende do OCR acertar o texto.
+    {% endif %}
+  </p>
+</div>
+{% endmacro %}

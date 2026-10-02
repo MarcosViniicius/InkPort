@@ -795,7 +795,7 @@ def _manga_import_option_check(client) -> None:
     page = client.get("/import").text
     check(
         "o formulário de importação oferece a ampliação",
-        'name="manga_enlarge_text"' in page,
+        'name="manga_text_mode"' in page,
     )
 
     import zipfile
@@ -817,7 +817,7 @@ def _manga_import_option_check(client) -> None:
             "convert": "on",
             "target_format": "epub",
             "device_profile": "xteink_x4_pro",
-            "manga_enlarge_text": "on",
+            "manga_text_mode": "experimental",
         },
     )
     check("importação com ampliação aceita", response.status_code == 200, str(response.status_code))

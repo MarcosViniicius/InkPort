@@ -2,6 +2,7 @@
 {% from "partials/icons.html" import icon %}
 {% from "partials/device_select.html" import device_select %}
 {% from "partials/toggle.html" import toggle %}
+{% from "partials/manga_mode.html" import manga_mode %}
 {% block title %}Conversões · {{ app_name }}{% endblock %}
 {% block content %}
 {% set active_jobs = counts.pending + counts.running %}
@@ -52,11 +53,10 @@
       {{ device_select(profiles, label='Dispositivo') }}
     </div>
     <div class="switch-stack mt4 mb3">
-      {{ toggle('manga_enlarge_text', 'Ampliar textos de mangá/quadrinhos',
-                hint='Aumenta balões e textos soltos aproveitando o espaço livre, sem IA e sem internet. Só vale para quadrinhos e páginas digitalizadas.') }}
       {{ toggle('keep_original', 'Manter o arquivo original', checked=true,
                 hint='Desligado, o original é removido depois que a conversão termina.') }}
     </div>
+    {{ manga_mode('off') }}
     <button class="button" type="submit">Enfileirar</button>
   </form>
 </details>

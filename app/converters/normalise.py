@@ -80,9 +80,15 @@ def resolve_options(profile: DeviceProfile, options: dict | None = None) -> dict
         "render_dpi": int(options.get("dpi", profile.render_dpi) or 0),
         # Manga/comic text enlargement (opt-in; see app/converters/manga).
         "manga_enlarge_text": bool(options.get("manga_enlarge_text", False)),
+        "manga_text_mode": str(options.get("manga_text_mode", "") or ""),
         "manga_max_scale": float(options.get("manga_max_scale", 2.0) or 2.0),
         "manga_overflow": float(options.get("manga_overflow", 0.15) or 0.0),
         "manga_max_overflow_px": int(options.get("manga_max_overflow_px", 10) or 0),
+        "manga_ocr_lang": str(options.get("manga_ocr_lang", "pt") or "pt"),
+        "manga_ocr_model": str(options.get("manga_ocr_model", "small") or "small"),
+        "manga_ocr_min_score": float(options.get("manga_ocr_min_score", 0.5) or 0.5),
+        "manga_font": str(options.get("manga_font", "") or ""),
+        "manga_font_min_score": float(options.get("manga_font_min_score", 0.75) or 0.0),
     }
 
 
@@ -97,7 +103,7 @@ def transform_page(img: Image.Image, profile: DeviceProfile, opts: dict):
         img = ImageOps.autocontrast(img, cutoff=1)
 
     # 1b. enlarge the text before resizing: more resolution = crisper glyphs.
-    if opts["manga_enlarge_text"]:
+    if opts.get("manga_text_mode", "off") != "off" or opts["manga_enlarge_text"]:
         img = _enlarge_manga_text(img, opts)
 
     # 2. geometry: crop blank borders, then resize for the target

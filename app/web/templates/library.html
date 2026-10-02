@@ -96,9 +96,14 @@
         {% for profile in profiles %}<option value="{{ profile.slug }}" {{ 'selected' if profile.recommended }}>{{ profile.name }}</option>{% endfor %}
       </select>
       {% endif %}
-      <label class="check" title="Aumenta balões e textos soltos de quadrinhos aproveitando o espaço livre (sem IA)">
-        <input type="checkbox" name="manga_enlarge_text" value="on">
-        <span class="muted small">Ampliar textos</span>
+      <label class="check" for="bulk-manga-mode" title="Tratamento dos textos de mangá/quadrinhos">
+        <span class="muted small">Textos</span>
+        <select id="bulk-manga-mode" name="manga_text_mode">
+          <option value="off">Não mexer</option>
+          <option value="experimental">Experimental (sem OCR)</option>
+          <option value="ocr">OCR — mantém o traço</option>
+          <option value="ocr_font">OCR — reescreve</option>
+        </select>
       </label>
       <button class="button small" type="submit" name="action" value="convert" aria-label="Converter os livros selecionados">{{ icon('conversions', 15) }} Converter</button>
       <button class="button small ghost" type="submit" name="action" value="refresh" aria-label="Atualizar os metadados dos livros selecionados">{{ icon('refresh', 15) }} Metadados</button>

@@ -75,11 +75,13 @@ não apenas para "reduzir":
   amplificaria o ruído.
 - **Formato de saída**: JPG (menor) ou **PNG** (sem perda, melhor para traço).
 
-### Ampliação de texto de mangá/quadrinhos (opcional)
+### Texto de mangá/quadrinhos (experimental e modos precisos)
 
 Para telas pequenas, o texto de balões costuma ficar minúsculo mesmo com espaço
-sobrando. Ligando **“Ampliar textos de mangá/quadrinhos”** na conversão, um motor
-local (`app/converters/manga/`, só Pillow) faz, por página:
+sobrando. O tratamento é escolhido por conversão (e por valor padrão na tela de
+Configurações): desligado, **experimental** (só geometria, sem OCR) ou os dois
+**modos precisos** com OCR. No modo experimental, um motor local
+(`app/converters/manga/`, só Pillow) faz, por página:
 
 1. **Detecção** (`detector.py`): binariza, faz *flood fill* a partir da borda
    para achar as áreas brancas **fechadas** (balões e caixas de texto) e rotula
@@ -100,11 +102,31 @@ local (`app/converters/manga/`, só Pillow) faz, por página:
    right-to-left, então a primeira palavra da linha fica à direita.
 
 É **best-effort**: página que não pode ser interpretada volta sem alteração e
-nunca quebra a conversão. Sem OCR, sem IA, sem internet e sem binário externo.
+nunca quebra a conversão. Sem IA e sem binário externo.
+
+#### Modos precisos (OCR opcional)
+
+A geometria pura erra em páginas densas (palavras quebradas, ordem trocada).
+Para isso existem dois modos que usam **OCR opcional**:
+
+- **`ocr`** — o OCR lê a página, então as palavras e a ordem de leitura são
+  conhecidas; os **glifos originais** continuam sendo os mesmos (sem risco de
+  texto errado), mas são recolocados e ampliados com precisão.
+- **`ocr_font`** — o mesmo OCR e o texto é **reescrito** com a fonte embutida
+  (Comic Neue, OFL) no maior tamanho que couber no balão. É o mais nítido; por
+  segurança, regiões com confiança abaixo de `manga_font_min_score` caem no
+  modo conservador.
+
+Backend: **RapidOCR** (PP-OCRv6 multilíngue, ONNX Runtime, CPU) — Apache-2.0,
+modelos *mobile* de 5 a 35 MB. É uma dependência **opcional**
+(`pip install .[ocr]`), como o Calibre: sem ela, os modos precisos caem para o
+experimental. Os modelos baixam uma única vez para `DATA_DIR/ocr/models` e
+depois funcionam offline. No acervo de teste (scanlation em português,
+480 px) o modelo *small* lê a página com 0,93–1,00 de confiança em ~0,7 s.
 
 A opção aparece nas **Opções avançadas** da conversão e também na **importação**
 (quando «Converter automaticamente» está ligado), então dá para importar e já
-sair com o texto ampliado sem passar pela página do livro.
+sair com o texto tratado sem passar pela página do livro.
 
 Limites configuráveis em **Configurações → Conversão e armazenamento →
 «Avançado»**: `manga_max_scale` (teto, padrão 2×), `manga_overflow` (quanto pode

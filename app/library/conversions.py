@@ -46,21 +46,35 @@ def plan_for_book(
     return plan.target_format, options
 
 
-def manga_text_options(enabled: bool) -> dict:
-    """Options for the manga/comic text enlargement, with the configured limits.
+def manga_text_options(mode: str | bool) -> dict:
+    """Options for the manga/comic text modes, with the configured limits.
 
-    The engine receives everything through the job options, so it never has to
-    read the settings itself (it runs on a worker thread with plain data).
+    ``mode`` accepts the legacy boolean and the mode string: ``off``,
+    ``experimental`` (no OCR), ``ocr`` (OCR-guided) or ``ocr_font`` (rewritten
+    with the bundled font). The engine receives everything through the job
+    options, so it never reads the settings itself (plain worker-thread data).
     """
-    if not enabled:
-        return {"manga_enlarge_text": False}
+    if isinstance(mode, bool):
+        mode = "experimental" if mode else "off"
+    mode = str(mode or "off").strip().lower()
+    if mode in {"", "0", "false", "none", "off"}:
+        return {"manga_text_mode": "off", "manga_enlarge_text": False}
+    if mode not in {"experimental", "ocr", "ocr_font"}:
+        mode = "experimental"
+
     from app.security import runtime
 
     return {
-        "manga_enlarge_text": True,
+        "manga_text_mode": mode,
+        "manga_enlarge_text": mode == "experimental",
         "manga_max_scale": runtime.get("manga_max_scale", 2.0),
         "manga_overflow": runtime.get("manga_overflow", 0.15),
         "manga_max_overflow_px": runtime.get("manga_max_overflow_px", 10),
+        "manga_ocr_lang": runtime.get("manga_ocr_lang", "pt"),
+        "manga_ocr_model": runtime.get("manga_ocr_model", "small"),
+        "manga_ocr_min_score": runtime.get("manga_ocr_min_score", 0.5),
+        "manga_font": runtime.get("manga_font", ""),
+        "manga_font_min_score": runtime.get("manga_font_min_score", 0.75),
     }
 
 

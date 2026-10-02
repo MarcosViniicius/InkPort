@@ -114,12 +114,13 @@ def plan_enlargement(
     overflow: float = 0.15,
     max_overflow_px: int = 10,
     fit_box: tuple[int, int, int, int] | None = None,
+    source_box: tuple[int, int, int, int] | None = None,
 ) -> ScalePlan | None:
     """Compute the enlargement plan for one region, or ``None`` to skip it."""
     rx0, ry0, rx1, ry1 = region.box
     rw, rh = max(1, rx1 - rx0), max(1, ry1 - ry0)
 
-    tx0, ty0, tx1, ty1 = region.text_box
+    tx0, ty0, tx1, ty1 = source_box or region.text_box
     tw, th = max(1, tx1 - tx0), max(1, ty1 - ty0)
 
     outer_x0, outer_y0, outer_x1, outer_y1 = fit_box or region.box
@@ -150,4 +151,4 @@ def plan_enlargement(
     nx0 = round(cx - new_w / 2.0)
     ny0 = round(cy - new_h / 2.0)
     target = (nx0, ny0, nx0 + new_w, ny0 + new_h)
-    return ScalePlan(scale, strategy, region.box, region.text_box, target)
+    return ScalePlan(scale, strategy, region.box, source_box or region.text_box, target)

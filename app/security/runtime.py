@@ -241,6 +241,77 @@ FIELDS: tuple[Field, ...] = (
         advanced=True,
     ),
     Field(
+        "manga_ocr_lang",
+        "Idioma do OCR de mangá",
+        group="conversion",
+        kind="choice",
+        choices=(
+            ("pt", "Português"),
+            ("en", "Inglês"),
+            ("es", "Espanhol"),
+            ("fr", "Francês"),
+            ("de", "Alemão"),
+            ("it", "Italiano"),
+        ),
+        default="pt",
+        help="Idioma dos textos reconhecidos no modo preciso.",
+        onboarding=False,
+        advanced=True,
+    ),
+    Field(
+        "manga_ocr_model",
+        "Modelo do OCR de mangá",
+        group="conversion",
+        kind="choice",
+        choices=(
+            ("tiny", "Rápido (menos preciso)"),
+            ("small", "Equilibrado"),
+            ("medium", "Preciso (mais lento)"),
+        ),
+        default="small",
+        help="Modelos ONNX baixados uma única vez (~5 a 35 MB).",
+        onboarding=False,
+        advanced=True,
+    ),
+    Field(
+        "manga_ocr_min_score",
+        "Confiança mínima do OCR",
+        group="conversion",
+        kind="float",
+        minimum=0.1,
+        maximum=0.95,
+        default=0.5,
+        help="Abaixo disso o texto é ignorado e a região fica intacta.",
+        onboarding=False,
+        advanced=True,
+    ),
+    Field(
+        "manga_font_min_score",
+        "Confiança mínima para reescrever com fonte",
+        group="conversion",
+        kind="float",
+        minimum=0.1,
+        maximum=0.99,
+        default=0.75,
+        help=(
+            "No modo que reescreve o texto, abaixo disso a região usa os "
+            "glifos originais em vez da fonte."
+        ),
+        onboarding=False,
+        advanced=True,
+    ),
+    Field(
+        "manga_font",
+        "Fonte do texto reescrito",
+        group="conversion",
+        help=(
+            "Vazio usa a Comic Neue embutida. Informe o caminho de um arquivo "
+            ".ttf/.otf para trocar."
+        ),
+        onboarding=False,
+        advanced=True,
+    ),
+    Field(
         "rss_worker_enabled",
         "Buscar feeds automaticamente",
         group="automation",

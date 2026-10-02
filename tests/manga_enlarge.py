@@ -114,7 +114,7 @@ def main() -> int:
     before_rows = _dark_rows(page, (100, 100, 320, 320))
     art_before = page.crop((40, 480, 220, 620)).tobytes()
 
-    enlarged, stats = enlarge_page(page, options={"manga_max_scale": 2.0})
+    enlarged, stats = enlarge_page(page, options={"manga_text_mode": "experimental"})
     check("detectou a região com texto", stats["regions"] >= 1, str(stats))
     check("ampliou ao menos uma região", stats["enlarged"] >= 1, str(stats))
 
@@ -138,7 +138,9 @@ def main() -> int:
         str(len(regions)),
     )
     if regions:
-        _, edge_stats = enlarge_page(edge_page.copy(), options={})
+        _, edge_stats = enlarge_page(
+            edge_page.copy(), options={"manga_text_mode": "experimental"}
+        )
         check("e chega a ser ampliado", edge_stats["enlarged"] >= 1, str(edge_stats))
 
     from app.converters.manga.detector import _merge_overlapping
@@ -205,6 +207,51 @@ def main() -> int:
                 )
         else:
             check("RTL: palavras segmentadas", False, "menos de duas palavras na linha")
+
+    print("\n[OCR: palavras reconhecidas -> reescrita e reflow]")
+    from app.converters.manga import fonts
+    from app.converters.manga.ocr import OcrLine, OcrWord
+    from app.converters.manga.relayout import block_from_ocr, plan_rewrite, render_rewrite
+
+    check("fonte embutida presente no projeto", fonts.BUNDLED_FONT.exists())
+
+    ocr_page = _wide_line_page()
+    ocr_regions = detect_regions(ocr_page)
+    if ocr_regions:
+        region = ocr_regions[0]
+        words = [
+            OcrWord(f"PALAVRA{index}", 0.95, (250 + index * 120, 480, 340 + index * 120, 512))
+            for index in range(4)
+        ]
+        line = OcrLine(
+            "PALAVRA PALAVRA PALAVRA PALAVRA", 0.95,
+            (words[0].box[0], 480, words[-1].box[2], 512), words,
+        )
+        block = block_from_ocr([line])
+        check("bloco montado a partir do OCR", block is not None and len(block.words) == 4)
+        if block:
+            lefts = [word.box[0] for word in block.words]
+            check("ordem de leitura LTR preservada", lefts == sorted(lefts))
+            fit = usable_box(ocr_page, region.box, region.text_box)
+            plan = plan_reflow(block, region.box, max_scale=2.5, fit_box=fit)
+            check(
+                "reflow conservador amplia usando o OCR",
+                plan is not None and plan.scale > 1.0,
+                str(plan.scale if plan else None),
+            )
+
+        rewrite = plan_rewrite([line], region.box, fit_box=usable_box(
+            ocr_page, region.box, region.text_box
+        ))
+        check(
+            "planeja reescrita com fonte",
+            rewrite is not None and rewrite.size >= 8,
+            str(rewrite.size if rewrite else None),
+        )
+        if rewrite is not None:
+            before = ocr_page.copy()
+            render_rewrite(ocr_page, rewrite)
+            check("a página foi reescrita", ocr_page.tobytes() != before.tobytes())
 
     print("\n[integração: conversão de CBZ com a ampliação ligada]")
     import zipfile

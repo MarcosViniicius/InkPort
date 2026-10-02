@@ -86,6 +86,15 @@ class Capabilities:
         """Manga/comic text enlargement works with Pillow alone."""
         return True
 
+    def has_ocr(self) -> bool:
+        """Optional OCR extra (RapidOCR/ONNX), used by the precise modes."""
+        from app.converters.manga import ocr
+
+        try:
+            return ocr.available()
+        except Exception:  # noqa: BLE001 - a missing extra is not an error
+            return False
+
     def image_renderer(self) -> str | None:
         """PDF -> image renderer name (PyMuPDF always wins)."""
         return "pymupdf" if self.has_pdf() else None
@@ -115,7 +124,9 @@ class Capabilities:
         report["Ampliação de texto (mangá/quadrinhos)"] = (
             "motor local (Pillow, sem IA e sem internet)" if self.has_text_enlarge() else None
         )
-        report["OCR (reconhecer texto)"] = None
+        report["OCR de mangá (modo preciso, opcional)"] = (
+            "RapidOCR / PP-OCRv6 (ONNX, CPU)" if self.has_ocr() else None
+        )
         report["IA para decisões (opcional)"] = None
         return report
 

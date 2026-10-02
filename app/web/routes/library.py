@@ -185,6 +185,7 @@ def bulk_action(
     book_ids: list[str] = Form(default=[]),
     target_format: str = Form(""),
     device_profile: str = Form(""),
+    manga_text_mode: str = Form("off"),
     manga_enlarge_text: str | None = Form(None),
     session: Session = Depends(get_session),
 ):
@@ -224,7 +225,10 @@ def bulk_action(
         from app.library.conversions import enqueue_conversion, manga_text_options
 
         queued = 0
-        options = manga_text_options(manga_enlarge_text is not None)
+        mode = manga_text_mode
+        if mode == "off" and manga_enlarge_text is not None:
+            mode = "experimental"
+        options = manga_text_options(mode)
         for book in books:
             enqueue_conversion(
                 session,

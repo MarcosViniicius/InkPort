@@ -72,7 +72,7 @@ async def submit(
     target_format: str = Form("auto"),
     device_profile: str = Form("generic_epub"),
     keep_original: str = Form(""),
-    manga_enlarge_text: str = Form(""),
+    manga_text_mode: str = Form("off"),
     session: Session = Depends(get_session),
 ):
     """Single entry point for the unified import form.
@@ -81,7 +81,7 @@ async def submit(
     so the old routes keep working untouched (panel tests and integrations).
     """
     kind = (kind or "files").strip().lower()
-    options = manga_text_options(bool(manga_enlarge_text))
+    options = manga_text_options(manga_text_mode)
     if kind == "text":
         return _handle_text(
             request, session, title, author, text,
@@ -116,13 +116,13 @@ async def upload(
     target_format: str = Form("auto"),
     device_profile: str = Form("generic_epub"),
     keep_original: str = Form(""),
-    manga_enlarge_text: str = Form(""),
+    manga_text_mode: str = Form("off"),
     session: Session = Depends(get_session),
 ):
     return await _handle_upload(
         request, session, files,
         category, convert, target_format, device_profile, keep_original,
-        manga_text_options(bool(manga_enlarge_text)),
+        manga_text_options(manga_text_mode),
     )
 
 
@@ -155,7 +155,7 @@ async def _handle_upload(
                 "device_profile": device_profile,
                 "keep_original": bool(keep_original),
                 "convert": bool(convert),
-                "manga_enlarge_text": bool(options.get("manga_enlarge_text")),
+                "manga_text_mode": str(options.get("manga_text_mode") or "off"),
             }
         )
         return render(request, "import.html", context, status_code=400)
@@ -202,7 +202,7 @@ async def _handle_upload(
                     "category": category.strip(),
                     "target_format": target_format, "device_profile": device_profile,
                     "keep_original": bool(keep_original),
-                    "manga_enlarge_text": bool(options.get("manga_enlarge_text"))})
+                    "manga_text_mode": str(options.get("manga_text_mode") or "off")})
     return render(request, "import.html", context)
 
 
@@ -217,13 +217,13 @@ def import_from_text(
     target_format: str = Form("auto"),
     device_profile: str = Form("generic_epub"),
     keep_original: str = Form(""),
-    manga_enlarge_text: str = Form(""),
+    manga_text_mode: str = Form("off"),
     session: Session = Depends(get_session),
 ):
     return _handle_text(
         request, session, title, author, text,
         category, convert, target_format, device_profile, keep_original,
-        manga_text_options(bool(manga_enlarge_text)),
+        manga_text_options(manga_text_mode),
     )
 
 
@@ -257,7 +257,7 @@ def _handle_text(
         "device_profile": device_profile,
         "keep_original": bool(keep_original),
         "convert": bool(convert),
-        "manga_enlarge_text": bool(options.get("manga_enlarge_text")),
+        "manga_text_mode": str(options.get("manga_text_mode") or "off"),
     }
     if not name:
         return _page_error(request, session, "Informe um título para o texto.", eco)
@@ -320,7 +320,7 @@ def _handle_text(
             "target_format": target_format,
             "device_profile": device_profile,
             "keep_original": bool(keep_original),
-            "manga_enlarge_text": bool(options.get("manga_enlarge_text")),
+            "manga_text_mode": str(options.get("manga_text_mode") or "off"),
         }
     )
     return render(request, "import.html", context)
@@ -335,13 +335,13 @@ def import_from_url(
     target_format: str = Form("auto"),
     device_profile: str = Form("generic_epub"),
     keep_original: str = Form(""),
-    manga_enlarge_text: str = Form(""),
+    manga_text_mode: str = Form("off"),
     session: Session = Depends(get_session),
 ):
     return _handle_url(
         request, session, url,
         category, convert, target_format, device_profile, keep_original,
-        manga_text_options(bool(manga_enlarge_text)),
+        manga_text_options(manga_text_mode),
     )
 
 
@@ -372,7 +372,7 @@ def _handle_url(
         "device_profile": device_profile,
         "keep_original": bool(keep_original),
         "convert": bool(convert),
-        "manga_enlarge_text": bool(options.get("manga_enlarge_text")),
+        "manga_text_mode": str(options.get("manga_text_mode") or "off"),
     }
     if not endereco:
         return _page_error(request, session, "Informe o endereço da página.", eco)
@@ -443,7 +443,7 @@ def _handle_url(
             "target_format": target_format,
             "device_profile": device_profile,
             "keep_original": bool(keep_original),
-            "manga_enlarge_text": bool(options.get("manga_enlarge_text")),
+            "manga_text_mode": str(options.get("manga_text_mode") or "off"),
         }
     )
     return render(request, "import.html", context)
@@ -460,13 +460,13 @@ def scan(
     target_format: str = Form("auto"),
     device_profile: str = Form("generic_epub"),
     keep_original: str = Form(""),
-    manga_enlarge_text: str = Form(""),
+    manga_text_mode: str = Form("off"),
     session: Session = Depends(get_session),
 ):
     return _handle_scan(
         request, session, path, recursive, move,
         category, convert, target_format, device_profile, keep_original,
-        manga_text_options(bool(manga_enlarge_text)),
+        manga_text_options(manga_text_mode),
     )
 
 
@@ -515,7 +515,7 @@ def _handle_scan(
                     "category": category.strip(),
                     "target_format": target_format, "device_profile": device_profile,
                     "keep_original": bool(keep_original),
-                    "manga_enlarge_text": bool(options.get("manga_enlarge_text"))})
+                    "manga_text_mode": str(options.get("manga_text_mode") or "off")})
     return render(request, "import.html", context)
 
 
@@ -565,7 +565,7 @@ def _base_context(session: Session) -> dict:
         "device_profile": "generic_epub",
         "target_format": "auto",
         "keep_original": False,
-        "manga_enlarge_text": False,
+        "manga_text_mode": "off",
     }
 
 

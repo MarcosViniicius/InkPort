@@ -57,13 +57,17 @@ def create_jobs(
     target_format: str = Form("auto"),
     device_profile: str = Form("generic_epub"),
     keep_original: str = Form("on"),
+    manga_text_mode: str = Form("off"),
     manga_enlarge_text: str | None = Form(None),
     session: Session = Depends(get_session),
 ):
     ids = [token.strip() for token in book_ids.replace(",", " ").split() if token.strip()]
     created = 0
     missing = 0
-    options = manga_text_options(manga_enlarge_text is not None)
+    mode = manga_text_mode
+    if mode == "off" and manga_enlarge_text is not None:
+        mode = "experimental"
+    options = manga_text_options(mode)
     for book_id in ids:
         book = session.get(Book, book_id)
         if book is None:

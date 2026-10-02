@@ -132,6 +132,11 @@ class Settings(BaseSettings):
         return self.data_dir / "logs"
 
     @property
+    def ocr_dir(self) -> Path:
+        """ONNX models used by the optional OCR backend (downloaded once)."""
+        return self.data_dir / "ocr"
+
+    @property
     def db_path(self) -> Path:
         return self.data_dir / "opds.db"
 
@@ -148,6 +153,7 @@ class Settings(BaseSettings):
             self.temp_dir,
             self.covers_dir,
             self.logs_dir,
+            self.ocr_dir,
         )
 
     def ensure_dirs(self) -> None:

@@ -31,6 +31,15 @@ dependencies = [
     "sqlcipher3>=0.6.2",
 ]
 
+[project.optional-dependencies]
+# OCR dos modos precisos de mangá (opcional: sem ele a conversão usa só
+# geometria). Os modelos ONNX (~5 a 35 MB) baixam na primeira conversão para
+# DATA_DIR/ocr/models e ficam reutilizáveis offline.
+ocr = [
+    "rapidocr>=3.9",
+    "onnxruntime>=1.22",
+]
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"

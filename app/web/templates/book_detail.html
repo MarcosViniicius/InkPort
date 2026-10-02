@@ -2,6 +2,7 @@
 {% from "partials/icons.html" import icon %}
 {% from "partials/device_select.html" import device_select %}
 {% from "partials/toggle.html" import toggle %}
+{% from "partials/manga_mode.html" import manga_mode %}
 {% block title %}{{ book.title }} · {{ app_name }}{% endblock %}
 {% block content %}
 <div class="page-head">
@@ -115,10 +116,9 @@
         </p>
         {% endif %}
         <div class="switch-stack my3">
-          {{ toggle('manga_enlarge_text', 'Ampliar textos de mangá/quadrinhos',
-                    hint='Aumenta balões e textos soltos aproveitando o espaço livre. Só vale para quadrinhos e páginas digitalizadas.') }}
           {{ toggle('keep_original', 'Manter o arquivo original', checked=true) }}
         </div>
+        {{ manga_mode('off') }}
         <button class="button" type="submit">Adicionar à fila</button>
       </form>
     </div>
