@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 #: Canonical repository (used when the checkout has no `origin` remote).
-DEFAULT_REPO = "https://github.com/MarcosViniicius/eink-opds-server.git"
+DEFAULT_REPO = "https://github.com/MarcosViniicius/InkPort.git"
 DEFAULT_BRANCH = "main"
 DEFAULT_INTERVAL_HOURS = 6
 

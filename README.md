@@ -160,8 +160,8 @@ qualidade, formato de imagem).
 ## Instalação
 
 ```bash
-git clone https://github.com/MarcosViniicius/eink-opds-server.git
-cd eink-opds-server
+git clone https://github.com/MarcosViniicius/InkPort.git
+cd InkPort
 
 python -m venv .venv
 # Windows

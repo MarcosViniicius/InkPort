@@ -11,7 +11,7 @@
 [project]
 name = "InkPort"
 tagline = "Servidor OPDS 1.2 / 2.0 para leitores e-ink — painel, biblioteca e conversão"
-repo = "MarcosViniicius/eink-opds-server"
+repo = "MarcosViniicius/InkPort"
 # version = "0.2.0"   # descomente para fixar; vazio = le de app/__init__.py
 
 [banner]
