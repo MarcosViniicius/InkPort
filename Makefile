@@ -35,7 +35,7 @@ crosspoint:
 	python tests/crosspoint_compat.py
 
 docker:
-	GIT_SHA=$$(git rev-parse HEAD 2>/dev/null || echo unknown) docker compose up -d --build
+	docker compose up -d --build
 
 network:
 	python -c "from app.config import get_settings; s=get_settings(); print('bind:', s.host, s.port); [print(' ', u) for u in s.access_urls]"

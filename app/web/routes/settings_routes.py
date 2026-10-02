@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
-from urllib.parse import quote
-
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
@@ -18,7 +15,6 @@ from app.security import auth, runtime
 from app.security.auth import require_panel
 from app.storage.temp import clean_temp_dir
 from app.storage.usage import library_usage
-from app.updates import service as update_service
 from app.web.templating import render
 from app.workers import queue
 
@@ -53,7 +49,6 @@ def settings_page(request: Request, session: Session = Depends(get_session)):
             "cleanup_enabled": bool(getattr(settings, "download_cleanup_enabled", False)),
             "cleanup_days": cleanup_rule.days,
             "cleanup_include_originals": cleanup_rule.include_originals,
-            "update_status": update_service.details(session),
         },
     )
 
@@ -105,52 +100,6 @@ def change_password(
     auth.change_password(session, new_password, username=username.strip() or None)
     return RedirectResponse(
         f"/settings?ok={quote('Credenciais atualizadas.')}", status_code=303
-    )
-
-
-@router.post("/updates/check")
-async def updates_check_now():
-    """Start an update check in the background and return immediately.
-
-    The check does network I/O (git ls-remote/fetch), so it must not block the
-    request — same pattern as the feed refresh. The result appears in the
-    settings section when it finishes.
-    """
-    ok, reason = update_service.preflight()
-    if not ok:
-        return RedirectResponse(
-            f"/settings?err={quote(reason)}#atualizacoes", status_code=303
-        )
-    asyncio.create_task(
-        asyncio.to_thread(update_service.check_updates_in_background)
-    )
-    return RedirectResponse(
-        f"/settings?ok={quote('Verificação iniciada — o resultado aparece aqui em instantes.')}"
-        "#atualizacoes",
-        status_code=303,
-    )
-
-
-@router.post("/updates/apply")
-async def updates_apply_now():
-    """Pull the update and, on Docker, rebuild the stack — in the background.
-
-    A pull plus a compose rebuild takes minutes; blocking the request would
-    make the panel look frozen. The outcome is persisted and shown in the
-    settings section.
-    """
-    ok, reason = update_service.preflight(apply=True)
-    if not ok:
-        return RedirectResponse(
-            f"/settings?err={quote(reason)}#atualizacoes", status_code=303
-        )
-    asyncio.create_task(
-        asyncio.to_thread(update_service.apply_update_in_background)
-    )
-    return RedirectResponse(
-        f"/settings?ok={quote('Atualização iniciada em segundo plano — acompanhe o resultado aqui.')}"
-        "#atualizacoes",
-        status_code=303,
     )
 
 

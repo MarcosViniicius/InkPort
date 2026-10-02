@@ -102,19 +102,7 @@ def render(request, name: str, context: dict | None = None, *, status_code: int 
         "base_url": base,
         "opds_url": f"{base}/opds",
         "opds2_url": f"{base}/opds/v2",
-        "update_available": False,
-        "update_behind": 0,
     }
-    # Update notice for the banner: in-memory snapshot only (no session here,
-    # no subprocess, never raises) — the workers keep it fresh.
-    try:
-        from app.updates import service as _update_service
-
-        _snap = _update_service.snapshot()
-        base_context["update_available"] = bool(_snap.get("available"))
-        base_context["update_behind"] = int(_snap.get("behind") or 0)
-    except Exception:  # noqa: BLE001 - a banner must never break a page
-        pass
     base_context.update(context or {})
     return templates.TemplateResponse(request, name, base_context, status_code=status_code)
 
