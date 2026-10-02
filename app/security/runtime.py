@@ -33,6 +33,7 @@ GROUPS: dict[str, str] = {
     "conversion": "Conversão e armazenamento",
     "automation": "Automação",
     "cleanup": "Limpeza automática",
+    "updates": "Atualizações",
 }
 
 
@@ -279,6 +280,48 @@ FIELDS: tuple[Field, ...] = (
             "Desligado, a limpeza remove apenas arquivos gerados por conversão — "
             "os originais ficam. Ligue para incluir tudo."
         ),
+        onboarding=False,
+        advanced=True,
+    ),
+    Field(
+        "update_check_enabled",
+        "Verificar atualizações automaticamente",
+        group="updates",
+        kind="bool",
+        default=True,
+        help="Avisa no painel quando o repositório tiver commits novos.",
+        onboarding=False,
+    ),
+    Field(
+        "update_branch",
+        "Branch monitorada",
+        group="updates",
+        default="main",
+        help="Qual branch do repositório acompanhar (ex.: main).",
+        onboarding=False,
+        advanced=True,
+    ),
+    Field(
+        "update_repo_url",
+        "URL do repositório",
+        group="updates",
+        default="",
+        help=(
+            "Vazio = usa o 'origin' deste checkout. Preencha com https:// para "
+            "acompanhar outro espelho."
+        ),
+        onboarding=False,
+        advanced=True,
+    ),
+    Field(
+        "update_interval_hours",
+        "Verificar a cada (horas)",
+        group="updates",
+        kind="int",
+        minimum=1,
+        maximum=168,
+        default=6,
+        help="Intervalo mínimo entre verificações automáticas.",
         onboarding=False,
         advanced=True,
     ),

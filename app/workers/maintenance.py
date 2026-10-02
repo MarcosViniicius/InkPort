@@ -12,6 +12,7 @@ from app.downloads import store as downloads
 from app.library.repairs import run_repairs
 from app.library.service import mark_missing
 from app.storage.temp import clean_temp_dir
+from app.updates import service as update_service
 from app.workers import queue
 
 logger = logging.getLogger(__name__)
@@ -47,6 +48,11 @@ class MaintenanceLoop:
                 from app.downloads.cleanup import run as run_cleanup
 
                 cleaned = run_cleanup(session, CleanupRule.from_settings(settings))
+            try:
+                # Update notice: throttled internally, never breaks maintenance.
+                update_service.maybe_check(session, settings)
+            except Exception:  # noqa: BLE001 - best effort by design
+                logger.exception("update check failed")
             repairs = run_repairs(session)
         if removed or resumed or missing or stuck_downloads or cleaned or any(repairs.values()):
             logger.info(

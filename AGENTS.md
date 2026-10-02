@@ -56,6 +56,7 @@ python tests/sitemap.py
 python tests/archives.py
 python tests/frontend.py
 python tests/cancellation.py
+python tests/update.py
 ```
 
 Windows: `.\tasks.ps1 run|test|smoke|convert|rss|crosspoint|clean`.
@@ -127,6 +128,8 @@ app/
 ├── reader/            leitor web: registry + epub/pdf/comic/text/fb2 + sanitize
 ├── workers/           queue.py (claim no banco), conversion_loop, rss_loop,
 │                      maintenance, manager, progress.py (cancelamento)
+├── updates/           aviso/detalhes/aplicar atualizações do repo (git.py + service.py)
+│                      <-- ver docs/updates.md
 ├── security/          passwords, auth (sessão + Basic), settings_store
 ├── api/               REST /api (books, uploads, conversions, devices, feeds, system)
 ├── tools/             CLIs internas (ex.: import_site)
@@ -280,6 +283,7 @@ tools/
   [`docs/device-formats.md`](docs/device-formats.md)
 - Feeds: [`docs/rss.md`](docs/rss.md)
 - Rastreamento de downloads e gerência de arquivos: [`docs/downloads.md`](docs/downloads.md)
+- Atualizações do InkPort (aviso, detalhes, aplicar): [`docs/updates.md`](docs/updates.md)
 - Fluxo de dev (adicionar conversor/dispositivo/rota): [`docs/development.md`](docs/development.md)
 - Containers (auditoria de RAM e disco, agente DevOps): [`docs/devops/containers.md`](docs/devops/containers.md)
 - Arte do projeto (banner, badges, diagrama): [`tools/artwork/README.md`](tools/artwork/README.md)

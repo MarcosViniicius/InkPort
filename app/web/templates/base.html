@@ -82,6 +82,12 @@
           <button class="x" type="button" data-flash-close aria-label="Fechar">✕</button>
         </div>
         {% endif %}
+        {% if update_available %}
+        <div class="flash" role="status" aria-live="polite">
+          {{ icon('alert') }}<span>Há atualização do {{ app_name }} disponível{% if update_behind %} ({{ update_behind }} commit(s) atrás){% endif %}.</span>
+          <a class="button ghost small" href="/settings#atualizacoes">Detalhes</a>
+        </div>
+        {% endif %}
         {% block content %}{% endblock %}
       </main>
 

@@ -12,6 +12,7 @@
   'conversion': {'icon': 'database', 'desc': 'Limites de upload, paralelismo e espaço em disco.'},
   'automation': {'icon': 'feeds',    'desc': 'Atualização automática dos feeds cadastrados.'},
   'cleanup':    {'icon': 'trash',    'desc': 'Remove do servidor arquivos já baixados e antigos.'},
+  'updates':    {'icon': 'refresh',  'desc': 'Avisar e aplicar atualizações do repositório.'},
   'app':        {'icon': 'settings', 'desc': 'Ajustes gerais.'}
 } %}
 
@@ -80,6 +81,12 @@
           {% else %}
           <span class="badge">manual</span>
           {% endif %}
+        {% elif group == 'updates' %}
+          {% if update_status.available %}
+          <span class="badge warn">atualização disponível</span>
+          {% else %}
+          <span class="badge ok">em dia</span>
+          {% endif %}
         {% endif %}
       </span>
       <span class="chev" aria-hidden="true">{{ icon('chevron', 16) }}</span>
@@ -144,6 +151,70 @@
       {% if usage.limit_bytes %}<div class="bar mb3"><span style="width: {{ usage.percent if usage.percent < 100 else 100 }}%"></span></div>{% endif %}
       <dl class="kv"><dt>Fila</dt><dd>{{ queue.pending }} pendente(s) · {{ queue.running }} executando</dd></dl>
       <p class="hint mb0">Upload e teto de armazenamento valem na hora. O paralelismo só depois de reiniciar o servidor.</p>
+
+      {% elif group == 'updates' %}
+      <div id="atualizacoes"></div>
+      {{ campos(normais) }}
+      <h3 class="s-sub">Estado</h3>
+      {% if not update_status.capable %}
+      <p class="muted small mb0">{{ update_status.reason }}</p>
+      {% else %}
+      <dl class="kv">
+        <dt>Situação</dt>
+        <dd>
+          {% if update_status.available %}
+          <span class="badge warn">{{ update_status.behind }} commit(s) atrás</span>
+          {% else %}
+          <span class="badge ok">em dia</span>
+          {% endif %}
+        </dd>
+        <dt>Local</dt><dd class="mono small">{{ update_status.live_local_short or '—' }}</dd>
+        <dt>Verificado</dt><dd class="muted small">{{ update_status.checked_at|relative if update_status.checked_at else 'ainda não' }}</dd>
+      </dl>
+      {% if update_status.error %}
+      <p class="muted small text-danger">{{ update_status.error }}</p>
+      {% endif %}
+      {% if update_status.result %}
+      <p class="muted small mb0">Último resultado{% if update_status.result_at %} ({{ update_status.result_at|relative }}){% endif %}: {{ update_status.result }}</p>
+      {% endif %}
+      {% if update_status.commits %}
+      <h3 class="s-sub">Últimos commits</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Commit</th><th>Mensagem</th><th>Autor</th><th>Data</th></tr></thead>
+          <tbody>
+          {% for commit in update_status.commits %}
+            <tr>
+              <td data-label="Commit" class="mono small">{{ commit.short }}</td>
+              <td data-label="Mensagem">{{ commit.subject }}{% if commit.body %}<span class="sub">{{ commit.body[:200] }}</span>{% endif %}</td>
+              <td data-label="Autor" class="muted small">{{ commit.author }}</td>
+              <td data-label="Data" class="muted small">{{ commit.date|relative if commit.date else '—' }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+      <div class="button-row mt4">
+        <form method="post" action="/settings/updates/check">
+          <button class="button ghost" type="submit">{{ icon('refresh', 15) }} Verificar agora</button>
+        </form>
+        {% if update_status.available %}
+        <form method="post" action="/settings/updates/apply"
+              data-confirm="Atualizar o InkPort agora?"
+              data-confirm-msg="O código é baixado do repositório e, no Docker, os containers são reconstruídos. Guarde antes qualquer alteração local."
+              data-confirm-ok="Atualizar"
+              data-confirm-danger
+              onsubmit="return confirm('Baixar a atualização e aplicar agora?')">
+          <button class="button" type="submit">{{ icon('download', 15) }} Atualizar agora</button>
+        </form>
+        {% endif %}
+      </div>
+      <p class="hint mb0">
+        A verificação roda sozinha de tempos em tempos. Fora do Docker, depois
+        de atualizar é preciso reiniciar o servidor para usar o código novo.
+      </p>
+      {% endif %}
 
       {% else %}
       {{ campos(normais) }}
