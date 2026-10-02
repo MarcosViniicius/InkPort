@@ -46,6 +46,24 @@ def plan_for_book(
     return plan.target_format, options
 
 
+def manga_text_options(enabled: bool) -> dict:
+    """Options for the manga/comic text enlargement, with the configured limits.
+
+    The engine receives everything through the job options, so it never has to
+    read the settings itself (it runs on a worker thread with plain data).
+    """
+    if not enabled:
+        return {"manga_enlarge_text": False}
+    from app.security import runtime
+
+    return {
+        "manga_enlarge_text": True,
+        "manga_max_scale": runtime.get("manga_max_scale", 2.0),
+        "manga_overflow": runtime.get("manga_overflow", 0.15),
+        "manga_max_overflow_px": runtime.get("manga_max_overflow_px", 10),
+    }
+
+
 def enqueue_conversion(
     session: Session,
     book: Book,

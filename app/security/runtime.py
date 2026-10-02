@@ -199,6 +199,48 @@ FIELDS: tuple[Field, ...] = (
         advanced=True,
     ),
     Field(
+        "manga_max_scale",
+        "Ampliação máxima de texto (mangá)",
+        group="conversion",
+        kind="float",
+        minimum=1.0,
+        maximum=4.0,
+        default=2.0,
+        help=(
+            "Quanto o texto de quadrinhos pode crescer no máximo (2 = o dobro). "
+            "Vale para conversões com «Ampliar textos» ligada."
+        ),
+        onboarding=False,
+        advanced=True,
+    ),
+    Field(
+        "manga_overflow",
+        "Ampliação além do balão (mangá)",
+        group="conversion",
+        kind="float",
+        minimum=0.0,
+        maximum=1.0,
+        default=0.15,
+        help=(
+            "Quanto o texto pode passar do balão quando quase não há margem "
+            "(0 = não passa). Só avança sobre espaço livre; a arte é preservada."
+        ),
+        onboarding=False,
+        advanced=True,
+    ),
+    Field(
+        "manga_max_overflow_px",
+        "Limite da ampliação além do balão (px)",
+        group="conversion",
+        kind="int",
+        minimum=0,
+        maximum=64,
+        default=10,
+        help="Teto em pixels de quanto o texto pode sair do balão.",
+        onboarding=False,
+        advanced=True,
+    ),
+    Field(
         "rss_worker_enabled",
         "Buscar feeds automaticamente",
         group="automation",

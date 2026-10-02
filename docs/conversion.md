@@ -75,6 +75,32 @@ não apenas para "reduzir":
   amplificaria o ruído.
 - **Formato de saída**: JPG (menor) ou **PNG** (sem perda, melhor para traço).
 
+### Ampliação de texto de mangá/quadrinhos (opcional)
+
+Para telas pequenas, o texto de balões costuma ficar minúsculo mesmo com espaço
+sobrando. Ligando **“Ampliar textos de mangá/quadrinhos”** na conversão, um motor
+local (`app/converters/manga/`, só Pillow) faz, por página:
+
+1. **Detecção** (`detector.py`): binariza, faz *flood fill* a partir da borda
+   para achar as áreas brancas **fechadas** (balões e caixas de texto) e rotula
+   os componentes. Dentro de cada região, os traços do texto são os blobs de
+   tinta pequenos que **não tocam a borda** (o contorno do balão toca).
+2. **Análise de espaço** (`layout.py`): mede a margem interna do balão e decide a
+   **estratégia A** (cabe com folga) ou **B** (pouca margem).
+3. **Ampliação** (`enlarge.py`): recorta o texto como imagem, limpa o original
+   com a cor de fundo do balão e cola de volta maior (Lanczos). Na estratégia B
+   o texto pode passar um pouco do balão, mas só sobre **espaço livre** — se
+   houver arte ali, a escala é reduzida. O restante da página fica intacto.
+
+É **best-effort**: página que não pode ser interpretada volta sem alteração e
+nunca quebra a conversão. Sem OCR, sem IA, sem internet e sem binário externo.
+
+Limites configuráveis em **Configurações → Conversão e armazenamento →
+«Avançado»**: `manga_max_scale` (teto, padrão 2×), `manga_overflow` (quanto pode
+passar do balão, padrão 0,15) e `manga_max_overflow_px` (teto em pixels).
+A saída vira um novo `Book` ligado ao original por `origin_book_id`, então o
+painel/OPDS já mostram **original × adaptado** lado a lado.
+
 ## Páginas duplas (spreads)
 
 Um volume de mangá tem páginas normais (retrato) e **páginas duplas desenhadas**

@@ -78,6 +78,11 @@ def resolve_options(profile: DeviceProfile, options: dict | None = None) -> dict
         "rotate_right": bool(options.get("rotate_right", False)),
         "dither": bool(options.get("dither", profile.gray_levels <= 2)),
         "render_dpi": int(options.get("dpi", profile.render_dpi) or 0),
+        # Manga/comic text enlargement (opt-in; see app/converters/manga).
+        "manga_enlarge_text": bool(options.get("manga_enlarge_text", False)),
+        "manga_max_scale": float(options.get("manga_max_scale", 2.0) or 2.0),
+        "manga_overflow": float(options.get("manga_overflow", 0.15) or 0.0),
+        "manga_max_overflow_px": int(options.get("manga_max_overflow_px", 10) or 0),
     }
 
 
@@ -90,6 +95,10 @@ def transform_page(img: Image.Image, profile: DeviceProfile, opts: dict):
         img = to_grayscale(img)
     if opts["autocontrast"]:
         img = ImageOps.autocontrast(img, cutoff=1)
+
+    # 1b. enlarge the text before resizing: more resolution = crisper glyphs.
+    if opts["manga_enlarge_text"]:
+        img = _enlarge_manga_text(img, opts)
 
     # 2. geometry: crop blank borders, then resize for the target
     if opts["crop_margins"]:
@@ -107,6 +116,20 @@ def transform_page(img: Image.Image, profile: DeviceProfile, opts: dict):
         img = quantize_levels(img, opts["posterize_levels"], dither=opts["dither"])
 
     return img, grayscale
+
+
+def _enlarge_manga_text(img: Image.Image, opts: dict):
+    """Best-effort manga/comic text enlargement; never breaks a conversion."""
+    try:
+        from app.converters.manga import enlarge_page
+
+        enlarged, stats = enlarge_page(img, options=opts)
+        if stats.get("enlarged"):
+            logger.info("manga text enlarged", extra=stats)
+        return enlarged
+    except Exception as exc:  # noqa: BLE001 - optional nicety, not a requirement
+        logger.warning("manga text enlargement skipped", extra={"error": str(exc)})
+        return img
 
 
 def _resize(img: Image.Image, profile: DeviceProfile, opts: dict) -> Image.Image:

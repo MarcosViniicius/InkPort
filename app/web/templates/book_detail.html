@@ -115,6 +115,8 @@
         </p>
         {% endif %}
         <div class="switch-stack my3">
+          {{ toggle('manga_enlarge_text', 'Ampliar textos de mangá/quadrinhos',
+                    hint='Aumenta balões e textos soltos aproveitando o espaço livre. Só vale para quadrinhos e páginas digitalizadas.') }}
           {{ toggle('keep_original', 'Manter o arquivo original', checked=true) }}
         </div>
         <button class="button" type="submit">Adicionar à fila</button>

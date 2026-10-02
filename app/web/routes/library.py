@@ -185,6 +185,7 @@ def bulk_action(
     book_ids: list[str] = Form(default=[]),
     target_format: str = Form(""),
     device_profile: str = Form(""),
+    manga_enlarge_text: str | None = Form(None),
     session: Session = Depends(get_session),
 ):
     from urllib.parse import quote
@@ -220,9 +221,10 @@ def bulk_action(
 
     if action == "convert":
         # Mass conversion: one format/profile for every selected book.
-        from app.library.conversions import enqueue_conversion
+        from app.library.conversions import enqueue_conversion, manga_text_options
 
         queued = 0
+        options = manga_text_options(manga_enlarge_text is not None)
         for book in books:
             enqueue_conversion(
                 session,
@@ -230,6 +232,7 @@ def bulk_action(
                 target_format=target_format or "auto",
                 device_profile=device_profile or "eink_generic",
                 keep_original=True,
+                options=dict(options),
             )
             queued += 1
         label = (target_format or "auto").upper()

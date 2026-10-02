@@ -82,6 +82,10 @@ class Capabilities:
     def has_imagemagick(self) -> bool:
         return bool(self.optional.get("ImageMagick"))
 
+    def has_text_enlarge(self) -> bool:
+        """Manga/comic text enlargement works with Pillow alone."""
+        return True
+
     def image_renderer(self) -> str | None:
         """PDF -> image renderer name (PyMuPDF always wins)."""
         return "pymupdf" if self.has_pdf() else None
@@ -108,6 +112,11 @@ class Capabilities:
             "embutida em app/vendor/unrar" if self.archive_backends.get("rar") else None
         )
         report["Calibre (opcional, só formatos exóticos)"] = self.optional.get("Calibre")
+        report["Ampliação de texto (mangá/quadrinhos)"] = (
+            "motor local (Pillow, sem IA e sem internet)" if self.has_text_enlarge() else None
+        )
+        report["OCR (reconhecer texto)"] = None
+        report["IA para decisões (opcional)"] = None
         return report
 
 

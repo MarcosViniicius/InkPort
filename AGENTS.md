@@ -112,6 +112,7 @@ app/
 │   ├── planner.py       decide destino + opções (auto)
 │   ├── registry.py      escolhe a estratégia
 │   ├── runner.py        executa o plano (roda em thread)
+│   ├── manga/           ampliação de textos de mangá/quadrinhos (Pillow, sem IA)
 │   ├── collections/images/pdf: collectors, imageops, pdf_render, normalise
 │   ├── archives.py + unrar_dll.py   ZIP/TAR/7z/RAR
 │   ├── epub/            escritor E leitor de EPUB próprios
@@ -231,6 +232,7 @@ tools/
 | Novo conversor | subclasse em `converters/strategies/`, registre em `strategies/__init__.py`; declare `can_handle` e `priority` |
 | Novo motor (ex. render) | `converters/native/` |
 | Ajustar escolha automática | `converters/planner.py` |
+| Ampliar texto de mangá/quadrinhos | `converters/manga/` (`detector` → `layout` → `enlarge` → `pipeline`) |
 | Formato de saída por dispositivo | `devices/builtin.py` (+ `converters/catalog.py`) |
 | Nova página do painel | `web/routes/*.py` + template + incluir em `build_web_router()`; adicione link em `templates/base.html` |
 | Nova rota da API | `api/*.py` + incluir em `build_api_router()` + schema em `api/schemas.py` |

@@ -96,6 +96,10 @@
         {% for profile in profiles %}<option value="{{ profile.slug }}" {{ 'selected' if profile.recommended }}>{{ profile.name }}</option>{% endfor %}
       </select>
       {% endif %}
+      <label class="check" title="Aumenta balões e textos soltos de quadrinhos aproveitando o espaço livre (sem IA)">
+        <input type="checkbox" name="manga_enlarge_text" value="on">
+        <span class="muted small">Ampliar textos</span>
+      </label>
       <button class="button small" type="submit" name="action" value="convert" aria-label="Converter os livros selecionados">{{ icon('conversions', 15) }} Converter</button>
       <button class="button small ghost" type="submit" name="action" value="refresh" aria-label="Atualizar os metadados dos livros selecionados">{{ icon('refresh', 15) }} Metadados</button>
       <button class="button small ghost" type="submit" name="action" value="rename" aria-label="Renomear os arquivos selecionados">{{ icon('edit', 15) }} Renomear</button>

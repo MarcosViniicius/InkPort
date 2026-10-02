@@ -12,7 +12,7 @@
   <svg x="95.96" y="87.96" width="52.08" height="52.08" viewBox="0 0 24 24" fill="none" stroke="#0f1c18" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M8 3v15"/></svg>
   <text x="188" y="118" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="30" fill="#ecebe7" font-weight="600">InkPort</text>
   <rect x="314.8" y="100" width="67" height="28" fill="#1b1e23" rx="8" stroke="#63b39d" stroke-opacity="0.55"/>
-  <text x="326.8" y="118.68" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" fill="#8fd0be">v0.1.0</text>
+  <text x="326.8" y="118.68" font-family="ui-sans-serif, -apple-system, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="13" fill="#8fd0be">v0.7.1</text>
   <text x="80" y="226" font-family="'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, ui-serif, serif" font-size="52" fill="#ecebe7" font-weight="600">Seu acervo no leitor,</text>
   <text x="80" y="286" font-family="'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, ui-serif, serif" font-size="52" fill="#ecebe7" font-weight="600">sem depender da nuvem</text>
   <circle cx="85" cy="345" r="4" fill="#63b39d"/>

@@ -52,6 +52,8 @@
       {{ device_select(profiles, label='Dispositivo') }}
     </div>
     <div class="switch-stack mt4 mb3">
+      {{ toggle('manga_enlarge_text', 'Ampliar textos de mangá/quadrinhos',
+                hint='Aumenta balões e textos soltos aproveitando o espaço livre, sem IA e sem internet. Só vale para quadrinhos e páginas digitalizadas.') }}
       {{ toggle('keep_original', 'Manter o arquivo original', checked=true,
                 hint='Desligado, o original é removido depois que a conversão termina.') }}
     </div>
