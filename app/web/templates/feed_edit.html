@@ -39,6 +39,14 @@
         <dt>Itens descobertos</dt><dd class="num">{{ items_count }}</dd>
         <dt>Livros importados</dt><dd class="num">{{ books_count }}</dd>
         <dt>Destino dos livros</dt><dd><code>{{ destination }}</code></dd>
+        <dt>Limpeza automática</dt>
+        <dd>
+          {% if feed.cleanup_enabled %}
+          posts com mais de {{ feed.cleanup_days }} dias
+          {% else %}
+          <span class="muted">desligada</span>
+          {% endif %}
+        </dd>
       </dl>
       {% if feed.last_error %}
       <p class="hint text-danger mt4 mb0">Último erro: {{ feed.last_error[:300] }}</p>
@@ -46,6 +54,10 @@
       <p class="hint mt4 mb0">
         Um item já visto não é importado de novo. Para reaplicar as configurações
         novas aos itens antigos, use <strong>Refazer feed</strong>.
+        {% if feed.cleanup_enabled %}
+        A limpeza roda sozinha na manutenção; <strong>Aplicar limpeza agora</strong>
+        faz o mesmo na hora.
+        {% endif %}
       </p>
     </div>
 
@@ -78,6 +90,15 @@
               onsubmit="return confirm('Esquecer os itens já processados (sem apagar livros)?')">
           <button class="button ghost small" type="submit">Limpar histórico</button>
         </form>
+        {% if feed.cleanup_enabled %}
+        <form method="post" action="/feeds/{{ feed.id }}/cleanup"
+              data-confirm="Aplicar a limpeza deste feed agora?"
+              data-confirm-msg="Sai tudo que passou de {{ feed.cleanup_days }} dias."
+              data-confirm-detail="O arquivo sai do disco e o livro sai da biblioteca. O histórico de downloads fica e o post não é baixado de novo."
+              data-confirm-ok="Remover agora">
+          <button class="button ghost small" type="submit">{{ icon('trash', 14) }} Aplicar limpeza agora</button>
+        </form>
+        {% endif %}
       </div>
       <hr>
       <form method="post" action="/feeds/{{ feed.id }}/delete" class="button-row"

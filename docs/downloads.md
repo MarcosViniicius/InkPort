@@ -148,6 +148,30 @@ rotina roda na manutenção periódica (a cada ~15 min, quando ligada) e há um
 **Limpar agora** em *Configurações → Manutenção*, que mostra antes quantos
 arquivos seriam removidos e quanto espaço isso libera.
 
+## Limpeza por feed (retenção)
+
+Além da regra global, **cada feed tem a sua**, no formulário do feed
+(criar/editar → *Limpeza automática*): ligue **“remover os posts antigos deste
+feed”** e escolha o prazo — 5 dias para um feed de notícias, 60 para um blog.
+É independente da limpeza das Configurações: o resto da biblioteca não é tocado.
+
+O que muda em relação à regra global:
+
+- o critério é a **idade do post** (`books.added_at`), não o download — um post
+  vencido sai mesmo que ninguém o tenha baixado (é o sentido de “manter os
+  últimos 5 dias”);
+- sai o **post inteiro**: o original e a conversão, se existirem;
+- o **item do feed continua lembrado** (`feed_items`, com `book_id` nulo), então
+  o post não volta a ser importado na busca seguinte — sem isso a retenção viraria
+  um ciclo de baixar/apagar;
+- o que está **sendo baixado agora** ou **na fila de conversão** fica para a
+  próxima passada;
+- o `file_records` continua, marcado como `deleted` (histórico preservado).
+
+Roda junto com a manutenção periódica (a cada ~10 min, quando algum feed a tem
+ligada). Na tela de edição do feed há **Aplicar limpeza agora**, que informa
+quantos posts saíram e quanto espaço foi liberado.
+
 ## Tela de Downloads (`/downloads`)
 
 No menu, em **Automação → Downloads**. É a visão resumida do rastreio:

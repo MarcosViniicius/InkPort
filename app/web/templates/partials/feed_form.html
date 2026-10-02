@@ -9,6 +9,7 @@
     Uso: {% from "partials/feed_form.html" import feed_form %}
 -#}
 {% from "partials/device_select.html" import device_select %}
+{% from "partials/icons.html" import icon %}
 {% from "partials/toggle.html" import toggle %}
 {% macro feed_form(feed, profiles, output_formats, destination="") -%}
 <form method="post" action="/feeds/save">
@@ -120,6 +121,23 @@
     {{ toggle('keep_original', 'Manter o original baixado', checked=(feed and feed.keep_original),
               hint='Desligado, o arquivo baixado é removido depois da conversão.') }}
   </div>
+
+  <fieldset>
+    <legend>{{ icon('trash', 14) }} Limpeza automática</legend>
+    <div class="switch-stack mb3">
+      {{ toggle('cleanup_enabled', 'Remover os posts antigos deste feed',
+                checked=(feed and feed.cleanup_enabled),
+                hint='Vale só para este feed: o arquivo sai do disco e o livro sai da biblioteca. O histórico de downloads fica, e o post não volta a ser baixado.') }}
+    </div>
+    <div class="field-row">
+      <div class="field mb0">
+        <label for="cleanup_days">Remover posts com mais de (dias)</label>
+        <input id="cleanup_days" name="cleanup_days" type="number" inputmode="numeric" min="1" max="3650"
+               value="{{ feed.cleanup_days if feed and feed.cleanup_days else 30 }}">
+        <p class="hint">Contado desde a importação do post. Num feed de notícias, 5 dias já mantêm o acervo enxuto.</p>
+      </div>
+    </div>
+  </fieldset>
 
   <div class="button-row">
     <button class="button" type="submit">{{ 'Salvar alterações' if feed else 'Salvar feed' }}</button>

@@ -66,6 +66,7 @@ def main() -> int:
         _text_import_checks(client)
         _background_feed_actions(client)
         _feed_edit_checks(client)
+        _feed_retention_checks(client)
         _devices_checks(client)
         _opds_checks(client)
         _network_checks()
@@ -883,6 +884,120 @@ def _opds_checks(client) -> None:
         "http://leitor.local:8080" in response.text or response.status_code == 200,
         "host do cliente não apareceu no feed de dispositivo",
     )
+
+
+def _feed_retention_checks(client) -> None:
+    """Limpeza automática por feed: configurar no formulário e aplicar na hora."""
+    from datetime import timedelta
+    from urllib.parse import unquote
+
+    from sqlalchemy import select
+
+    from app.config import get_settings
+    from app.database.base import session_scope
+    from app.database.models import (
+        Book,
+        ContentType,
+        Feed,
+        FeedItem,
+        FeedItemStatus,
+        utcnow,
+    )
+
+    print("\n[limpeza automática por feed]")
+
+    marca = os.getpid()
+    url = f"http://127.0.0.1:9/limpeza-{marca}.xml"
+
+    def criar_post_antigo(feed_id: int, *, dias: int, nome: str) -> str:
+        pasta = get_settings().library_dir / "rss"
+        pasta.mkdir(parents=True, exist_ok=True)
+        (pasta / nome).write_text("<html><body><p>post antigo</p></body></html>", encoding="utf-8")
+        with session_scope() as session:
+            livro = Book(
+                title=f"Post {nome}", format="html", media_type="text/html",
+                content_type=ContentType.EBOOK.value, file_path=f"rss/{nome}",
+                file_size=44, source="rss", is_original=True,
+            )
+            session.add(livro)
+            session.flush()
+            livro.added_at = utcnow() - timedelta(days=dias)
+            session.add(
+                FeedItem(feed_id=feed_id, guid=f"limpeza-{nome}", title=livro.title,
+                         book_id=livro.id, status=FeedItemStatus.CONVERTED.value)
+            )
+            session.commit()
+            return livro.id
+
+    criado = client.post(
+        "/feeds/save",
+        data={
+            "feed_id": "", "name": f"Feed limpeza {marca}", "url": url,
+            "interval_minutes": "60", "output_format": "epub",
+            "device_profile": "generic_epub", "max_items_per_run": "20",
+            "active": "on", "cleanup_enabled": "on", "cleanup_days": "5",
+        },
+        follow_redirects=False,
+    )
+    check("salvar feed com limpeza responde 303", criado.status_code == 303, str(criado.status_code))
+
+    with session_scope() as session:
+        feed = session.scalar(select(Feed).where(Feed.url == url))
+        feed_id = feed.id if feed else 0
+    check("limpeza ligada no feed", bool(feed) and feed.cleanup_enabled is True)
+    check("prazo gravado no feed", bool(feed) and feed.cleanup_days == 5, str(feed and feed.cleanup_days))
+
+    edicao = client.get(f"/feeds/{feed_id}/edit")
+    check("a tela mostra a limpeza ligada", "posts com mais de 5 dias" in edicao.text)
+    check("e o botão de aplicar agora", f"/feeds/{feed_id}/cleanup" in edicao.text)
+    check("a lista mostra o selo da limpeza", "limpa após 5 dias" in client.get("/feeds").text)
+
+    antigo = criar_post_antigo(feed_id, dias=30, nome=f"antigo-{marca}.html")
+    recente = criar_post_antigo(feed_id, dias=0, nome=f"recente-{marca}.html")
+
+    agora = client.post(f"/feeds/{feed_id}/cleanup", follow_redirects=False)
+    check(
+        "aplicar limpeza responde com aviso de sucesso",
+        agora.status_code == 303 and "ok=" in agora.headers.get("location", ""),
+        unquote(agora.headers.get("location", "")),
+    )
+    with session_scope() as session:
+        check("post vencido saiu da biblioteca", session.get(Book, antigo) is None)
+        check("post recente continua", session.get(Book, recente) is not None)
+    arquivos = get_settings().library_dir / "rss"
+    check("arquivo do vencido saiu do disco", not (arquivos / f"antigo-{marca}.html").exists())
+
+    nada = client.post(f"/feeds/{feed_id}/cleanup", follow_redirects=False)
+    check(
+        "sem nada vencido, explica em vez de erro",
+        nada.status_code == 303 and "Nada vencido" in unquote(nada.headers.get("location", "")),
+        unquote(nada.headers.get("location", "")),
+    )
+
+    client.post(
+        "/feeds/save",
+        data={
+            "feed_id": str(feed_id), "name": f"Feed limpeza {marca}", "url": url,
+            "cleanup_days": "5",
+        },
+        follow_redirects=False,
+    )
+    with session_scope() as session:
+        feed = session.get(Feed, feed_id)
+        check("desmarcar a caixa desliga a limpeza", feed is not None and feed.cleanup_enabled is False)
+    desligada = client.post(f"/feeds/{feed_id}/cleanup", follow_redirects=False)
+    check(
+        "com a limpeza desligada, diz o que fazer",
+        desligada.status_code == 303 and "Ligue a limpeza" in unquote(desligada.headers.get("location", "")),
+        unquote(desligada.headers.get("location", "")),
+    )
+
+    client.post(f"/feeds/{feed_id}/delete")
+    with session_scope() as session:
+        restou = session.scalar(select(Feed).where(Feed.id == feed_id))
+    check("feed de teste removido", restou is None)
+    for alvo in (antigo, recente):
+        client.post(f"/library/{alvo}/delete", data={"delete_files": "on"})
 
 
 def _devices_checks(client) -> None:

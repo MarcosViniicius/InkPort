@@ -36,6 +36,7 @@
           {% endif %}
           {% endif %}
           {% if not feed.keep_original %}<span class="badge plain">não mantém o original</span>{% endif %}
+          {% if feed.cleanup_enabled %}<span class="badge plain">{{ icon('trash', 13) }} limpa após {{ feed.cleanup_days }} dias</span>{% endif %}
         </div>
       </div>
       <div class="align-right">

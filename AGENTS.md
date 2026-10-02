@@ -89,8 +89,9 @@ app/
 │
 ├── storage/           paths.py (nomes seguros/relativos), temp.py, usage.py
 │
-├── downloads/         rastreio de downloads: store.py (domínio) +
-│                      response.py (entrega instrumentada)   <-- ver docs/downloads.md
+├── downloads/         rastreio de downloads: store.py (domínio),
+│                      response.py (entrega instrumentada) e cleanup.py
+│                      (limpeza global + retenção por feed)   <-- ver docs/downloads.md
 │
 ├── library/           domínio biblioteca
 │   ├── formats.py     taxonomia extensão↔MIME↔assinatura   <-- novo formato aqui
@@ -166,6 +167,13 @@ tools/
   `IntegrityError`), e números de formulário são lidos como texto (`_as_int`)
   para campo vazio não virar 422. Mudar nome/subcategoria só afeta os itens
   novos; os livros antigos são reposicionados por `apply_feed_categories`.
+- **Retenção por feed.** `Feed.cleanup_enabled`/`cleanup_days` (formulário do
+  feed) removem posts mais velhos que N dias, independente da limpeza global —
+  `app/downloads/cleanup.py` (`FeedRetentionRule`, `plan_feed`, `run_feed`,
+  `run_feeds`), chamado na manutenção. O `FeedItem` **fica** (sem `book_id`):
+  é o que impede o post de voltar na próxima busca. Nunca remova um post com
+  download em curso ou conversão na fila (`_idle`); a remoção passa por
+  `library/service.delete_books` e o `file_records` vira `deleted`.
 - **Um formato por arquivo = um `Book`.** Conversão gera um novo `Book` ligado ao
   origem por `origin_book_id`; o OPDS agrupa como variantes do mesmo título.
 - **Imagens de EPUB convertido** apontam para `../images/` (ver

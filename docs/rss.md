@@ -130,7 +130,8 @@ retroativa pendente.
 Cada feed tem um botão **Editar** (na lista e implícito no nome), que abre
 `/feeds/<id>/edit` com o mesmo formulário da criação já preenchido: nome, URL,
 frequência, formato de saída, perfil de dispositivo, subcategoria, itens por
-execução e as caixas *ativo* / *manter o original*.
+execução, período dos retroativos, limpeza automática e as caixas *ativo* /
+*manter o original*.
 
 O que muda vale para os itens **importados a partir de agora**:
 
@@ -147,6 +148,19 @@ quiser reimportá-los). O endereço é único: tentar cadastrar duas vezes a mes
 URL mostra um aviso e não cria um feed repetido.
 
 Via API, o equivalente é `PATCH /api/feeds/<id>`.
+
+## Limpeza automática do feed
+
+Um feed de notícias não precisa guardar tudo para sempre. No próprio formulário
+do feed há **Limpeza automática**: ligue *“remover os posts antigos deste feed”* e
+escolha o prazo (ex.: **5 dias** no feed do G1). Passado o prazo, o post sai
+sozinho — arquivo e livro — na manutenção periódica, e há **Aplicar limpeza
+agora** na tela de edição para fazer o mesmo na hora.
+
+É por feed e independente da limpeza global das Configurações, e não depende de
+o post ter sido baixado: o critério é a idade. O item do feed continua lembrado,
+então o post **não volta** na próxima busca (sem isso a limpeza viraria um ciclo
+de baixar/apagar). Detalhes em [`downloads.md`](downloads.md#limpeza-por-feed-retenção).
 
 ## Regenerar depois de melhorar o conversor
 

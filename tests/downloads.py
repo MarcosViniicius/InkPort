@@ -327,6 +327,107 @@ def main() -> int:
         check("livro removido da biblioteca", session.get(Book, converted_id) is None)
     check("original continua no disco", (library / "livro.epub").exists())
 
+    print("\n[retenção por feed]")
+    from sqlalchemy import select
+
+    from app.database.models import ConversionJob, Feed, FeedItem, FeedItemStatus, JobStatus
+
+    with session_scope() as session:
+        feed = Feed(
+            name="G1", url="https://g1.example.com/rss",
+            cleanup_enabled=True, cleanup_days=5,
+        )
+        session.add(feed)
+        session.commit()
+        feed_id = feed.id
+
+    def _post(book_id: str, title: str, name: str, *, guid: str, dias: int) -> str:
+        """Um post do feed: livro + item, com a idade pedida."""
+        _make_book(book_id=book_id, title=title, fmt="html", name=name, media_type="text/html")
+        with session_scope() as session:
+            session.add(
+                FeedItem(feed_id=feed_id, guid=guid, title=title, book_id=book_id,
+                         status=FeedItemStatus.CONVERTED.value)
+            )
+            book = session.get(Book, book_id)
+            book.added_at = utcnow() - timedelta(days=dias)
+            session.commit()
+        return book_id
+
+    velho = _post("bkdwn00000000000000000000000003", "Post antigo", "velho.html",
+                  guid="post-velho", dias=10)
+    recente = _post("bkdwn00000000000000000000000004", "Post de hoje", "novo.html",
+                    guid="post-novo", dias=0)
+    baixando = _post("bkdwn00000000000000000000000005", "Baixando agora", "baixando.html",
+                     guid="post-baixando", dias=30)
+    convertendo = _post("bkdwn00000000000000000000000006", "Convertendo", "convertendo.html",
+                        guid="post-convertendo", dias=30)
+
+    with session_scope() as session:
+        registro_id = downloads.ensure_record(session, session.get(Book, velho)).id
+        em_curso = downloads.ensure_record(session, session.get(Book, baixando))
+        em_curso.active_downloads = 1
+        session.add(
+            ConversionJob(book_id=convertendo, target_format="epub",
+                          status=JobStatus.PENDING.value)
+        )
+        session.commit()
+
+    regra = cleanup_mod.FeedRetentionRule(days=5)
+    with session_scope() as session:
+        feed = session.get(Feed, feed_id)
+        candidatos = [book.id for book in cleanup_mod.feed_candidates(session, feed, regra)]
+        plano = cleanup_mod.plan_feed(session, feed, regra)
+    check("só o post vencido é candidato", candidatos == [velho], str(candidatos))
+    check("o plano traz o post vencido", [r["book_id"] for r in plano] == [velho], str(plano))
+    check("post recente fica", recente not in candidatos)
+    check("post com download em curso fica", baixando not in candidatos)
+    check("post com conversão na fila fica", convertendo not in candidatos)
+
+    with session_scope() as session:
+        feed = session.get(Feed, feed_id)
+        retencao = cleanup_mod.run_feed(session, feed, regra)
+    check("removeu exatamente o post vencido", retencao["removed"] == 1, str(retencao))
+    check("liberou espaço", retencao["freed_bytes"] > 0, str(retencao))
+    check("arquivo do vencido saiu do disco", not (library / "velho.html").exists())
+    check("arquivo do recente continua", (library / "novo.html").exists())
+    with session_scope() as session:
+        check("livro vencido saiu da biblioteca", session.get(Book, velho) is None)
+        check("livro recente continua", session.get(Book, recente) is not None)
+        check(
+            "post com download em curso continua",
+            session.get(Book, baixando) is not None,
+        )
+        item = session.scalar(select(FeedItem).where(FeedItem.guid == "post-velho"))
+        check(
+            "o item do feed continua lembrado (não volta a ser importado)",
+            item is not None and item.book_id is None,
+            str(item and item.book_id),
+        )
+        registro = session.get(FileRecord, registro_id)
+        check("registro do arquivo vira excluído", registro.state == FileState.DELETED.value, registro.state)
+        check("histórico preservado (sem livro)", registro.book_id is None, str(registro.book_id))
+
+    # A passada geral roda só os feeds que ligaram a retenção.
+    with session_scope() as session:
+        outro = Feed(name="Sem limpeza", url="https://outro.example.com/rss",
+                     cleanup_enabled=False, cleanup_days=1)
+        session.add(outro)
+        session.commit()
+        outro_id = outro.id
+    antigo_outro = _post("bkdwn00000000000000000000000007", "Post do outro feed",
+                         "outro.html", guid="outro-velho", dias=30)
+    with session_scope() as session:
+        item = session.scalar(select(FeedItem).where(FeedItem.guid == "outro-velho"))
+        item.feed_id = outro_id
+        session.commit()
+    with session_scope() as session:
+        totais = cleanup_mod.run_feeds(session)
+    check("a passada geral roda só o feed que ligou", totais["feeds"] == 1, str(totais))
+    with session_scope() as session:
+        check("post do feed desligado continua", session.get(Book, antigo_outro) is not None)
+        check("nada mais foi removido", totais["removed"] == 0, str(totais))
+
     shutil.rmtree(WORKDIR, ignore_errors=True)
     print(f"\n{len(PASSED)} passed, {len(FAILED)} failed")
     for failure in FAILED:

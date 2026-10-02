@@ -47,8 +47,23 @@ class MaintenanceLoop:
                 from app.downloads.cleanup import run as run_cleanup
 
                 cleaned = run_cleanup(session, CleanupRule.from_settings(settings))
+            # Retenção por feed: independente da limpeza global — o dono escolhe
+            # no próprio feed (ex.: o G1 guarda 5 dias, a biblioteca fica como está).
+            from app.downloads.cleanup import run_feeds
+
+            retention = run_feeds(session)
+            if not retention["removed"]:
+                retention = None
             repairs = run_repairs(session)
-        if removed or resumed or missing or stuck_downloads or cleaned or any(repairs.values()):
+        if (
+            removed
+            or resumed
+            or missing
+            or stuck_downloads
+            or cleaned
+            or retention
+            or any(repairs.values())
+        ):
             logger.info(
                 "maintenance done",
                 extra={
@@ -57,6 +72,7 @@ class MaintenanceLoop:
                     "missing": missing,
                     "stuck_downloads": stuck_downloads,
                     "downloads_cleaned": cleaned,
+                    "feed_retention": retention,
                     **repairs,
                 },
             )

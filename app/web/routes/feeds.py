@@ -104,6 +104,8 @@ async def save_feed(
     backfill_unit: str = Form("off"),
     backfill_per_run: str = Form(""),
     sitemap_url: str = Form(""),
+    cleanup_enabled: str = Form(""),
+    cleanup_days: str = Form(""),
     active: str = Form(""),
     keep_original: str = Form(""),
     session: Session = Depends(get_session),
@@ -168,6 +170,11 @@ async def save_feed(
         feed.backfill_total = 0
     feed.active = bool(active)
     feed.keep_original = bool(keep_original)
+    # Retenção própria do feed (independe da limpeza global das Configurações).
+    feed.cleanup_enabled = bool(cleanup_enabled)
+    feed.cleanup_days = _as_int(
+        cleanup_days, default=feed.cleanup_days or 30, minimum=1, maximum=3650
+    )
     # Só mexe se o formulário trouxe algo: a API pode ter definido uma categoria.
     if category_id.strip():
         feed.category_id = _as_int(category_id, default=None)
@@ -191,17 +198,36 @@ async def save_feed(
 
 def _back(destino: str, mensagem: str) -> RedirectResponse:
     """Volta para a tela anterior com um aviso legível (nunca um 500)."""
+    return _flash(destino, mensagem, kind="err")
+
+
+def _ok(destino: str, mensagem: str) -> RedirectResponse:
+    """Volta para a tela anterior confirmando o que foi feito."""
+    return _flash(destino, mensagem, kind="ok")
+
+
+def _flash(destino: str, mensagem: str, *, kind: str) -> RedirectResponse:
     separador = "&" if "?" in destino else "?"
-    return RedirectResponse(f"{destino}{separador}err={quote(mensagem)}", status_code=303)
+    return RedirectResponse(f"{destino}{separador}{kind}={quote(mensagem)}", status_code=303)
 
 
-def _as_int(raw: str, *, default: int | None, minimum: int | None = None) -> int | None:
+def _as_int(
+    raw: str,
+    *,
+    default: int | None,
+    minimum: int | None = None,
+    maximum: int | None = None,
+) -> int | None:
     """Int tolerante: texto vazio ou inválido mantém ``default``."""
     try:
         valor = int(str(raw).strip())
     except (TypeError, ValueError):
         return default
-    return max(minimum, valor) if minimum is not None else valor
+    if minimum is not None:
+        valor = max(minimum, valor)
+    if maximum is not None:
+        valor = min(maximum, valor)
+    return valor
 
 
 def _output_format(raw: str, *, default: str) -> str:
@@ -312,6 +338,34 @@ def reset_feed_items(feed_id: int, session: Session = Depends(get_session)):
     result = reset_feed(session, feed, remove_books=False)
     message = f"Histórico limpo: {result['items']} item(ns). Agora use Buscar agora."
     return RedirectResponse(f"/feeds?ok={quote(message)}", status_code=303)
+
+
+@router.post("/{feed_id}/cleanup")
+def cleanup_feed_now(feed_id: int, session: Session = Depends(get_session)):
+    """Aplica a retenção deste feed agora, sem esperar a manutenção periódica."""
+    from app.downloads.cleanup import FeedRetentionRule, run_feed
+    from app.storage.paths import human_size
+
+    feed = session.get(Feed, feed_id)
+    if feed is None:
+        return _back("/feeds", "Feed não encontrado.")
+    destino = f"/feeds/{feed.id}/edit"
+    if feed_id in feeds_in_progress():
+        return _back(destino, "Este feed está sendo buscado agora — tente de novo em instantes.")
+    if not feed.cleanup_enabled:
+        return _back(destino, "Ligue a limpeza automática deste feed e salve antes de aplicá-la.")
+
+    rule = FeedRetentionRule(days=max(1, feed.cleanup_days or 30))
+    report = run_feed(session, feed, rule)
+    if not report["removed"]:
+        return _ok(
+            destino,
+            f"Nada vencido: nenhum post deste feed passou de {rule.days} dias.",
+        )
+    return _ok(
+        destino,
+        f"{report['removed']} post(s) removido(s): {human_size(report['freed_bytes'])} liberado(s).",
+    )
 
 
 @router.post("/{feed_id}/refresh")

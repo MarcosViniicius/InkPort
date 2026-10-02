@@ -42,6 +42,12 @@ class Feed(Base):
     keep_original: Mapped[bool] = mapped_column(Boolean, default=False)
     max_items_per_run: Mapped[int] = mapped_column(Integer, default=20)
 
+    #: Retenção própria do feed: remove os posts mais velhos que ``cleanup_days``
+    #: (arquivo e livro). É independente da limpeza global — um feed de notícias
+    #: pode querer 5 dias enquanto o resto da biblioteca fica como está.
+    cleanup_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    cleanup_days: Mapped[int] = mapped_column(Integer, default=30)
+
     #: Retroactive pull, in days back from today (0 = off, -1 = the whole
     #: archive). The form lets the user pick a quantity + unit; days is the
     #: canonical storage because it covers "1 dia" as well as "2 anos".
