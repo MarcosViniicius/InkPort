@@ -139,7 +139,7 @@ async def updates_apply_now():
     make the panel look frozen. The outcome is persisted and shown in the
     settings section.
     """
-    ok, reason = update_service.preflight()
+    ok, reason = update_service.preflight(apply=True)
     if not ok:
         return RedirectResponse(
             f"/settings?err={quote(reason)}#atualizacoes", status_code=303

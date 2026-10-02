@@ -31,15 +31,38 @@ O resultado de cada etapa fica gravado e visível na seção, mesmo se algo falh
 | URL do repositório | vazio (= `origin`) | `https://` do repositório, ou `file://` local |
 | Verificar a cada (horas) | 6 | intervalo mínimo entre verificações |
 
+## No Docker (VPS)
+
+A imagem **não leva o `.git` nem o binário do git**, então o monitor usa o
+**commit gravado na build**: o `Dockerfile` aceita `--build-arg GIT_SHA=…` e o
+`docker-compose.yml` repassa `${GIT_SHA}`. Os atalhos já preenchem sozinhos:
+
+```bash
+make docker            # Linux/macOS (exporta GIT_SHA do git antes do build)
+.\tasks.ps1 docker     # Windows
+```
+
+Manualmente: `GIT_SHA=$(git rev-parse HEAD) docker compose up -d --build` (ou
+defina a variável `GIT_SHA` no ambiente antes do compose).
+
+Com o SHA na imagem, a **verificação** funciona igual à do código-fonte (a
+comparação usa a API do GitHub via `httpx`; nenhuma dependência nova), o aviso
+aparece no painel e a seção mostra os commits. O que **não** dá para fazer de
+dentro do container é aplicar: a seção mostra as instruções (no host,
+`git pull` + `docker compose up -d --build`) e um botão de aplicar só aparece
+quando existe um checkout git de verdade.
+
+Se a imagem foi construída sem `GIT_SHA`, a seção explica isso e pede para
+reconstruir com o argumento — é o único caso em que o aviso não aparece.
+
 ## Limites honestos
 
 - **Sem git ou sem checkout, sem mágica.** A aplicação roda em segundo plano e
   nunca trava a página: verificação e aplicação rodam em worker thread, e a
   seção mostra o último resultado.
-- **A imagem Docker não leva o `.git`** (`.dockerignore`), então dentro do
-  container a seção explica que a atualização é no host (`git pull` + recriar os
-  containers). O fluxo completo de um clique vale para instalações a partir do
-  código-fonte.
+- **A imagem Docker não leva o `.git`** (`.dockerignore`), mas leva o commit da
+  build (`GIT_SHA`): com ele o aviso funciona; aplicar continua no host. Sem o
+  `GIT_SHA`, a seção explica que é preciso reconstruir a imagem.
 - **Só fast-forward.** Com alterações locais não salvas, ou fora da branch
   monitorada, a aplicação recusa e diz o motivo em vez de tentar um merge.
 - **Sem shell.** Todos os comandos usam argv fixo com timeout; branch e URL vêm

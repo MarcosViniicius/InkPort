@@ -37,6 +37,7 @@ _KEY_LOCAL_SHA = "update_local_sha"
 _KEY_BEHIND = "update_behind"
 _KEY_COMMITS = "update_commits"
 _KEY_ERROR = "update_error"
+_KEY_WARNING = "update_warning"
 _KEY_RESULT = "update_last_result"
 _KEY_RESULT_AT = "update_last_result_at"
 
@@ -89,17 +90,52 @@ def resolve_config(settings) -> tuple[str, str, int]:
     return repo_url, branch, min(168, max(1, interval))
 
 
-def preflight(root=None) -> tuple[bool, str | None]:
-    """Cheap capability check for routes (no session, no network)."""
-    if git.git_binary() is None:
-        return False, "O git não está instalado neste servidor — atualize manualmente."
+def capabilities(root=None) -> dict:
+    """What this installation can do: check for updates and/or apply them.
+
+    A source checkout with git can do both. The Docker image carries neither,
+    but records the commit at build time — enough to *notice* an update (via the
+    GitHub API); applying is always done on the host.
+    """
     root = git.project_root() if root is None else root
-    if root is None:
-        return False, (
-            "Esta instalação não é um checkout git (ex.: imagem Docker, que não "
-            "leva o repositório). Atualize no host: git pull e recrie os containers."
+    has_git = git.git_binary() is not None
+    checkout = bool(root is not None and (root / ".git").exists())
+    build = git.build_commit()
+    can_check = bool((checkout and has_git) or build)
+    can_apply = bool(checkout and has_git)
+
+    reason_check: str | None = None
+    if not can_check:
+        reason_check = (
+            "Esta instalação não sabe qual commit está rodando, então não dá para "
+            "comparar com o repositório. Reconstrua a imagem passando o commit: "
+            "docker compose build --build-arg GIT_SHA=$(git rev-parse HEAD) "
+            "(ou rode a partir do código-fonte)."
         )
-    return True, None
+    reason_apply: str | None = None
+    if not can_apply:
+        reason_apply = (
+            "Aqui a atualização é feita no host: faça 'git pull' na pasta do "
+            "projeto e recrie os containers com 'docker compose up -d --build'."
+        )
+    return {
+        "root": root,
+        "has_git": has_git,
+        "checkout": checkout,
+        "build_sha": build,
+        "check": can_check,
+        "apply": can_apply,
+        "reason_check": reason_check,
+        "reason_apply": reason_apply,
+    }
+
+
+def preflight(root=None, *, apply: bool = False) -> tuple[bool, str | None]:
+    """Cheap capability check for routes (no session, no network)."""
+    caps = capabilities(root)
+    if apply:
+        return caps["apply"], caps["reason_apply"]
+    return caps["check"], caps["reason_check"]
 
 
 def _read_status(session: Session) -> dict[str, Any]:
@@ -121,6 +157,7 @@ def _read_status(session: Session) -> dict[str, Any]:
         "remote_sha": get(_KEY_REMOTE_SHA),
         "checked_at": _parse_iso(get(_KEY_LAST_CHECK)),
         "error": get(_KEY_ERROR) or None,
+        "warning": get(_KEY_WARNING) or None,
         "commits": commits,
         "result": get(_KEY_RESULT) or None,
         "result_at": _parse_iso(get(_KEY_RESULT_AT)),
@@ -136,6 +173,7 @@ def _persist(session: Session, status: dict[str, Any]) -> None:
         session, _KEY_COMMITS, json.dumps(status["commits"][:MAX_COMMITS_STORED], ensure_ascii=False)
     )
     settings_store.set_value(session, _KEY_ERROR, status["error"] or "")
+    settings_store.set_value(session, _KEY_WARNING, status.get("warning") or "")
     settings_store.set_value(session, _KEY_LAST_CHECK, _now_iso())
     session.commit()
     _publish(status["available"], status["behind"])
@@ -150,14 +188,17 @@ def _due(session: Session, interval_hours: int) -> bool:
 
 
 def maybe_check(session: Session, settings, *, force: bool = False, root=None) -> dict[str, Any]:
-    """Compare the checkout with the remote, throttled by the interval.
+    """Compare this installation with the remote, throttled by the interval.
 
-    Never raises: failures are recorded on the status (`error`) so the panel
-    can explain them instead of showing a crash.
+    Uses git when there is a checkout; otherwise (Docker image) falls back to
+    the build commit plus the GitHub API. Never raises: failures are recorded on
+    the status (`error`) so the panel can explain them.
     """
     root = git.project_root() if root is None else root
+    caps = capabilities(root)
     status = _read_status(session)
-    if root is None or git.git_binary() is None:
+    if not caps["check"]:
+        status["error"] = caps["reason_check"]
         _publish(status["available"], status["behind"])
         return status
     if not bool(getattr(settings, "update_check_enabled", True)) and not force:
@@ -173,21 +214,39 @@ def maybe_check(session: Session, settings, *, force: bool = False, root=None) -
         _publish(status["available"], status["behind"])
         return status
     try:
-        local = git.local_head(root)
+        local = git.local_head(root) if caps["checkout"] and caps["has_git"] else None
         if not local:
-            raise UpdateError("Não consegui ler o commit local (repositório vazio?).")
+            local = caps["build_sha"]
+        if not local:
+            raise UpdateError("Não consegui identificar o commit instalado.")
         status["local_sha"] = local
-        remote = git.remote_head(root, repo_url, branch)
-        if not remote:
-            raise UpdateError(f"A branch '{branch}' não existe no repositório remoto.")
-        status["remote_sha"] = remote
-        if remote == local:
-            status.update(available=False, behind=0, commits=[], error=None)
+
+        if caps["checkout"] and caps["has_git"]:
+            remote = git.remote_head(root, repo_url, branch)
+            if not remote:
+                raise UpdateError(f"A branch '{branch}' não existe no repositório remoto.")
+            status["remote_sha"] = remote
+            if remote == local:
+                status.update(available=False, behind=0, commits=[], error=None, warning=None)
+            else:
+                git.fetch_branch(root, repo_url, branch)
+                behind = git.behind_count(root)
+                commits = git.parse_log(git.read_log(root, MAX_COMMITS_STORED))[:MAX_COMMITS_STORED]
+                status.update(
+                    available=True, behind=behind, commits=commits, error=None, warning=None
+                )
         else:
-            git.fetch_branch(root, repo_url, branch)
-            behind = git.behind_count(root)
-            commits = git.parse_log(git.read_log(root, MAX_COMMITS_STORED))[:MAX_COMMITS_STORED]
-            status.update(available=True, behind=behind, commits=commits, error=None)
+            from app.updates import remote as remote_mod
+
+            data = remote_mod.compare_github(repo_url, branch, local)
+            status.update(
+                available=bool(data["available"]),
+                behind=int(data["behind"]),
+                remote_sha=data["remote_sha"],
+                commits=data["commits"][:MAX_COMMITS_STORED],
+                error=None,
+                warning=data.get("warning"),
+            )
     except UpdateError as exc:
         logger.info("update check failed", extra={"error": str(exc)})
         status["error"] = str(exc)
@@ -197,21 +256,22 @@ def maybe_check(session: Session, settings, *, force: bool = False, root=None) -
 
 def details(session: Session) -> dict[str, Any]:
     """Everything the settings section needs (no network here)."""
-    from app.updates import git as _git
-
-    root = _git.project_root()
+    root = git.project_root()
     status = _read_status(session)
-    capable, reason = preflight(root)
-    local = _git.local_head(root) if root and _git.git_binary() else None
+    caps = capabilities(root)
+    local = git.local_head(root) if caps["checkout"] and caps["has_git"] else caps["build_sha"]
     for commit in status["commits"]:
         commit["date"] = _parse_iso(commit.get("date"))
     return {
         **status,
-        "capable": capable,
-        "reason": reason,
-        "in_docker": _git.in_docker(),
+        "check": caps["check"],
+        "apply": caps["apply"],
+        "reason_check": caps["reason_check"],
+        "reason_apply": caps["reason_apply"],
+        "in_docker": git.in_docker(),
         "live_local_sha": local,
         "live_local_short": (local or "")[:7] or None,
+        "build_sha": caps["build_sha"],
     }
 
 
@@ -261,9 +321,11 @@ def apply_update_in_background(
         with session_scope() as session:
             if settings is None:
                 settings = get_settings()
-            ok, reason = preflight(root)
-            if not ok:
-                _save_result(session, f"Não foi possível atualizar: {reason}")
+            caps = capabilities(root)
+            if not caps["apply"]:
+                _save_result(
+                    session, f"Não foi possível atualizar daqui: {caps['reason_apply']}"
+                )
                 return
             assert root is not None
             if repo_url is None or branch is None:

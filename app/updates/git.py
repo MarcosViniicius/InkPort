@@ -10,12 +10,17 @@ from __future__ import annotations
 
 import functools
 import logging
+import os
 import re
 import shutil
 import subprocess
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+#: Image build arg (`--build-arg GIT_SHA=…`) recorded as an env var.
+BUILD_SHA_ENV = "INKPORT_COMMIT"
+_BUILD_SHA_RE = re.compile(r"[0-9a-fA-F]{7,40}")
 
 
 class UpdateError(RuntimeError):
@@ -50,6 +55,12 @@ def project_root() -> Path | None:
 def git_binary() -> str | None:
     """Path to git, if installed."""
     return shutil.which("git")
+
+
+def build_commit() -> str | None:
+    """Commit recorded at image build time, when the image carries one."""
+    value = (os.environ.get(BUILD_SHA_ENV) or "").strip()
+    return value if _BUILD_SHA_RE.fullmatch(value) else None
 
 
 def in_docker() -> bool:

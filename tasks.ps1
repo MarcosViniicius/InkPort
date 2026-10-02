@@ -16,7 +16,11 @@ switch ($Task) {
     "convert"          { & $python tests\conversions.py }
     "rss"              { & $python tests\rss_feeds.py }
     "crosspoint"       { & $python tests\crosspoint_compat.py }
-    "docker"           { docker compose up -d --build }
+    "docker"           {
+        $sha = (& git rev-parse HEAD 2>$null)
+        if ($sha) { $env:GIT_SHA = $sha.Trim() }
+        docker compose up -d --build
+    }
     "network"          {
         & $python -c "from app.config import get_settings; s=get_settings(); print('bind:', f'{s.host}:{s.port}'); [print(' ', u) for u in s.access_urls]"
     }

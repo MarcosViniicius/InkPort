@@ -1,6 +1,11 @@
 services:
   opds:
-    build: .
+    build:
+      context: .
+      args:
+        # Commit gravado na imagem (o monitor de atualizações usa isso para
+        # comparar com o repositório). `make docker` / tasks.ps1 preenchem.
+        GIT_SHA: ${GIT_SHA:-unknown}
     image: inkport:latest
     container_name: inkport
     restart: unless-stopped

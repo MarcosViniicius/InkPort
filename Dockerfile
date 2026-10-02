@@ -6,6 +6,11 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     DATA_DIR=/data
 
+# Commit desta build (o monitor de atualizações compara com o repositório mesmo
+# sem git/.git na imagem). Passe com --build-arg GIT_SHA=$(git rev-parse HEAD).
+ARG GIT_SHA=unknown
+ENV INKPORT_COMMIT=${GIT_SHA}
+
 # Nenhuma ferramenta externa e' necessaria para converter: tudo roda em Python
 # e a unrar.dll (do Windows) vem dentro do projeto. O unico pacote do sistema e'
 # o 'bsdtar' (libarchive-tools), que da' suporte a CBR/RAR no Linux via rarfile;

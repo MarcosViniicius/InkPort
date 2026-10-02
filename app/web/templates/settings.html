@@ -156,23 +156,28 @@
       <div id="atualizacoes"></div>
       {{ campos(normais) }}
       <h3 class="s-sub">Estado</h3>
-      {% if not update_status.capable %}
-      <p class="muted small mb0">{{ update_status.reason }}</p>
-      {% else %}
       <dl class="kv">
         <dt>Situação</dt>
         <dd>
           {% if update_status.available %}
           <span class="badge warn">{{ update_status.behind }} commit(s) atrás</span>
-          {% else %}
+          {% elif update_status.check %}
           <span class="badge ok">em dia</span>
+          {% else %}
+          <span class="badge">sem verificação</span>
           {% endif %}
         </dd>
-        <dt>Local</dt><dd class="mono small">{{ update_status.live_local_short or '—' }}</dd>
+        <dt>Instalado</dt><dd class="mono small">{{ update_status.live_local_short or '—' }}</dd>
         <dt>Verificado</dt><dd class="muted small">{{ update_status.checked_at|relative if update_status.checked_at else 'ainda não' }}</dd>
       </dl>
+      {% if not update_status.check %}
+      <p class="muted small">{{ update_status.reason_check }}</p>
+      {% endif %}
       {% if update_status.error %}
       <p class="muted small text-danger">{{ update_status.error }}</p>
+      {% endif %}
+      {% if update_status.warning %}
+      <p class="muted small">{{ icon('alert', 14) }} {{ update_status.warning }}</p>
       {% endif %}
       {% if update_status.result %}
       <p class="muted small mb0">Último resultado{% if update_status.result_at %} ({{ update_status.result_at|relative }}){% endif %}: {{ update_status.result }}</p>
@@ -196,13 +201,15 @@
       </div>
       {% endif %}
       <div class="button-row mt4">
+        {% if update_status.check %}
         <form method="post" action="/settings/updates/check">
           <button class="button ghost" type="submit">{{ icon('refresh', 15) }} Verificar agora</button>
         </form>
-        {% if update_status.available %}
+        {% endif %}
+        {% if update_status.available and update_status.apply %}
         <form method="post" action="/settings/updates/apply"
               data-confirm="Atualizar o InkPort agora?"
-              data-confirm-msg="O código é baixado do repositório e, no Docker, os containers são reconstruídos. Guarde antes qualquer alteração local."
+              data-confirm-msg="O código é baixado do repositório e os containers são reconstruídos. Guarde antes qualquer alteração local."
               data-confirm-ok="Atualizar"
               data-confirm-danger
               onsubmit="return confirm('Baixar a atualização e aplicar agora?')">
@@ -210,10 +217,10 @@
         </form>
         {% endif %}
       </div>
-      <p class="hint mb0">
-        A verificação roda sozinha de tempos em tempos. Fora do Docker, depois
-        de atualizar é preciso reiniciar o servidor para usar o código novo.
-      </p>
+      {% if not update_status.apply %}
+      <p class="hint">{{ update_status.reason_apply }} Depois de recriar os containers, esta tela passa a mostrar a versão nova.</p>
+      {% else %}
+      <p class="hint">A verificação roda sozinha de tempos em tempos. Fora do Docker, depois de atualizar é preciso reiniciar o servidor para usar o código novo.</p>
       {% endif %}
 
       {% else %}

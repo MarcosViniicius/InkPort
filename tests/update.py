@@ -107,6 +107,40 @@ def main() -> int:
     check("file:// absoluto vale", gitmod.valid_repo_url(WORKDIR.as_uri() + "/x.git"))
     check("file:// relativo não vale", not gitmod.valid_repo_url("file://relativo/x.git"))
 
+    print("\n[caminho sem git (imagem Docker): slug, build e API]")
+    from app.updates import remote as remote_mod
+
+    check("slug de https com .git", remote_mod.github_slug("https://github.com/a/b.git") == "a/b")
+    check("slug de https sem .git", remote_mod.github_slug("https://github.com/a/b") == "a/b")
+    check("slug de ssh", remote_mod.github_slug("git@github.com:a/b.git") == "a/b")
+    check("slug de repositório não-GitHub vira None", remote_mod.github_slug("https://gitlab.com/a/b") is None)
+    check("slug vazio vira None", remote_mod.github_slug("") is None)
+
+    os.environ.pop("INKPORT_COMMIT", None)
+    check("sem build arg não inventa commit", gitmod.build_commit() is None)
+    os.environ["INKPORT_COMMIT"] = "lixo"
+    check("build arg inválido é ignorado", gitmod.build_commit() is None)
+    os.environ["INKPORT_COMMIT"] = "af08972e1a5babbaeb4d7604ce5c23938aed0d8c"
+    check("build arg com SHA vale", gitmod.build_commit() == "af08972e1a5babbaeb4d7604ce5c23938aed0d8c")
+    check("SHA curto também vale", gitmod.build_commit() is not None)
+
+    rows = remote_mod.commit_rows(
+        [
+            {
+                "sha": "b" * 40,
+                "commit": {
+                    "message": "Título do commit\n\nCorpo com detalhe",
+                    "author": {"name": "Autora", "date": "2026-10-01T10:00:00Z"},
+                },
+            },
+            {"sha": "c" * 40, "commit": {"message": "Só título"}},
+        ]
+    )
+    check("API: mapeia 2 commits", len(rows) == 2, str(len(rows)))
+    check("API: assunto e corpo separados", rows[0]["subject"] == "Título do commit" and rows[0]["body"] == "Corpo com detalhe")
+    check("API: autor e data", rows[0]["author"] == "Autora" and rows[0]["date"] == "2026-10-01T10:00:00Z")
+    check("API: sem autor vira travessão", rows[1]["author"] == "—", rows[1]["author"])
+
     print("\n[parse de ls-remote e log]")
     check(
         "ls-remote extrai o SHA",
@@ -134,6 +168,7 @@ def main() -> int:
         print("\nsem git instalado: integração pulada")
     else:
         _integration(service)
+        _docker_like(service)
 
     _routes()
 
@@ -219,6 +254,58 @@ def _integration(service) -> None:
         check("pede reinício fora do docker", "Reinicie" in result, result[:160])
         status = service.details(session)
         check("depois do pull não há aviso", status["available"] is False, str(status["available"]))
+
+
+def _docker_like(service) -> None:
+    """No checkout + build commit + GitHub API faked: the Docker path."""
+    from app.database import session_scope
+    from app.security import settings_store
+    from app.updates import git as gitmod
+    from app.updates import remote as remote_mod
+
+    print("\n[imagem Docker: sem git, com commit de build]")
+    sem_git = WORKDIR / "sem_checkout"
+    sem_git.mkdir(exist_ok=True)
+    caps = service.capabilities(root=sem_git)
+    check("sabe verificar", caps["check"] is True, str(caps))
+    check("não tenta aplicar daqui", caps["apply"] is False, str(caps["apply"]))
+
+    original = remote_mod.compare_github
+    remote_mod.compare_github = lambda repo_url, branch, base, timeout=20.0: {
+        "available": True,
+        "behind": 2,
+        "remote_sha": "f" * 40,
+        "commits": [
+            {"sha": "e" * 40, "short": "eeeeeee", "author": "Autora",
+             "date": "2026-10-01T10:00:00Z", "subject": "Novidade 2", "body": ""},
+            {"sha": "f" * 40, "short": "fffffff", "author": "Autor",
+             "date": "2026-09-30T10:00:00Z", "subject": "Novidade 1", "body": ""},
+        ],
+        "warning": None,
+    }
+    try:
+        with session_scope() as session:
+            status = service.maybe_check(
+                session,
+                _settings("https://github.com/exemplo/inkport.git"),
+                force=True,
+                root=sem_git,
+            )
+    finally:
+        remote_mod.compare_github = original
+    check("avisa mesmo sem git", status["available"] is True, str(status))
+    check("conta os commits", status["behind"] == 2, str(status["behind"]))
+    check("lista os commits", len(status["commits"]) == 2, str(len(status["commits"])))
+    check("snapshot acende o aviso", service.snapshot()["available"] is True)
+    check(
+        "commit local vem do build arg",
+        status["local_sha"] == gitmod.build_commit(),
+        str(status["local_sha"]),
+    )
+    service.apply_update_in_background(root=sem_git, in_docker=True)
+    with session_scope() as session:
+        result = settings_store.get(session, "update_last_result") or ""
+    check("aplicar sem checkout é recusado com instrução", "docker compose" in result, result[:140])
 
 
 def _routes() -> None:
