@@ -18,7 +18,7 @@ from app.converters.manga.layout import plan_enlargement
 logger = logging.getLogger(__name__)
 
 #: A page rarely needs more than this many regions enlarged; caps the work.
-MAX_REGIONS = 16
+MAX_REGIONS = 48
 
 
 def enlarge_page(

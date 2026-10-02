@@ -133,14 +133,68 @@ def _outside_mask(mask: bytearray, width: int, height: int) -> bytearray:
     return outside
 
 
+def _area(box: tuple[int, int, int, int]) -> int:
+    return max(0, box[2] - box[0]) * max(0, box[3] - box[1])
+
+
+def _intersection(a: tuple[int, int, int, int], b: tuple[int, int, int, int]) -> int:
+    x0, y0 = max(a[0], b[0]), max(a[1], b[1])
+    x1, y1 = min(a[2], b[2]), min(a[3], b[3])
+    if x1 <= x0 or y1 <= y0:
+        return 0
+    return (x1 - x0) * (y1 - y0)
+
+
+def _merge_overlapping(
+    items: list[tuple[int, tuple[int, int, int, int], str]],
+) -> list[tuple[int, tuple[int, int, int, int], str]]:
+    """Merge regions that share the same white area (the text splits a balloon
+    into several white pieces, which would otherwise be processed twice)."""
+    remaining = list(items)
+    merged = True
+    while merged:
+        merged = False
+        index = 0
+        while index < len(remaining):
+            area, box, kind = remaining[index]
+            for other_index in range(index + 1, len(remaining)):
+                other_area, other_box, other_kind = remaining[other_index]
+                overlap = _intersection(box, other_box)
+                if not overlap:
+                    continue
+                if overlap / max(1, min(_area(box), _area(other_box))) < 0.35:
+                    continue
+                union = (
+                    min(box[0], other_box[0]),
+                    min(box[1], other_box[1]),
+                    max(box[2], other_box[2]),
+                    max(box[3], other_box[3]),
+                )
+                if other_area > area:
+                    area, kind = other_area, other_kind
+                remaining[index] = (area, union, kind)
+                del remaining[other_index]
+                merged = True
+                break
+            index += 1
+    return remaining
+
+
 def _find_text(
     gray: Image.Image,
     box: tuple[int, int, int, int],
     ink_threshold: int,
 ) -> tuple[int, int, int, int] | None:
-    """Union of the small ink blobs inside ``box`` (the text, not the outline)."""
+    """Union of the small ink blobs inside ``box`` (the text, not the outline).
+
+    The crop must not be padded: with padding, ink near the region edge is kept
+    by the "does not touch the crop border" rule and then rejected for falling
+    outside the region -- which silently discarded almost every real balloon
+    (their text sits close to the outline). Cropping exactly at the region also
+    keeps the balloon outline out of the text candidates.
+    """
     width, height = gray.size
-    pad = 3
+    pad = 0
     x0 = max(0, box[0] - pad)
     y0 = max(0, box[1] - pad)
     x1 = min(width, box[2] + pad)
@@ -154,11 +208,22 @@ def _find_text(
     components = _label_components(
         ink, cw, ch, min_area=2, max_area=max(8, int(0.25 * cw * ch))
     )
-    tx0, ty0, tx1, ty1 = cw, ch, -1, -1
-    for _area, ax0, ay0, ax1, ay1 in components:
+    kept = []
+    for area, ax0, ay0, ax1, ay1 in components:
         # The balloon outline/artwork touches the crop border; the text does not.
         if ax0 <= 0 or ay0 <= 0 or ax1 >= cw or ay1 >= ch:
             continue
+        kept.append((area, ax0, ay0, ax1, ay1))
+    if not kept:
+        return None
+    # A single tiny blob is usually a highlight in the artwork, not text.
+    if len(kept) == 1:
+        area, ax0, ay0, ax1, ay1 = kept[0]
+        if area < 40 or (ax1 - ax0) < 5 or (ay1 - ay0) < 5:
+            return None
+
+    tx0, ty0, tx1, ty1 = cw, ch, -1, -1
+    for _area, ax0, ay0, ax1, ay1 in kept:
         tx0 = min(tx0, ax0)
         ty0 = min(ty0, ay0)
         tx1 = max(tx1, ax1)
@@ -210,7 +275,7 @@ def detect_regions(
     )
 
     sx, sy = width / dw, height / dh
-    regions: list[Region] = []
+    raw: list[tuple[int, tuple[int, int, int, int], str]] = []
     for area, x0, y0, x1, y1 in components:
         bx0 = max(0, int(x0 * sx))
         by0 = max(0, int(y0 * sy))
@@ -218,13 +283,15 @@ def detect_regions(
         by1 = min(height, int(round(y1 * sy)))
         if bx1 - bx0 < min_side or by1 - by0 < min_side:
             continue
-        text = _find_text(gray, (bx0, by0, bx1, by1), ink_threshold)
+        bbox_area = max(1, (x1 - x0) * (y1 - y0))
+        kind = "box" if area / bbox_area >= 0.85 else "bubble"
+        raw.append((int(area * sx * sy), (bx0, by0, bx1, by1), kind))
+
+    regions: list[Region] = []
+    for area, box, kind in _merge_overlapping(raw):
+        text = _find_text(gray, box, ink_threshold)
         if text is None:
             continue
-        bbox_area = max(1, (x1 - x0) * (y1 - y0))
-        solidity = area / bbox_area
-        kind = "box" if solidity >= 0.85 else "bubble"
-        regions.append(
-            Region((bx0, by0, bx1, by1), text, kind, int(area * sx * sy))
-        )
+        regions.append(Region(box, text, kind, area))
+    regions.sort(key=lambda region: region.area, reverse=True)
     return regions

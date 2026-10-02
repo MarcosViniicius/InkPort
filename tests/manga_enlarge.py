@@ -32,6 +32,17 @@ def _font(size: int = 16):
         return ImageFont.load_default()
 
 
+def _edge_text_page():
+    """Thin outline and text almost touching it (reproduces a detection bug)."""
+    from PIL import Image, ImageDraw
+
+    img = Image.new("L", (400, 400), 255)
+    draw = ImageDraw.Draw(img)
+    draw.ellipse((100, 100, 300, 300), outline=0, width=2)
+    draw.text((103, 185), "Encostado", fill=0, font=_font(18))
+    return img
+
+
 def make_page() -> tuple:
     """White page, one round balloon with small text and a black artwork square."""
     from PIL import Image, ImageDraw
@@ -62,7 +73,7 @@ def main() -> int:
     from PIL import Image
 
     from app.converters.manga import enlarge_page
-    from app.converters.manga.detector import Region
+    from app.converters.manga.detector import Region, detect_regions
     from app.converters.manga.layout import plan_enlargement
 
     print("[layout: estratégia A e B]")
@@ -96,6 +107,27 @@ def main() -> int:
     blank, blank_stats = enlarge_page(Image.new("L", (200, 200), 255))
     check("página em branco não gera regiões", blank_stats["enlarged"] == 0, str(blank_stats))
     check("página em branco continua válida", blank.size == (200, 200) and blank.mode == "L")
+
+    print("\n[regressão: texto encostado no contorno e regiões duplicadas]")
+    edge_page = _edge_text_page()
+    regions = detect_regions(edge_page)
+    check(
+        "balão com texto encostado no contorno é detectado",
+        len(regions) >= 1,
+        str(len(regions)),
+    )
+    if regions:
+        _, edge_stats = enlarge_page(edge_page.copy(), options={})
+        check("e chega a ser ampliado", edge_stats["enlarged"] >= 1, str(edge_stats))
+
+    from app.converters.manga.detector import _merge_overlapping
+
+    duplicates = [(1000, (0, 0, 100, 100), "bubble"), (800, (30, 30, 130, 130), "bubble")]
+    check("regiões sobrepostas viram uma só", len(_merge_overlapping(duplicates)) == 1)
+    apart = [(1000, (0, 0, 100, 100), "bubble"), (900, (200, 0, 300, 100), "bubble")]
+    check("regiões separadas continuam separadas", len(_merge_overlapping(apart)) == 2)
+    touching = [(1000, (0, 0, 100, 100), "bubble"), (900, (90, 0, 190, 100), "bubble")]
+    check("regiões que só se tocam não são fundidas", len(_merge_overlapping(touching)) == 2)
 
     print("\n[integração: conversão de CBZ com a ampliação ligada]")
     import zipfile
