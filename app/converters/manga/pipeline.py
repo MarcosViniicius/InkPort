@@ -12,8 +12,10 @@ import logging
 from PIL import Image
 
 from app.converters.manga.detector import detect_regions
-from app.converters.manga.enlarge import apply_plan
-from app.converters.manga.layout import plan_enlargement
+from app.converters.manga.enlarge import apply_plan, apply_reflow
+from app.converters.manga.layout import plan_enlargement, usable_box
+from app.converters.manga.reflow import plan_reflow
+from app.converters.manga.segmentation import segment_words
 
 logger = logging.getLogger(__name__)
 
@@ -32,29 +34,56 @@ def enlarge_page(
     max_scale = float(opts.get("manga_max_scale", 2.0) or 2.0)
     overflow = float(opts.get("manga_overflow", 0.15) or 0.0)
     max_overflow_px = int(opts.get("manga_max_overflow_px", 10) or 0)
+    right_to_left = bool(opts.get("right_to_left"))
 
     try:
         regions = detect_regions(img, detect_side=detect_side)
     except Exception as exc:  # noqa: BLE001 - detection is best-effort
         logger.warning("manga text detection failed", extra={"error": str(exc)})
-        return img, {"regions": 0, "enlarged": 0, "strategy_a": 0, "strategy_b": 0}
+        return img, {"regions": 0, "enlarged": 0, "reflow": 0, "strategy_a": 0, "strategy_b": 0}
 
-    stats = {"regions": len(regions), "enlarged": 0, "strategy_a": 0, "strategy_b": 0}
+    stats = {
+        "regions": len(regions),
+        "enlarged": 0,
+        "reflow": 0,
+        "strategy_a": 0,
+        "strategy_b": 0,
+    }
+    gray = img if img.mode in {"L", "1"} else img.convert("L")
     for region in sorted(regions, key=lambda item: item.area, reverse=True):
         if stats["enlarged"] >= MAX_REGIONS:
             break
         try:
-            plan = plan_enlargement(
+            block = segment_words(gray, region.box, right_to_left=right_to_left)
+            fit_box = usable_box(gray, region.box, region.text_box)
+            reflow_plan = (
+                plan_reflow(block, region.box, max_scale=max_scale, fit_box=fit_box)
+                if block
+                else None
+            )
+            uniform = plan_enlargement(
                 region,
                 max_scale=max_scale,
                 overflow=overflow,
                 max_overflow_px=max_overflow_px,
+                fit_box=fit_box,
             )
-            if plan is None:
+            changed = False
+            if reflow_plan is not None and (
+                uniform is None or reflow_plan.scale > uniform.scale + 1e-6
+            ):
+                changed = apply_reflow(img, reflow_plan)
+                label = "reflow"
+            elif uniform is not None:
+                changed = apply_plan(img, uniform)
+                label = uniform.strategy
+            else:
                 continue
-            if apply_plan(img, plan):
+            if changed:
                 stats["enlarged"] += 1
-                if plan.strategy == "A":
+                if label == "reflow":
+                    stats["reflow"] += 1
+                elif label == "A":
                     stats["strategy_a"] += 1
                 else:
                     stats["strategy_b"] += 1

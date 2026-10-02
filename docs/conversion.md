@@ -84,13 +84,20 @@ local (`app/converters/manga/`, só Pillow) faz, por página:
 1. **Detecção** (`detector.py`): binariza, faz *flood fill* a partir da borda
    para achar as áreas brancas **fechadas** (balões e caixas de texto) e rotula
    os componentes. Dentro de cada região, os traços do texto são os blobs de
-   tinta pequenos que **não tocam a borda** (o contorno do balão toca).
-2. **Análise de espaço** (`layout.py`): mede a margem interna do balão e decide a
-   **estratégia A** (cabe com folga) ou **B** (pouca margem).
+   tinta que **não tocam a borda** (o contorno do balão toca).
+2. **Análise de espaço** (`layout.usable_box`): varre o espaço livre linha a
+   linha e devolve a maior **caixa útil** dentro da região — num balão redondo
+   isso é o retângulo inscrito, então o texto não invade o contorno.
 3. **Ampliação** (`enlarge.py`): recorta o texto como imagem, limpa o original
-   com a cor de fundo do balão e cola de volta maior (Lanczos). Na estratégia B
-   o texto pode passar um pouco do balão, mas só sobre **espaço livre** — se
-   houver arte ali, a escala é reduzida. O restante da página fica intacto.
+   com a cor de fundo do balão e cola de volta maior (Lanczos). A estratégia B
+   permite passar um pouco do balão, mas só sobre **espaço livre** — se houver
+   arte ali, a escala é reduzida.
+4. **Reflow por palavras** (`segmentation.py` + `reflow.py`): quando a quebra de
+   linha original limita o crescimento, o bloco é dividido em **palavras** (por
+   projeção da tinta, sem OCR) e re-empacotado com a maior escala que couber na
+   caixa útil — mais linhas, quebras diferentes, espaçamento compacto. É o que
+   destrava os balões "cheios". A ordem de leitura é respeitada: mangá é
+   right-to-left, então a primeira palavra da linha fica à direita.
 
 É **best-effort**: página que não pode ser interpretada volta sem alteração e
 nunca quebra a conversão. Sem OCR, sem IA, sem internet e sem binário externo.

@@ -108,6 +108,62 @@ def _label_components(
     return found
 
 
+def interior_ink_mask(mask: bytearray, width: int, height: int, *, max_area: int) -> bytearray:
+    """Keep only ink components that do not touch the border (the text).
+
+    A region crop still contains the balloon outline and bits of art where the
+    curve crosses the bounding box. Those run to the edge; the glyphs do not.
+    """
+    visited = bytearray(len(mask))
+    keep = bytearray(len(mask))
+    for start in range(len(mask)):
+        if not mask[start] or visited[start]:
+            continue
+        queue: Queue[int] = Queue()
+        queue.append(start)
+        visited[start] = 1
+        pixels = [start]
+        touches = False
+        while queue:
+            index = queue.popleft()
+            x = index % width
+            y = index // width
+            if x == 0 or y == 0 or x == width - 1 or y == height - 1:
+                touches = True
+            for neighbour in _neighbours(index, width, height):
+                if mask[neighbour] and not visited[neighbour]:
+                    visited[neighbour] = 1
+                    queue.append(neighbour)
+                    pixels.append(neighbour)
+        if touches or len(pixels) > max_area:
+            continue
+        for index in pixels:
+            keep[index] = 1
+    return keep
+
+
+def denoise_mask(mask: bytearray, width: int, height: int, *, min_area: int) -> None:
+    """Drop speckles (scanner/JPEG noise) that would block the free-space scan."""
+    visited = bytearray(len(mask))
+    for start in range(len(mask)):
+        if not mask[start] or visited[start]:
+            continue
+        queue: Queue[int] = Queue()
+        queue.append(start)
+        visited[start] = 1
+        pixels = [start]
+        while queue:
+            index = queue.popleft()
+            for neighbour in _neighbours(index, width, height):
+                if mask[neighbour] and not visited[neighbour]:
+                    visited[neighbour] = 1
+                    queue.append(neighbour)
+                    pixels.append(neighbour)
+        if len(pixels) < min_area:
+            for index in pixels:
+                mask[index] = 0
+
+
 def _outside_mask(mask: bytearray, width: int, height: int) -> bytearray:
     """Mark the mask pixels reachable from the image border."""
     outside = bytearray(len(mask))

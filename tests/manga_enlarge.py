@@ -43,6 +43,27 @@ def _edge_text_page():
     return img
 
 
+def _wide_line_page():
+    """One long line that cannot grow uniformly but can be re-broken."""
+    from PIL import Image, ImageDraw
+
+    img = Image.new("L", (1000, 1000), 255)
+    draw = ImageDraw.Draw(img)
+    draw.ellipse((150, 150, 850, 850), outline=0, width=3)
+    draw.text((250, 480), "PALAVRA PALAVRA PALAVRA PALAVRA", fill=0, font=_font(28))
+    return img
+
+
+def _rtl_page():
+    from PIL import Image, ImageDraw
+
+    img = Image.new("L", (600, 500), 255)
+    draw = ImageDraw.Draw(img)
+    draw.ellipse((60, 60, 540, 440), outline=0, width=3)
+    draw.text((160, 230), "DIREITA ESQUERDA", fill=0, font=_font(24))
+    return img
+
+
 def make_page() -> tuple:
     """White page, one round balloon with small text and a black artwork square."""
     from PIL import Image, ImageDraw
@@ -128,6 +149,62 @@ def main() -> int:
     check("regiões separadas continuam separadas", len(_merge_overlapping(apart)) == 2)
     touching = [(1000, (0, 0, 100, 100), "bubble"), (900, (90, 0, 190, 100), "bubble")]
     check("regiões que só se tocam não são fundidas", len(_merge_overlapping(touching)) == 2)
+
+    print("\n[reflow: quebra de linha para ampliar]")
+    from app.converters.manga.layout import usable_box
+    from app.converters.manga.reflow import plan_reflow
+    from app.converters.manga.segmentation import segment_words
+
+    wide = _wide_line_page()
+    wide_regions = detect_regions(wide)
+    check("página de linha larga detectada", len(wide_regions) == 1, str(len(wide_regions)))
+    if wide_regions:
+        region = wide_regions[0]
+        fit = usable_box(wide, region.box, region.text_box)
+        block = segment_words(wide, region.box, right_to_left=False)
+        reflow = plan_reflow(block, region.box, max_scale=2.5, fit_box=fit) if block else None
+        uniform = plan_enlargement(region, max_scale=2.5, fit_box=fit)
+        check(
+            "reflow amplia onde a escala uniforme não consegue",
+            reflow is not None and (uniform is None or reflow.scale > uniform.scale),
+            f"reflow={reflow.scale if reflow else None} uniform={uniform.scale if uniform else None}",
+        )
+        if reflow and block:
+            check(
+                "reflow usa todas as palavras",
+                sum(len(line) for line in reflow.lines) == len(block.words),
+            )
+            inside = all(
+                region.box[0] <= item.target[0] and item.target[2] <= region.box[2]
+                and region.box[1] <= item.target[1] and item.target[3] <= region.box[3]
+                for line in reflow.lines
+                for item in line
+            )
+            check("texto reposicionado dentro do balão", inside)
+
+    print("\n[reflow: ordem de leitura RTL (mangá)]")
+    rtl_page = _rtl_page()
+    rtl_regions = detect_regions(rtl_page)
+    check("página RTL detectada", len(rtl_regions) >= 1, str(len(rtl_regions)))
+    if rtl_regions:
+        region = rtl_regions[0]
+        block = segment_words(rtl_page, region.box, right_to_left=True)
+        if block and len(block.lines[0]) >= 2:
+            first = block.words[block.lines[0][0]]
+            second = block.words[block.lines[0][1]]
+            check("RTL: a primeira palavra é a da direita", first.box[0] > second.box[0])
+            fit = usable_box(rtl_page, region.box, region.text_box)
+            plan = plan_reflow(block, region.box, max_scale=2.0, fit_box=fit)
+            if plan:
+                targets = [item.target for line in plan.lines for item in line]
+                check(
+                    "RTL: destino preserva direita->esquerda, cima->baixo",
+                    targets[0][1] < targets[1][1]
+                    or (targets[0][1] == targets[1][1] and targets[0][0] > targets[1][0]),
+                    str(targets[:2]),
+                )
+        else:
+            check("RTL: palavras segmentadas", False, "menos de duas palavras na linha")
 
     print("\n[integração: conversão de CBZ com a ampliação ligada]")
     import zipfile

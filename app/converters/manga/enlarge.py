@@ -9,10 +9,14 @@ scale is reduced until it is -- this is what keeps the rest of the page intact.
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
 from PIL import Image, ImageDraw
 
 from app.converters.manga.layout import MIN_USEFUL_SCALE, ScalePlan
+
+if TYPE_CHECKING:
+    from app.converters.manga.reflow import ReflowPlan
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +80,57 @@ def _band_is_background(
     if checked == 0:
         return True
     return bad <= 0.1 * checked
+
+
+def apply_reflow(
+    img: Image.Image,
+    plan: ReflowPlan,
+    *,
+    ink_threshold: int = 128,
+) -> bool:
+    """Clear the original block and paste the re-flowed words (glyphs only).
+
+    Each word is cropped from the original before anything is erased and pasted
+    with an alpha mask, so the balloon's own background (even textured) is kept.
+    """
+    crops = []
+    for line in plan.lines:
+        for item in line:
+            crops.append((item, img.crop(item.source)))
+    if not crops:
+        return False
+
+    bg = _background_color(img, plan.region_box)
+    draw = ImageDraw.Draw(img)
+    sx0, sy0, sx1, sy1 = plan.source_box
+    clear = (max(0, sx0 - 1), max(0, sy0 - 1), min(img.width, sx1 + 1), min(img.height, sy1 + 1))
+    draw.rectangle(clear, fill=bg)
+
+    for item, crop in crops:
+        tx0, ty0, tx1, ty1 = item.target
+        width, height = tx1 - tx0, ty1 - ty0
+        if width < 1 or height < 1:
+            continue
+        scaled = crop.resize((width, height), RESAMPLE)
+        mask = _glyph_mask(scaled, ink_threshold)
+        img.paste(scaled, (tx0, ty0), mask)
+    return True
+
+
+def _glyph_mask(image: Image.Image, ink_threshold: int) -> Image.Image:
+    """Alpha ramp: dark glyph pixels opaque, paper transparent."""
+    gray = image if image.mode == "L" else image.convert("L")
+    ceiling = max(ink_threshold + 20, 200)
+    span = max(1, ceiling - ink_threshold)
+
+    def alpha(value: int) -> int:
+        if value <= ink_threshold:
+            return 255
+        if value >= ceiling:
+            return 0
+        return int((ceiling - value) * 255 / span)
+
+    return gray.point(alpha)
 
 
 def _clip_target(
