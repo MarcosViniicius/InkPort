@@ -11,6 +11,7 @@
 {% set keep = keep_original if keep_original is defined else false %}
 {% set fmt_sel = target_format|default('auto') %}
 {% set prof_sel = device_profile|default('generic_epub') %}
+{% set manga = manga_enlarge_text if manga_enlarge_text is defined else false %}
 {% set selected_category = category|default('') %}
 <script type="application/json" id="category-data">{{ categories|map(attribute='category.name')|list|tojson }}</script>
 
@@ -134,6 +135,8 @@
         <div class="switch-stack mt4">
           {{ toggle('keep_original', 'Manter o arquivo original', checked=keep,
                     hint='Desligado, o original é removido depois que a conversão termina.') }}
+          {{ toggle('manga_enlarge_text', 'Ampliar textos de mangá/quadrinhos', checked=manga,
+                    hint='Aumenta balões e textos soltos aproveitando o espaço livre, sem IA e sem internet. Só vale para quadrinhos e páginas digitalizadas.') }}
         </div>
       </div>
     </details>
@@ -170,6 +173,7 @@
                 <input type="hidden" name="target_format" value="{{ target.format }}">
                 <input type="hidden" name="device_profile" value="{{ device_profile }}">
                 <input type="hidden" name="keep_original" value="on">
+                {% if manga %}<input type="hidden" name="manga_enlarge_text" value="on">{% endif %}
                 <button class="button ghost small" type="submit">{{ format_label(target.format) }}</button>
               </form>
             {% endfor %}

@@ -22,7 +22,7 @@ from app.database.base import get_session
 from app.database.models import SourceKind
 from app.devices.registry import all_profiles, get_profile
 from app.library import repository
-from app.library.conversions import compatible_targets, enqueue_conversion
+from app.library.conversions import compatible_targets, enqueue_conversion, manga_text_options
 from app.library.detect import detect, is_supported
 from app.library.importer import STATUS_IMPORTED, ImportOutcome, import_file
 from app.library.scanner import scan_directory
@@ -72,6 +72,7 @@ async def submit(
     target_format: str = Form("auto"),
     device_profile: str = Form("generic_epub"),
     keep_original: str = Form(""),
+    manga_enlarge_text: str = Form(""),
     session: Session = Depends(get_session),
 ):
     """Single entry point for the unified import form.
@@ -80,25 +81,26 @@ async def submit(
     so the old routes keep working untouched (panel tests and integrations).
     """
     kind = (kind or "files").strip().lower()
+    options = manga_text_options(bool(manga_enlarge_text))
     if kind == "text":
         return _handle_text(
             request, session, title, author, text,
-            category, convert, target_format, device_profile, keep_original,
+            category, convert, target_format, device_profile, keep_original, options,
         )
     if kind == "url":
         return _handle_url(
             request, session, url,
-            category, convert, target_format, device_profile, keep_original,
+            category, convert, target_format, device_profile, keep_original, options,
         )
     if kind == "scan":
         return _handle_scan(
             request, session, path, recursive, move,
-            category, convert, target_format, device_profile, keep_original,
+            category, convert, target_format, device_profile, keep_original, options,
         )
     if kind == "files":
         return await _handle_upload(
             request, session, files,
-            category, convert, target_format, device_profile, keep_original,
+            category, convert, target_format, device_profile, keep_original, options,
         )
     context = _base_context(session)
     context["err"] = "Tipo de importação desconhecido."
@@ -114,11 +116,13 @@ async def upload(
     target_format: str = Form("auto"),
     device_profile: str = Form("generic_epub"),
     keep_original: str = Form(""),
+    manga_enlarge_text: str = Form(""),
     session: Session = Depends(get_session),
 ):
     return await _handle_upload(
         request, session, files,
         category, convert, target_format, device_profile, keep_original,
+        manga_text_options(bool(manga_enlarge_text)),
     )
 
 
@@ -131,6 +135,7 @@ async def _handle_upload(
     target_format: str,
     device_profile: str,
     keep_original: str,
+    options: dict,
 ):
     settings = get_settings()
     settings.inbox_dir.mkdir(parents=True, exist_ok=True)
@@ -150,6 +155,7 @@ async def _handle_upload(
                 "device_profile": device_profile,
                 "keep_original": bool(keep_original),
                 "convert": bool(convert),
+                "manga_enlarge_text": bool(options.get("manga_enlarge_text")),
             }
         )
         return render(request, "import.html", context, status_code=400)
@@ -187,7 +193,7 @@ async def _handle_upload(
             session, target, category=category or None, source=SourceKind.UPLOAD.value, move=True
         )
         results.append(
-            _result(session, name, outcome, detection, size, convert, target_format, device_profile, keep_original)
+            _result(session, name, outcome, detection, size, convert, target_format, device_profile, keep_original, options)
         )
 
     context = _base_context(session)
@@ -195,7 +201,8 @@ async def _handle_upload(
                     "kind": "files",
                     "category": category.strip(),
                     "target_format": target_format, "device_profile": device_profile,
-                    "keep_original": bool(keep_original)})
+                    "keep_original": bool(keep_original),
+                    "manga_enlarge_text": bool(options.get("manga_enlarge_text"))})
     return render(request, "import.html", context)
 
 
@@ -210,11 +217,13 @@ def import_from_text(
     target_format: str = Form("auto"),
     device_profile: str = Form("generic_epub"),
     keep_original: str = Form(""),
+    manga_enlarge_text: str = Form(""),
     session: Session = Depends(get_session),
 ):
     return _handle_text(
         request, session, title, author, text,
         category, convert, target_format, device_profile, keep_original,
+        manga_text_options(bool(manga_enlarge_text)),
     )
 
 
@@ -229,6 +238,7 @@ def _handle_text(
     target_format: str,
     device_profile: str,
     keep_original: str,
+    options: dict,
 ):
     """Importa um texto colado no formulário como livro TXT, já convertendo.
 
@@ -247,6 +257,7 @@ def _handle_text(
         "device_profile": device_profile,
         "keep_original": bool(keep_original),
         "convert": bool(convert),
+        "manga_enlarge_text": bool(options.get("manga_enlarge_text")),
     }
     if not name:
         return _page_error(request, session, "Informe um título para o texto.", eco)
@@ -297,7 +308,7 @@ def _handle_text(
 
     item = _result(
         session, target.name, outcome, detection, size,
-        convert, target_format, device_profile, keep_original,
+        convert, target_format, device_profile, keep_original, options,
     )
     context = _base_context(session)
     context.update(
@@ -309,6 +320,7 @@ def _handle_text(
             "target_format": target_format,
             "device_profile": device_profile,
             "keep_original": bool(keep_original),
+            "manga_enlarge_text": bool(options.get("manga_enlarge_text")),
         }
     )
     return render(request, "import.html", context)
@@ -323,11 +335,13 @@ def import_from_url(
     target_format: str = Form("auto"),
     device_profile: str = Form("generic_epub"),
     keep_original: str = Form(""),
+    manga_enlarge_text: str = Form(""),
     session: Session = Depends(get_session),
 ):
     return _handle_url(
         request, session, url,
         category, convert, target_format, device_profile, keep_original,
+        manga_text_options(bool(manga_enlarge_text)),
     )
 
 
@@ -340,6 +354,7 @@ def _handle_url(
     target_format: str,
     device_profile: str,
     keep_original: str,
+    options: dict,
 ):
     """Baixa uma página da web e a importa como livro, já convertendo.
 
@@ -357,6 +372,7 @@ def _handle_url(
         "device_profile": device_profile,
         "keep_original": bool(keep_original),
         "convert": bool(convert),
+        "manga_enlarge_text": bool(options.get("manga_enlarge_text")),
     }
     if not endereco:
         return _page_error(request, session, "Informe o endereço da página.", eco)
@@ -415,7 +431,7 @@ def _handle_url(
 
     item = _result(
         session, target.name, outcome, detection, size,
-        convert, target_format, device_profile, keep_original,
+        convert, target_format, device_profile, keep_original, options,
     )
     context = _base_context(session)
     context.update(
@@ -427,6 +443,7 @@ def _handle_url(
             "target_format": target_format,
             "device_profile": device_profile,
             "keep_original": bool(keep_original),
+            "manga_enlarge_text": bool(options.get("manga_enlarge_text")),
         }
     )
     return render(request, "import.html", context)
@@ -443,11 +460,13 @@ def scan(
     target_format: str = Form("auto"),
     device_profile: str = Form("generic_epub"),
     keep_original: str = Form(""),
+    manga_enlarge_text: str = Form(""),
     session: Session = Depends(get_session),
 ):
     return _handle_scan(
         request, session, path, recursive, move,
         category, convert, target_format, device_profile, keep_original,
+        manga_text_options(bool(manga_enlarge_text)),
     )
 
 
@@ -462,6 +481,7 @@ def _handle_scan(
     target_format: str,
     device_profile: str,
     keep_original: str,
+    options: dict,
 ):
     root = Path(path).expanduser()
     if not root.exists():
@@ -485,7 +505,7 @@ def _handle_scan(
                 enqueue_conversion(
                     session, outcome.book,
                     target_format=target_format, device_profile=device_profile,
-                    keep_original=bool(keep_original),
+                    keep_original=bool(keep_original), options=dict(options),
                 )
                 queued += 1
 
@@ -494,7 +514,8 @@ def _handle_scan(
                     "kind": "scan",
                     "category": category.strip(),
                     "target_format": target_format, "device_profile": device_profile,
-                    "keep_original": bool(keep_original)})
+                    "keep_original": bool(keep_original),
+                    "manga_enlarge_text": bool(options.get("manga_enlarge_text"))})
     return render(request, "import.html", context)
 
 
@@ -544,6 +565,7 @@ def _base_context(session: Session) -> dict:
         "device_profile": "generic_epub",
         "target_format": "auto",
         "keep_original": False,
+        "manga_enlarge_text": False,
     }
 
 
@@ -585,6 +607,7 @@ def _result(
     target_format: str,
     device_profile: str,
     keep_original: str,
+    options: dict,
 ) -> dict:
     item: dict = {
         "name": name,
@@ -601,7 +624,7 @@ def _result(
             job = enqueue_conversion(
                 session, outcome.book,
                 target_format=target_format, device_profile=device_profile,
-                keep_original=bool(keep_original),
+                keep_original=bool(keep_original), options=dict(options),
             )
             item["job_target"] = job.target_format
             item["queued"] = True

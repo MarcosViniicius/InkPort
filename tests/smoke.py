@@ -61,6 +61,7 @@ def main() -> int:
         _panel_checks(client)
         _filter_checks(client)
         _import_category_checks(client)
+        _manga_import_option_check(client)
         _url_import_checks(client)
         _text_import_checks(client)
         _background_feed_actions(client)
@@ -786,6 +787,57 @@ def _import_category_checks(client) -> None:
     )
     page = client.get("/import").text
     check("o formulário marca a categoria como obrigatória", "data-catselect" in page)
+
+
+def _manga_import_option_check(client) -> None:
+    """A opção «Ampliar textos de mangá» viaja da importação até a fila."""
+    print("\n[importação: ampliar textos de mangá]")
+    page = client.get("/import").text
+    check(
+        "o formulário de importação oferece a ampliação",
+        'name="manga_enlarge_text"' in page,
+    )
+
+    import zipfile
+    from io import BytesIO
+
+    from PIL import Image
+
+    buffer = BytesIO()
+    with zipfile.ZipFile(buffer, "w") as zf:
+        image = BytesIO()
+        Image.new("L", (120, 160), 200).save(image, "PNG")
+        zf.writestr("001.png", image.getvalue())
+
+    response = client.post(
+        "/import/upload",
+        files={"files": ("manga_opt.cbz", buffer.getvalue(), "application/vnd.comicbook+zip")},
+        data={
+            "category": "Teste manga",
+            "convert": "on",
+            "target_format": "epub",
+            "device_profile": "xteink_x4_pro",
+            "manga_enlarge_text": "on",
+        },
+    )
+    check("importação com ampliação aceita", response.status_code == 200, str(response.status_code))
+
+    from sqlalchemy import select
+
+    from app.database import session_scope
+    from app.database.models import ConversionJob
+
+    with session_scope() as session:
+        job = session.execute(
+            select(ConversionJob).order_by(ConversionJob.created_at.desc())
+        ).scalars().first()
+        options = job.options if job else {}
+    check(
+        "a opção chega à fila de conversão",
+        bool(options.get("manga_enlarge_text")) is True,
+        str(options),
+    )
+    check("os limites configurados acompanham", "manga_max_scale" in options, str(options))
 
 
 def _opds_checks(client) -> None:

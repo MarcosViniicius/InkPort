@@ -95,6 +95,10 @@ local (`app/converters/manga/`, só Pillow) faz, por página:
 É **best-effort**: página que não pode ser interpretada volta sem alteração e
 nunca quebra a conversão. Sem OCR, sem IA, sem internet e sem binário externo.
 
+A opção aparece nas **Opções avançadas** da conversão e também na **importação**
+(quando «Converter automaticamente» está ligado), então dá para importar e já
+sair com o texto ampliado sem passar pela página do livro.
+
 Limites configuráveis em **Configurações → Conversão e armazenamento →
 «Avançado»**: `manga_max_scale` (teto, padrão 2×), `manga_overflow` (quanto pode
 passar do balão, padrão 0,15) e `manga_max_overflow_px` (teto em pixels).
